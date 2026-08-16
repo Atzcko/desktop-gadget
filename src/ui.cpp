@@ -64,6 +64,7 @@ struct Card {
 
 static lv_obj_t *scr_clock;
 static lv_obj_t *root;
+static lv_obj_t *clock_grp, *weather_grp, *lbl_mini;
 static Card      card_h, card_m;
 static lv_obj_t *lbl_ampm;
 static lv_obj_t *wrow, *lbl_temp, *lbl_minmax, *lbl_humid, *dot_stale;
@@ -264,7 +265,7 @@ static void on_press(lv_event_t *e)
 
 static void make_card(Card &c, int x, int y)
 {
-    c.root = lv_obj_create(root);
+    c.root = lv_obj_create(clock_grp);
     decor(c.root);
     lv_obj_set_size(c.root, CARD_W, CARD_H);
     lv_obj_set_pos(c.root, x, y);
@@ -335,6 +336,13 @@ void ui_init(uint16_t screen_w, uint16_t screen_h)
     lv_obj_add_flag(root, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_add_event_cb(root, on_press, LV_EVENT_ALL, nullptr);
 
+    /* One container for the whole clock so the emotion transition can fade
+     * and slide it with a single animation instead of five. */
+    clock_grp = lv_obj_create(root);
+    decor(clock_grp);
+    lv_obj_set_size(clock_grp, screen_w, screen_h);
+    lv_obj_set_pos(clock_grp, 0, 0);
+
     const int clock_w = CARD_W * 2 + CARD_GAP;
     clock_x = (screen_w - clock_w) / 2;
     clock_y = 44;
@@ -343,7 +351,7 @@ void ui_init(uint16_t screen_w, uint16_t screen_h)
     make_card(card_m, clock_x + CARD_W + CARD_GAP, clock_y);
 
     for (int i = 0; i < 2; i++) {
-        lv_obj_t *dot = lv_obj_create(root);
+        lv_obj_t *dot = lv_obj_create(clock_grp);
         decor(dot);
         lv_obj_set_size(dot, COLON_DOT, COLON_DOT);
         lv_obj_set_style_bg_color(dot, COL_COLON, LV_PART_MAIN);
@@ -365,7 +373,12 @@ void ui_init(uint16_t screen_w, uint16_t screen_h)
 
     /* Weather: largest element is the current temperature, min/max beside
      * it in the one smaller size. Two sizes total, per the brief. */
-    wrow = lv_obj_create(root);
+    weather_grp = lv_obj_create(root);
+    decor(weather_grp);
+    lv_obj_set_size(weather_grp, screen_w, 70);
+    lv_obj_set_pos(weather_grp, 0, clock_y + CARD_H + 26);
+
+    wrow = lv_obj_create(weather_grp);
     decor(wrow);
     lv_obj_set_size(wrow, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
     lv_obj_set_flex_flow(wrow, LV_FLEX_FLOW_ROW);
@@ -401,7 +414,16 @@ void ui_init(uint16_t screen_w, uint16_t screen_h)
     lv_obj_set_style_radius(dot_stale, 4, LV_PART_MAIN);
     lv_obj_add_flag(dot_stale, LV_OBJ_FLAG_HIDDEN);
 
-    lv_obj_align(wrow, LV_ALIGN_TOP_MID, 0, clock_y + CARD_H + 26);
+    lv_obj_align(wrow, LV_ALIGN_TOP_MID, 0, 0);
+
+    /* Small clock for emotion mode — the 210 px font cannot be scaled, so the
+     * corner clock is a different label rather than a transform. */
+    lbl_mini = lv_label_create(root);
+    lv_obj_set_style_text_font(lbl_mini, &lv_font_montserrat_48, LV_PART_MAIN);
+    lv_obj_set_style_text_color(lbl_mini, COL_DIGIT, LV_PART_MAIN);
+    lv_obj_set_style_opa(lbl_mini, LV_OPA_TRANSP, LV_PART_MAIN);
+    lv_label_set_text(lbl_mini, "00:00");
+    lv_obj_set_pos(lbl_mini, 24, 14);
 
     /* Tap overlay — reuses the smaller weather size, no new type size. */
     lbl_info = lv_label_create(root);
@@ -442,6 +464,12 @@ void ui_set_time(int hour, int minute, bool animate)
     char hh[4], mm[4];
     snprintf(hh, sizeof(hh), "%02d", disp);
     snprintf(mm, sizeof(mm), "%02d", minute);
+
+    {
+        char mini[8];
+        snprintf(mini, sizeof(mini), "%s:%s", hh, mm);
+        lv_label_set_text(lbl_mini, mini);
+    }
 
     if (animate) {
         /* Driven by "rendered digits differ from target", never by
@@ -510,171 +538,219 @@ void ui_show_info(const char *date_line, const char *sync_line)
 }
 
 /* ====================================================================== */
-/*  Emotion overlay — the neon wave                                       */
+/*  Emotion overlay — one continuous neon line                            */
 /* ====================================================================== */
 /*
- * Third design, and the first one the owner could actually read.
+ * Design history, because the first three attempts all failed differently:
+ *   v1  3 px accent on the seam        -> invisible against 150 px digits
+ *   v2  eyes                           -> pale blobs colliding with numerals
+ *   v3  30 segments with gaps          -> read as a DASHED line, not a line
+ *   v4  (this) one continuous polyline, and the clock steps aside for it
  *
- *   v1  a 3 px accent line on the seam. Invisible against 150 px digits.
- *   v2  added eyes. They rendered as pale blobs colliding with the numerals
- *       — legible, but ugly, and nothing like the product's aesthetic.
- *   v3  (this) no eyes. An 80s-style neon sine line running through the card
- *       seam: it moves, it shifts hue, and it is unmistakable without
- *       obscuring anything.
- *
- * PERFORMANCE — why this is ONE object with a custom draw callback rather
- * than 30 little ones:
- *
- * Moving 30 separate objects would queue up to 60 invalidated rectangles per
- * frame. LVGL's invalid-area buffer is finite (LV_INV_BUF_SIZE); overflow it
- * and LVGL gives up and redraws the WHOLE screen — 600*450*2 = 540 KB a
- * frame, which at 30 fps is 16 MB/s against a QSPI bus whose theoretical
- * ceiling is ~18 MB/s. It would stutter.
- *
- * Drawing every segment inside a single object's LV_EVENT_DRAW_MAIN gives
- * exactly one invalid region — the 600x96 band, ~115 KB a frame, ~3.4 MB/s.
- * Comfortable.
+ * The line is driven by Russell's circumplex (see emotion.h): AROUSAL sets
+ * how agitated it is, VALENCE sets its hue. There is no per-emotion
+ * animation code — 26 emotions, one renderer.
  */
 
-#define WAVE_SEGS    30
-#define WAVE_BAND_H  96
-#define COL_CAPTION  lv_color_hex(0xBFBFBF)
+#define WAVE_PTS     49                      /* 48 segments */
+#define WAVE_BAND_H  160
+#define COL_CAPTION  lv_color_hex(0xC8C8C8)
 
-struct WaveStyle {
-    float    amp;        /* peak deflection, px            */
-    float    speed;      /* phase advance per frame        */
-    float    k;          /* spatial frequency along the line */
-    uint16_t hue0;       /* base hue, degrees              */
-    uint16_t hue_span;   /* hue spread across the line     */
-    float    hue_drift;  /* hue rotation per frame         */
-    bool     jagged;     /* square off the wave (error)    */
-    uint8_t  seg_h;
-};
+#define WEATHER_REST_Y (44 + CARD_H + 26)
+#define WEATHER_EMO_Y  14
+#define WEATHER_EMO_X  150
+#define MINI_Y         14
 
-/* Indexed by EmotionState. Each state gets a distinct *motion*, because
- * motion reads at a glance far better than colour alone. */
-static const WaveStyle WAVE_STYLES[7] = {
-    /* none      */ {  0, 0.00f, 0.00f,   0,   0, 0.00f, false, 6 },
-    /* thinking  */ { 16, 0.10f, 0.42f, 195,  60, 0.40f, false, 8 },
-    /* working   */ { 10, 0.26f, 0.36f, 185,  45, 0.90f, false, 8 },
-    /* success   */ { 24, 0.30f, 0.50f, 120,  40, 0.30f, false, 9 },
-    /* error     */ { 28, 0.60f, 1.60f,   0,  20, 0.00f, true,  9 },
-    /* celebrate */ { 30, 0.34f, 0.46f,   0, 360, 3.00f, false, 9 },
-    /* sleepy    */ {  7, 0.05f, 0.30f, 275,  35, 0.15f, false, 6 },
-};
-
-static lv_obj_t   *wave;
+static lv_obj_t   *wave, *lbl_emotion;
 static lv_timer_t *wave_timer;
-static lv_obj_t   *lbl_emotion;
 static uint8_t     emo_state;
-static float       wave_phase;
-static float       wave_hue;
+static float       wave_phase, wave_hue, wave_gain;
+static bool        wave_out;
 
-static const WaveStyle &wave_style(void)
+/* ------------------------------------------------------- animation glue -- */
+
+static void a_opa(void *o, int32_t v) { lv_obj_set_style_opa((lv_obj_t *)o, (lv_opa_t)v, LV_PART_MAIN); }
+static void a_x  (void *o, int32_t v) { lv_obj_set_x((lv_obj_t *)o, v); }
+static void a_y  (void *o, int32_t v) { lv_obj_set_y((lv_obj_t *)o, v); }
+
+static void animate(lv_obj_t *obj, lv_anim_exec_xcb_t cb,
+                    int32_t from, int32_t to, uint32_t ms, uint32_t delay)
 {
-    return WAVE_STYLES[emo_state <= 6 ? emo_state : 0];
+    lv_anim_t a;
+    lv_anim_init(&a);
+    lv_anim_set_var(&a, obj);
+    lv_anim_set_exec_cb(&a, cb);
+    lv_anim_set_values(&a, from, to);
+    lv_anim_set_time(&a, ms);
+    lv_anim_set_delay(&a, delay);
+    lv_anim_set_path_cb(&a, lv_anim_path_ease_in_out);
+    lv_anim_start(&a);
+}
+
+/* ------------------------------------------------------------ the line -- */
+
+/* Shape of the line at position u (0..1) for this character. */
+static float wave_sample(float u, float ph, uint8_t character)
+{
+    switch (character) {
+    case CH_JAGGED: {                    /* triangle: hard, angular, angry  */
+        float x = fmodf(ph, 6.2832f) / 3.1416f;   /* 0..2 */
+        return (x < 1.0f ? x : 2.0f - x) * 2.0f - 1.0f;
+    }
+    case CH_TREMOR:                      /* judder riding a slow carrier    */
+        return sinf(ph) * 0.55f + sinf(ph * 6.5f) * 0.45f;
+    case CH_SCAN: {                      /* a swell travelling along it     */
+        float pos = fmodf(wave_phase * 0.09f, 1.6f) - 0.3f;
+        float d   = fabsf(u - pos) * 4.5f;
+        float env = d >= 1.0f ? 0.0f : (1.0f - d) * (1.0f - d);
+        return sinf(ph) * (0.18f + env);
+    }
+    case CH_DROOP: {                     /* sags — sad, deflated            */
+        float s = sinf(ph);
+        return s > 0.0f ? s * 0.22f : s;
+    }
+    default:
+        return sinf(ph);
+    }
 }
 
 static void wave_draw_cb(lv_event_t *e)
 {
     lv_obj_t      *obj = lv_event_get_target(e);
     lv_draw_ctx_t *ctx = lv_event_get_draw_ctx(e);
+    if (wave_gain <= 0.01f) return;
 
     lv_area_t co;
     lv_obj_get_coords(obj, &co);
 
-    const WaveStyle &w = wave_style();
-    if (w.amp <= 0.0f) return;
+    const EmotionDef &d = emotion_def(emo_state);
+    const int   width = lv_area_get_width(&co);
+    const int   cy    = co.y1 + lv_area_get_height(&co) / 2;
+    const float amp   = (6.0f + d.arousal * 40.0f) * wave_gain;
+    const float k     = (0.8f + d.arousal * 2.2f) * 6.2832f;   /* cycles */
 
-    const int width = lv_area_get_width(&co);
-    const int cy    = co.y1 + lv_area_get_height(&co) / 2;
-    const int pitch = width / WAVE_SEGS;
-    int sw = pitch - 6;
-    if (sw < 4) sw = 4;
+    /* Valence -> hue. -1 lands on red, 0 on violet-blue, +1 on cyan-green:
+     * the synthwave palette read straight off the circumplex x-axis. */
+    const float base_hue = 350.0f - (d.valence + 1.0f) * 0.5f * 185.0f;
 
-    lv_draw_rect_dsc_t dsc;
-    lv_draw_rect_dsc_init(&dsc);
-    dsc.radius = LV_RADIUS_CIRCLE;
+    lv_point_t pts[WAVE_PTS];
+    lv_color_t col[WAVE_PTS];
 
-    for (int i = 0; i < WAVE_SEGS; i++) {
-        float ph = wave_phase + i * w.k;
-        /* error squares the wave off into hard alternating spikes; every
-         * other state rides a clean sine. */
-        float s  = w.jagged ? (((i & 1) ? 1.0f : -1.0f) * fabsf(sinf(ph)))
-                            : sinf(ph);
-        int   y  = cy + (int)(w.amp * s);
+    for (int i = 0; i < WAVE_PTS; i++) {
+        float u  = (float)i / (WAVE_PTS - 1);
+        float ph = wave_phase + u * k;
+        pts[i].x = co.x1 + (lv_coord_t)(u * (width - 1));
+        pts[i].y = cy + (lv_coord_t)(amp * wave_sample(u, ph, d.character));
 
-        int hue = (int)(w.hue0 + (i * w.hue_span) / WAVE_SEGS + wave_hue) % 360;
-        if (hue < 0) hue += 360;
-        lv_color_t c = lv_color_hsv_to_rgb((uint16_t)hue, 90, 100);
-
-        int x = co.x1 + i * pitch + (pitch - sw) / 2;
-        int h = w.seg_h;
-
-        /* A dim oversized pass under each segment fakes a neon bloom — the
-         * panel has no real glow, and on true black this reads convincingly. */
-        dsc.bg_color = c;
-        dsc.bg_opa   = LV_OPA_30;
-        lv_area_t glow = { (lv_coord_t)(x - 5), (lv_coord_t)(y - h / 2 - 5),
-                           (lv_coord_t)(x + sw + 5), (lv_coord_t)(y + h / 2 + 5) };
-        lv_draw_rect(ctx, &dsc, &glow);
-
-        dsc.bg_opa = LV_OPA_COVER;
-        lv_area_t core = { (lv_coord_t)x, (lv_coord_t)(y - h / 2),
-                           (lv_coord_t)(x + sw), (lv_coord_t)(y + h / 2) };
-        lv_draw_rect(ctx, &dsc, &core);
+        float hue = d.spectrum
+                  ? fmodf(u * 360.0f + wave_hue, 360.0f)
+                  : base_hue + 16.0f * sinf(wave_phase * 0.25f + u * 1.6f);
+        if (hue < 0.0f) hue += 360.0f;
+        col[i] = lv_color_hsv_to_rgb((uint16_t)hue, 95, 100);
     }
+
+    lv_draw_line_dsc_t dsc;
+    lv_draw_line_dsc_init(&dsc);
+    dsc.round_start = 1;
+    dsc.round_end   = 1;
+
+    /* Two passes. The wide dim pass is a fake bloom — the panel has no glow,
+     * and on true black this is what sells "neon" rather than "coloured
+     * line". Round caps on both make the joints seamless, which is the whole
+     * difference between a line and the dashes of v3. */
+    for (int pass = 0; pass < 2; pass++) {
+        dsc.width = pass == 0 ? 17 : 6;
+        dsc.opa   = pass == 0 ? (lv_opa_t)(LV_OPA_40 * wave_gain)
+                              : (lv_opa_t)(LV_OPA_COVER * wave_gain);
+        for (int i = 0; i < WAVE_PTS - 1; i++) {
+            dsc.color = col[i];
+            lv_draw_line(ctx, &dsc, &pts[i], &pts[i + 1]);
+        }
+    }
+}
+
+static void kill_wave(void)
+{
+    if (wave_timer) { lv_timer_del(wave_timer); wave_timer = nullptr; }
+    if (wave)       { lv_obj_del(wave);         wave = nullptr; }
 }
 
 static void wave_tick(lv_timer_t *)
 {
-    const WaveStyle &w = wave_style();
-    wave_phase += w.speed;
-    if (wave_phase > 6283.0f) wave_phase = 0.0f;     /* keep sinf() happy */
-    wave_hue += w.hue_drift;
+    const EmotionDef &d = emotion_def(emo_state);
+
+    /* Entrance and exit are driven here rather than by lv_anim so a rapid
+     * emotion change can never leave two waves fighting over one gain. */
+    if (wave_out) {
+        wave_gain -= 0.09f;
+        if (wave_gain <= 0.0f) { kill_wave(); return; }
+    } else if (wave_gain < 1.0f) {
+        wave_gain += 0.07f;
+        if (wave_gain > 1.0f) wave_gain = 1.0f;
+    }
+
+    wave_phase += 0.03f + d.arousal * 0.45f;
+    if (wave_phase > 6283.0f) wave_phase = 0.0f;
+    wave_hue += 1.2f + d.arousal * 2.5f;
     if (wave_hue >= 360.0f) wave_hue -= 360.0f;
+
     if (wave) lv_obj_invalidate(wave);
 }
 
-/* Push the clock back so the wave is what the eye lands on. The digits stay
- * legible — this is a change of emphasis, not a takeover. */
-static void recede_clock(bool on)
+/* ------------------------------------------------- clock steps aside --- */
+
+static void layout_emotion(bool on)
 {
-    Card *cards[2] = { &card_h, &card_m };
-    for (int i = 0; i < 2; i++) {
-        lv_obj_set_style_text_opa(cards[i]->label,
-                                  on ? LV_OPA_30 : LV_OPA_COVER, LV_PART_MAIN);
+    if (on) {
+        animate(clock_grp,   a_opa, LV_OPA_COVER, LV_OPA_TRANSP, 380, 0);
+        animate(clock_grp,   a_y,   0, -34, 380, 0);
+        animate(lbl_mini,    a_opa, LV_OPA_TRANSP, LV_OPA_COVER, 380, 160);
+        animate(lbl_mini,    a_y,   MINI_Y - 22, MINI_Y, 380, 160);
+        animate(weather_grp, a_y,   WEATHER_REST_Y, WEATHER_EMO_Y, 420, 0);
+        animate(weather_grp, a_x,   0, WEATHER_EMO_X, 420, 0);
+    } else {
+        animate(clock_grp,   a_opa, LV_OPA_TRANSP, LV_OPA_COVER, 380, 120);
+        animate(clock_grp,   a_y,   -34, 0, 380, 120);
+        animate(lbl_mini,    a_opa, LV_OPA_COVER, LV_OPA_TRANSP, 260, 0);
+        animate(lbl_mini,    a_y,   MINI_Y, MINI_Y - 22, 260, 0);
+        animate(weather_grp, a_y,   WEATHER_EMO_Y, WEATHER_REST_Y, 420, 60);
+        animate(weather_grp, a_x,   WEATHER_EMO_X, 0, 420, 60);
     }
 }
 
 void ui_emotion_clear(void)
 {
-    if (wave_timer)  { lv_timer_del(wave_timer);  wave_timer = nullptr; }
-    if (wave)        { lv_obj_del(wave);          wave = nullptr; }
-    if (lbl_emotion) { lv_obj_del(lbl_emotion);   lbl_emotion = nullptr; }
-    recede_clock(false);
+    if (!wave && emo_state == 0) return;
+    wave_out = true;                       /* wave_tick tears it down       */
+    if (lbl_emotion) { lv_obj_del(lbl_emotion); lbl_emotion = nullptr; }
+    layout_emotion(false);
     emo_state = 0;
 }
 
 void ui_emotion_show(uint8_t state, const char *message)
 {
-    ui_emotion_clear();
+    bool was_showing = (wave != nullptr);
+
+    /* A fresh emotion replaces the old one outright — no cross-fade, which
+     * would mean two waves sharing one gain. */
+    kill_wave();
+    if (lbl_emotion) { lv_obj_del(lbl_emotion); lbl_emotion = nullptr; }
+
     emo_state  = state;
     wave_phase = 0.0f;
     wave_hue   = 0.0f;
+    wave_gain  = 0.0f;
+    wave_out   = false;
 
-    recede_clock(true);
+    if (!was_showing) layout_emotion(true);
 
-    /* Centred on the card seam — the seam is already this design's line, so
-     * the wave reads as that line coming alive rather than as a new element
-     * bolted on. */
     wave = lv_obj_create(root);
     decor(wave);
     lv_obj_set_size(wave, scr_w, WAVE_BAND_H);
-    lv_obj_set_pos(wave, 0, clock_y + CARD_H / 2 - WAVE_BAND_H / 2);
+    lv_obj_set_pos(wave, 0, scr_h / 2 - WAVE_BAND_H / 2);
     lv_obj_add_event_cb(wave, wave_draw_cb, LV_EVENT_DRAW_MAIN, nullptr);
 
-    wave_timer = lv_timer_create(wave_tick, 33, nullptr);   /* ~30 fps */
+    wave_timer = lv_timer_create(wave_tick, 40, nullptr);   /* 25 fps */
 
     if (message && message[0]) {
         lbl_emotion = lv_label_create(root);
@@ -684,8 +760,8 @@ void ui_emotion_show(uint8_t state, const char *message)
         lv_obj_align(lbl_emotion, LV_ALIGN_BOTTOM_MID, 0, -26);
     }
 
-    const WaveStyle &w = wave_style();
-    Serial.printf("[ui] emotion %u: wave amp=%.0f speed=%.2f hue=%u+%u drift=%.1f%s\n",
-                  state, w.amp, w.speed, w.hue0, w.hue_span, w.hue_drift,
-                  w.jagged ? " jagged" : "");
+    const EmotionDef &d = emotion_def(state);
+    Serial.printf("[ui] %s  valence=%+.2f arousal=%.2f char=%u%s\n",
+                  d.name, d.valence, d.arousal, d.character,
+                  d.spectrum ? " spectrum" : "");
 }

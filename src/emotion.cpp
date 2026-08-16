@@ -12,20 +12,76 @@ static uint32_t      revert_at_ms;
 static bool          active;
 static uint8_t       cur_state;
 
-static const char *NAMES[] = {
-    "none", "thinking", "working", "success", "error", "celebrate", "sleepy"
+/*
+ * Named points in the circumplex. Coverage is deliberate: Plutchik's eight
+ * primaries, Ekman's six, and the work states this device actually needs,
+ * spread across all four quadrants so the line has real range.
+ *
+ *                        high arousal
+ *                             |
+ *      anger, fear      ...  surprise, excited, celebrate
+ *   negative ------------+------------ positive valence
+ *      sad, bored       ...  calm, content, trust
+ *                             |
+ *                        low arousal
+ */
+const EmotionDef EMOTIONS[] = {
+    /*  name            valence  arousal  character    spectrum */
+    {  "none",            0.00f,   0.00f, CH_SMOOTH,  false },
+
+    /* --- working states: what this device says most of the time --- */
+    {  "thinking",        0.10f,   0.35f, CH_SMOOTH,  false },
+    {  "working",         0.20f,   0.55f, CH_SMOOTH,  false },
+    {  "searching",       0.05f,   0.50f, CH_SCAN,    false },
+    {  "focused",         0.30f,   0.45f, CH_SMOOTH,  false },
+    {  "waiting",         0.00f,   0.15f, CH_SCAN,    false },
+
+    /* --- positive --- */
+    {  "success",         0.80f,   0.60f, CH_SMOOTH,  false },
+    {  "celebrate",       1.00f,   0.95f, CH_SMOOTH,  true  },
+    {  "joy",             0.90f,   0.80f, CH_SMOOTH,  false },
+    {  "excited",         0.75f,   0.90f, CH_SMOOTH,  false },
+    {  "proud",           0.70f,   0.50f, CH_SMOOTH,  false },
+    {  "trust",           0.50f,   0.30f, CH_SMOOTH,  false },
+    {  "content",         0.55f,   0.20f, CH_SMOOTH,  false },
+    {  "calm",            0.40f,   0.12f, CH_SMOOTH,  false },
+    {  "relief",          0.45f,   0.25f, CH_DROOP,   false },
+
+    /* --- low arousal --- */
+    {  "sleepy",          0.10f,   0.05f, CH_SMOOTH,  false },
+    {  "bored",          -0.25f,   0.10f, CH_SMOOTH,  false },
+
+    /* --- negative --- */
+    {  "sad",            -0.60f,   0.20f, CH_DROOP,   false },
+    {  "disappointed",   -0.50f,   0.30f, CH_DROOP,   false },
+    {  "confused",       -0.10f,   0.50f, CH_TREMOR,  false },
+    {  "surprise",        0.15f,   0.90f, CH_JAGGED,  false },
+    {  "fear",           -0.70f,   0.85f, CH_TREMOR,  false },
+    {  "frustrated",     -0.60f,   0.70f, CH_JAGGED,  false },
+    {  "anger",          -0.85f,   0.90f, CH_JAGGED,  false },
+    {  "error",          -0.90f,   0.80f, CH_JAGGED,  false },
+    {  "disgust",        -0.70f,   0.40f, CH_TREMOR,  false },
+    {  "anticipation",   0.35f,    0.60f, CH_SCAN,    false },
 };
+
+const int EMOTION_COUNT = (int)(sizeof(EMOTIONS) / sizeof(EMOTIONS[0]));
+
+const EmotionDef &emotion_def(uint8_t state)
+{
+    if (state >= EMOTION_COUNT) state = 0;
+    return EMOTIONS[state];
+}
 
 const char *emotion_name(uint8_t state)
 {
-    return (state < sizeof(NAMES) / sizeof(NAMES[0])) ? NAMES[state] : "none";
+    return emotion_def(state).name;
 }
 
 int emotion_from_name(const char *name)
 {
     if (!name) return -1;
-    for (size_t i = 1; i < sizeof(NAMES) / sizeof(NAMES[0]); i++) {
-        if (strcasecmp(name, NAMES[i]) == 0) return (int)i;
+    for (int i = 1; i < EMOTION_COUNT; i++) {
+        if (strcasecmp(name, EMOTIONS[i].name) == 0) return i;
     }
     return -1;
 }
@@ -116,6 +172,6 @@ void emotion_tick(void)
     if (active && (int32_t)(millis() - revert_at_ms) >= 0) {
         ui_emotion_clear();
         active    = false;
-        cur_state = EMO_NONE;
+        cur_state = 0;
     }
 }

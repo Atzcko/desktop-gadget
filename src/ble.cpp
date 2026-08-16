@@ -155,7 +155,7 @@ class HidOutCallbacks : public NimBLECharacteristicCallbacks {
         EmotionRequest req;
         memset(&req, 0, sizeof(req));
         req.state = (uint8_t)v[1];
-        if (req.state < 1 || req.state > 6) return;
+        if (req.state < 1 || req.state >= EMOTION_COUNT) return;
 
         uint16_t dur = (uint8_t)v[2] | ((uint16_t)(uint8_t)v[3] << 8);
         if (dur < 1) dur = 5;

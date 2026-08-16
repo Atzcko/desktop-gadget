@@ -243,3 +243,22 @@ So: a synthwave sine line running **through the card seam**, 30 segments at ~30 
 **The decision that made 30 fps possible:** it is ONE object with a custom `LV_EVENT_DRAW_MAIN` callback, not 30 moving objects. Thirty movers would queue up to 60 invalidated rects per frame; overflow `LV_INV_BUF_SIZE` and LVGL abandons partial redraw and repaints the whole screen — 540 KB/frame, 16 MB/s at 30 fps against a ~18 MB/s QSPI ceiling. Custom-drawing into a single object gives exactly one invalid region: the 600×96 band, ~115 KB/frame, ~3.4 MB/s. ([[D023 - Emotions must change the mode, not decorate it]])
 
 Third design for this feature. The first two failed for the same underlying reason — I was designing decoration instead of asking what the owner would actually *see* from across a desk.
+
+## [2026-08-16] design | v4 — the circumplex, and a line that is actually a line
+
+Owner asked for three things: move the clock and weather aside during an emotion and animate the transition, research how many emotions exist, and render them on a single line — pointedly *not* the dashed thing v3 produced.
+
+**The research changed the design.** Ekman says 6, Plutchik 8, Cowen & Keltner 27 — but Cowen & Keltner's real claim is that the categories are **"bridged by continuous gradients"**, not discrete. Russell's 1980 circumplex says the same thing constructively: every emotion is a point on two axes, **valence** and **arousal**.
+
+That is exactly two free parameters, and a line has exactly two obvious ones:
+
+- **arousal → agitation** (amplitude, frequency, speed)
+- **valence → hue** (red at −1, violet-blue at 0, cyan-green at +1 — the synthwave palette read straight off the x-axis)
+
+So the renderer implements the **space**, not a list. 26 named emotions share one renderer; adding another is one row in a table, never new drawing code. A `character` field (smooth / jagged / tremor / scan / droop) layers shape on top, because valence and arousal alone cannot tell *angry* from *afraid* — both are high-arousal negative.
+
+**Why v3 looked dashed:** it drew 30 rectangles with gaps. v4 draws a polyline — 49 points, 48 `lv_draw_line` segments with round caps so the joints overlap — plus a wide dim pass under a narrow bright one to fake neon bloom.
+
+**The clock now steps aside**, animated: big cards fade out and slide up, a 48 px clock fades in top-left, weather slides to top-right, and the line fades in at centre. The 210 px digit font cannot be scaled (LVGL 8 has no usable text transform), so the corner clock is a separate label kept in step rather than a shrunken object. Entrance/exit gain is ramped inside the wave timer rather than by `lv_anim`, so a rapid emotion change can never leave two animations fighting over one gain.
+
+Fourth design for this feature. Each failure was informative: invisible → ugly → dashed → this. ([[D024 - Emotions as a circumplex, rendered as one line]])
