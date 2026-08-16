@@ -9,6 +9,7 @@
 #include <time.h>
 #include <WiFi.h>
 
+#include "version.h"
 #include "config.h"
 #include "settings.h"
 #include "net.h"
@@ -110,7 +111,8 @@ void setup()
     uint32_t t0 = millis();
     while (!Serial && millis() - t0 < 1200) delay(10);
 
-    Serial.println("\n=== Desktop gadget — flip clock ===");
+    Serial.printf("\n=== Desktop gadget — flip clock  v%s  (%s) ===\n",
+                  FW_VERSION, FW_BUILD);
 
     settings_load();
     Settings &s = settings_get();

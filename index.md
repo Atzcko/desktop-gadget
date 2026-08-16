@@ -58,6 +58,10 @@ This vault is the project's memory: every decision, why it was made, and what ha
 | [[D023 - Emotions must change the mode, not decorate it]] | Minimal means few elements, not low contrast |
 | [[D024 - Emotions as a circumplex, rendered as one line]] | 26 emotions, one renderer: valence→hue, arousal→agitation |
 
+## Releases
+
+- [[RELEASES]] — **v1.0.0**, 2026-08-16. Bump `include/version.h`, log it, tag it, flash it, confirm via `/health`.
+
 ## Reference
 
 - [[T4-S3]] — pins, panel constants, rotation table, verified USB IDs

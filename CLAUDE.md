@@ -47,6 +47,29 @@ Rebuild the Stage 0 stock example (from the upstream clone, never modified):
 export PATH="$HOME/.platformio-venv/bin:$PATH" && cd ~/.local/src/LilyGo-AMOLED-Series && pio run -e T-Display-AMOLED
 ```
 
+## Versioning — every release
+
+`include/version.h` is the single source of truth. **Semantic versioning:**
+
+| Bump | When |
+|---|---|
+| **MAJOR** | breaking change to the HTTP/BLE API or the settings schema — something an existing client or a provisioned device would notice |
+| **MINOR** | a new capability: a transport, a screen, a feature |
+| **PATCH** | fixes and tuning that change nothing anyone integrates against |
+
+**Every release does all four, in this order:**
+
+1. bump `FW_VERSION_*` in `include/version.h`
+2. append the release to `docs/RELEASES.md` with what changed and why
+3. commit, then tag: `git tag -a v1.2.3 -m "summary"`
+4. flash, and confirm the running version with `GET /health`
+
+> [!warning] Confirm the version on the DEVICE, not in the tree
+> The version is reported in three places — boot log, `GET /health`, and
+> Settings ▸ Info — and each also carries `__DATE__ __TIME__`, so a stale flash
+> is obvious even when the version number has not moved. A tree that says 1.1.0
+> proves nothing about what is running.
+
 ## Hard constraints
 
 - **LVGL 8.4.0, pinned.** Not 9.x. `LV_Helper.cpp` is `#if LVGL_VERSION_MAJOR == 8`; upgrading breaks the link, not just the API. ([[D002 - Pin LVGL to 8.4.0]])

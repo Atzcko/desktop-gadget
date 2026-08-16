@@ -302,3 +302,15 @@ Owner reviewed the proposed screens in the spec sheet artifact, asked for the de
 **Vibration range widened** at the owner's request so processes are distinguishable at a glance: amplitude is now `5 + arousal^1.25 * 60`, which pushes the low end down and the high end up — `waiting` ~11 px, `reading` gentle, `building` ~40 px, `flashing` ~61 px. Activity states were re-spread across the arousal axis to use that range.
 
 **Standing instruction recorded.** The owner pointed out the screen was often idle while work was happening, which defeats the purpose of the device. Two causes: pushes can only occur at tool-call boundaries, and — the real one — no discipline about refreshing. Now written to **cross-conversation memory** as well as `CLAUDE.md`: push at the start of every turn, refresh at each major step, 15–30 s durations, `clear` when done, and never block work if the device is unreachable.
+
+## [2026-08-16] release | v1.0.0 — versioning introduced
+
+Owner asked that the software be versioned on every release.
+
+`include/version.h` is now the single source of truth, semantic: MAJOR for a breaking change to the HTTP/BLE API or the settings schema (something an existing client or a provisioned device would notice), MINOR for a new capability, PATCH for fixes and tuning.
+
+The version is reported in **three** places — boot log, `GET /health`, and Settings ▸ Info — and each carries a compiler `__DATE__ __TIME__` stamp alongside it. That pairing matters: a version number alone cannot tell you whether the device is running the tree you are looking at, but a build stamp makes a stale flash obvious even when the number has not moved. The rule recorded in `CLAUDE.md` is to confirm the version **on the device**, never from the tree.
+
+Release procedure, four steps in order: bump `version.h`, append to `docs/RELEASES.md`, commit and tag `vX.Y.Z`, flash and confirm via `/health`.
+
+Tagged **v1.0.0** and verified on hardware: `version: 1.0.0 | build: Aug 16 2026 12:10:35`.

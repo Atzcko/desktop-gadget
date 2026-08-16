@@ -2,6 +2,7 @@
 #include "emotion.h"
 #include "settings.h"
 #include "net.h"
+#include "version.h"
 #include "config.h"
 #include "ble.h"
 
@@ -43,9 +44,11 @@ static void handle_health(AsyncWebServerRequest *req)
 
     long age = (w.valid && st.time_valid) ? (long)(time(nullptr) - w.last_sync) : -1;
 
-    char body[512];
+    char body[640];
     snprintf(body, sizeof(body),
              "{\"ok\":true,"
+             "\"version\":\"%s\","
+             "\"build\":\"%s\","
              "\"uptime_s\":%lu,"
              "\"rssi\":%d,"
              "\"ip\":\"%s\","
@@ -60,6 +63,8 @@ static void handle_health(AsyncWebServerRequest *req)
              "\"ble\":{\"running\":%s,\"connected\":%s,\"name\":\"%s\"},"
              "\"free_psram\":%u,"
              "\"free_heap\":%u}",
+             FW_VERSION,
+             FW_BUILD,
              (unsigned long)(millis() / 1000UL),
              st.rssi,
              st.wifi_up ? st.ip : "",

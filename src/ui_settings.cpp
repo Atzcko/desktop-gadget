@@ -6,6 +6,7 @@
  */
 #include "ui_settings.h"
 #include "settings.h"
+#include "version.h"
 #include "config.h"
 #include "net.h"
 #include "ui.h"
@@ -735,7 +736,7 @@ void ui_settings_open(void)
     {
         NetStatus   st = net_status();
         WeatherData w  = net_weather();
-        char buf[420];
+        char buf[520];
         char sync[40];
         if (w.valid && st.time_valid) {
             long age = (long)(time(nullptr) - w.last_sync);
@@ -744,6 +745,7 @@ void ui_settings_open(void)
             snprintf(sync, sizeof(sync), "never");
         }
         snprintf(buf, sizeof(buf),
+                 "Firmware  v%s\n"
                  "Host      %s.local\n"
                  "BLE       %s (%s)\n"
                  "SSID      %s\n"
@@ -754,6 +756,7 @@ void ui_settings_open(void)
                  "Uptime    %lu min\n"
                  "PSRAM     %u KB free\n"
                  "Heap      %u KB free",
+                 FW_VERSION,
                  MDNS_HOSTNAME,
                  s.ble_name, ble_is_running() ? (ble_is_connected() ? "connected" : "advertising") : "off",
                  s.wifi_ssid[0] ? s.wifi_ssid : "(none)",
