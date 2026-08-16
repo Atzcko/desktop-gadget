@@ -2,7 +2,7 @@
 title: Desktop gadget — Fliqlo flip clock
 type: index
 device: LilyGO T4-S3
-status: stage-1-flashed
+status: settings-flashed
 updated: 2026-08-16
 tags:
   - index
@@ -16,17 +16,18 @@ This vault is the project's memory: every decision, why it was made, and what ha
 
 ## Current state
 
-> [!success] Stage 1 flashed — awaiting your visual check
-> Our own firmware is on the device. Serial confirms `600 x 450`, touch online, and a 544 640 B PSRAM allocation for the LVGL buffer — all three matching what the decision notes predicted. Boot to ready: **1397 ms**. What a serial log cannot tell us is whether the Fliqlo layout actually *looks* right. See [[Stage 1 - Static digits]].
+> [!success] Clock + weather + Settings flashed — needs Wi-Fi set on the device
+> Locale is **Abu Dhabi** (`<+04>-4`, no DST). NTP, the split-flap fold, the weather task and a full on-device Settings screen are on the device. **Hold a finger on the screen for 5 seconds** to open Settings and join Wi-Fi — until then there is no NTP and no weather. See [[Settings screen]].
 
 | Stage | What | Status |
 |---|---|---|
 | [[Stage 0 - Stock example]] | Stock library example runs | ✅ built + flashed, board confirmed |
 | [[Stage 1 - Static digits]] | Fliqlo layout, hardcoded time | ✅ built + flashed, needs visual check |
-| [[Stage 2 - NTP and flip animation]] | Real time + split-flap fold | ⚪ planned |
-| [[Stage 3 - Weather]] | Open-Meteo on its own task | ⚪ planned |
-| [[Stage 4 - Emotion API]] | HTTP API + `CLAUDE.md` | ⚪ planned |
-| [[Stage 5 - Touch and burn-in guard]] | Touch gestures + pixel walk | ⚪ planned |
+| [[Stage 2 - NTP and flip animation]] | Real time + split-flap fold | ✅ flashed, needs visual check |
+| [[Settings screen]] | 5-second hold → full settings | ✅ flashed, needs visual check |
+| [[Stage 3 - Weather]] | Open-Meteo on its own task | ✅ flashed, needs Wi-Fi |
+| [[Stage 5 - Touch and burn-in guard]] | Touch gestures + pixel walk | ✅ flashed, needs visual check |
+| [[Stage 4 - Emotion API]] | HTTP API + `CLAUDE.md` | ⚪ next |
 
 ## Decisions
 
@@ -44,6 +45,10 @@ This vault is the project's memory: every decision, why it was made, and what ha
 | [[D010 - Night dimming is a schedule, not a sensor]] | T4-S3 has no ambient light sensor |
 | [[D011 - Generate the digit font, do not scale Montserrat]] | Montserrat stops at 48 px; LVGL 8 can't scale labels |
 | [[D012 - Card geometry]] | Every constant derives from the 116.8 px digit advance |
+| [[D013 - Settings live in NVS, config.h is only defaults]] | On-device settings; NVS survives re-flashing |
+| [[D014 - Touch hit-testing]] | Every LVGL object is CLICKABLE by default — strip it |
+| [[D015 - Abu Dhabi locale]] | `<+04>-4`; brackets required, offset sign inverted |
+| [[D016 - Wi-Fi is provisioned on-device]] | The password never leaves the owner's hands |
 
 ## Reference
 

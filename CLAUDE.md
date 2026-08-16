@@ -54,8 +54,24 @@ export PATH="$HOME/.platformio-venv/bin:$PATH" && cd ~/.local/src/LilyGo-AMOLED-
 - **Do not use TFT_eSPI for the panel.** It has no QSPI transport. ([[D001 - Use the LilyGO AMOLED library, not TFT_eSPI]])
 - **No BLE in v1.** That is the later HID phase.
 - **No deep sleep, no battery logic.** USB-powered, always on.
-- **`config.h` is gitignored.** It holds Wi-Fi credentials. Never commit it, never paste its contents. `config.example.h` is the template.
+- **`config.h` holds first-boot DEFAULTS ONLY.** Live configuration lives in NVS. Read `settings_get()`, never a `DEFAULT_*` macro, outside `settings_reset()`. ([[D013 - Settings live in NVS, config.h is only defaults]])
+- **Wi-Fi credentials are never in a file.** They are typed on the device. Do not ask the owner for their Wi-Fi password. ([[D016 - Wi-Fi is provisioned on-device]])
+- **Any new `lv_obj_create()` that is decorative must call `decor()`.** Every LVGL object is CLICKABLE by default and events do not bubble; a decorative object that keeps the flag will silently break the hold gesture. ([[D014 - Touch hit-testing]])
 - **Never call LVGL from a non-LVGL task.** The weather task and the async web server handlers post to a queue; only the LVGL loop touches LVGL objects.
+
+## Using the device
+
+**Hold a finger anywhere on the screen for 5 seconds** to open Settings. A thin accent bar fills along the bottom edge from ~1.2 s so you can see the hold registering.
+
+| Gesture | Action |
+|---|---|
+| Tap | date + weather sync age, 5 s |
+| Long press 1.2–5 s | cycle brightness |
+| Hold 5 s | Settings |
+
+Settings tabs: **Wi-Fi** (scan / join), **Time** (zone, 24 h), **Place** (city search), **Screen** (brightness, night hours, toggles), **Info** (diagnostics, reset).
+
+Settings persist in NVS and **survive re-flashing**. Only "Reset to defaults" clears them.
 
 ## Emotion API
 

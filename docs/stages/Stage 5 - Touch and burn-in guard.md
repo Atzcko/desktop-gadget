@@ -2,7 +2,7 @@
 title: Stage 5 - Touch and burn-in guard
 type: stage
 stage: 5
-status: planned
+status: awaiting-hardware-verification
 tags:
   - stage
 ---
@@ -36,6 +36,15 @@ Touch comes through the LVGL indev the library registered, so gesture detection 
 
 > [!note] Manual brightness vs the schedule
 > A long-press change holds until the next day/night boundary, then the schedule resumes — [[D010 - Night dimming is a schedule, not a sensor]]. Nothing is persisted to NVS.
+
+## Outcome — 2026-08-16
+
+Brought forward and implemented alongside the Settings screen, since both needed the same gesture plumbing.
+
+- Burn-in walk: ±1 px per step, clamped to ±2 px, every `BURNIN_STEP_SECONDS` (default 180). Applied by moving the single layout root, so no child needs to know it exists. Toggleable in Settings.
+- Tap shows date + weather sync age for 5 s, in the smaller weather type size.
+- Long press (1.2–5 s) cycles brightness; the hold bar doubles as its indicator.
+- A real bug was caught here before flashing — see [[D014 - Touch hit-testing]].
 
 ## Acceptance
 

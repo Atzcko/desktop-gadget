@@ -1,21 +1,27 @@
 /**
- * ui.h — Fliqlo screen construction and update entry points.
+ * ui.h — the clock screen.
  *
- * Only the LVGL task may call these. Background tasks (weather, HTTP)
- * post data through a queue; they never touch LVGL objects directly.
+ * Only the LVGL task may call any of this.
  */
 #pragma once
 
 #include <lvgl.h>
 #include <stdbool.h>
+#include <time.h>
 
-/* Build the screen. Pass the panel dimensions from amoled.width()/height()
- * rather than literals — see D004, rotation 0 is already 600x450. */
-void ui_init(uint16_t screen_w, uint16_t screen_h);
+void      ui_init(uint16_t screen_w, uint16_t screen_h);
+lv_obj_t *ui_screen(void);
 
-/* 24-hour clock. Digits are replaced immediately, no animation (Stage 2). */
-void ui_set_time(int hour, int minute);
+/* Set the time. Animates a split-flap fold on any card whose rendered
+ * digits differ from the requested ones; renders instantly if `animate`
+ * is false (first paint, and returning from Settings). */
+void ui_set_time(int hour, int minute, bool animate);
 
-/* Weather block. When valid == false the last good values are kept on
- * screen and a stale indicator is shown instead (Stage 3). */
-void ui_set_weather(float current, float lo, float hi, bool valid);
+void ui_set_weather(float current, float lo, float hi, bool valid, bool stale);
+void ui_show_weather_block(bool visible);
+
+/* Anti burn-in: nudge the whole layout. */
+void ui_set_offset(int dx, int dy);
+
+/* Tap overlay: date + how long ago weather last synced. */
+void ui_show_info(const char *date_line, const char *sync_line);

@@ -2,7 +2,7 @@
 title: Stage 3 - Weather
 type: stage
 stage: 3
-status: planned
+status: awaiting-hardware-verification
 tags:
   - stage
 ---
@@ -26,6 +26,15 @@ The brief caps this at **two type sizes besides the clock digits**:
 2. Min/max — the smaller size, beside or below it.
 
 The stale dot is a shape, not a third type size. The optional emotion message from [[Stage 4 - Emotion API]] reuses the *smaller* of the two.
+
+## Outcome — 2026-08-16
+
+Implemented. A dedicated FreeRTOS task (`weather`, 6 KB stack, core 0) owns the fetch and **never touches an LVGL object** — it writes into a mutex-guarded struct and the LVGL loop polls `net_weather()`. Same discipline the emotion API will need.
+
+- Sleeps in **250 ms slices** rather than one long block, so "fetch now" from the Settings screen is honoured promptly instead of up to 15 minutes later.
+- Backoff doubles from 30 s and is **capped at the normal 15-minute interval** — a failing endpoint must never end up retried less often than a healthy one.
+- On failure the last good values stay on screen and a small amber dot appears in the weather row. The dot is a **shape, not a third type size**, which keeps the brief's two-size cap intact.
+- HTTPS with `setInsecure()`. Pinning a CA would mean shipping and rotating a root bundle on a device with no update path, for public forecast data that carries none of our credentials.
 
 ## Acceptance
 

@@ -2,7 +2,7 @@
 title: Stage 2 - NTP and flip animation
 type: stage
 stage: 2
-status: planned
+status: awaiting-hardware-verification
 tags:
   - stage
 ---
@@ -30,6 +30,20 @@ Only the minute card animates on a normal tick; the hour card animates only when
 ## Tearing
 
 A single full-screen PSRAM buffer means LVGL composites the whole frame before any of it reaches the panel — see [[D009 - LVGL buffer strategy]]. Tearing would have to come from flushing faster than the panel scans; the TE pin (GPIO 18) exists if it ever proves necessary, but the stock flush path does not use it and is expected to be sufficient.
+
+## Outcome — 2026-08-16
+
+Implemented and flashed together with the Settings screen.
+
+- Wi-Fi is **non-blocking**: `net_begin()` returns immediately and the clock paints while association is still in progress. An `ARDUINO_EVENT_WIFI_STA_GOT_IP` handler kicks `configTzTime()` the moment a route exists; `STA_DISCONNECTED` calls `WiFi.reconnect()`.
+- The fold is the **classic two-phase split-flap**, 180 ms per phase:
+  1. the OLD top half shrinks to nothing, revealing the NEW top underneath, while a static cover keeps the OLD bottom visible;
+  2. the NEW bottom grows from the seam downward, covering that cover.
+  All three panels are `lv_anim` height animations and delete themselves via `lv_anim_set_ready_cb`.
+- The seam is moved to the foreground after each flap is created, so the split line always draws over the moving panels.
+- **First paint after NTP does not animate** (`animate = (last_min >= 0)`) — otherwise the device would fold dramatically from a meaningless `00:00` to the real time on every boot.
+
+**Still to verify on hardware:** the fold itself, and the 23:59 → 00:00 case.
 
 ## Acceptance
 

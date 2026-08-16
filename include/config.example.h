@@ -1,25 +1,40 @@
 /**
- * config.example.h — template for config.h
- *
- * Copy to config.h and fill in. config.h is gitignored and must never
- * be committed: it holds your Wi-Fi password.
+ * config.example.h — FIRST-BOOT DEFAULTS
  *
  *     cp include/config.example.h include/config.h
+ *
+ * These are only the factory defaults. Once the device has booted, every
+ * value here is editable on-device (hold a finger on the screen for 5
+ * seconds) and the edited value is stored in NVS, which wins over this
+ * file. Re-flashing does not reset your settings; "Reset to defaults" in
+ * the Settings screen does.
+ *
+ * config.h is gitignored.
  */
 #pragma once
 
 /* ---------------------------------------------------------------- Wi-Fi -- */
-#define WIFI_SSID               "your-ssid"
-#define WIFI_PASSWORD           "your-password"
+#define DEFAULT_WIFI_SSID       ""
+#define DEFAULT_WIFI_PASSWORD   ""
 
-/* Wi-Fi is not used until Stage 2. Stage 1 ignores these. */
+/*
+ * Leave these EMPTY. Wi-Fi is provisioned on-device: hold a finger on the
+ * screen for 5 seconds -> Settings -> Wi-Fi, pick your network and type the
+ * password there. It is stored in NVS, survives reboots, and never has to
+ * live in a file or be shared with anyone.
+ *
+ * Filling them in here still works as a first-boot fallback if you would
+ * rather not type on a 600x450 panel.
+ */
 
 /* ------------------------------------------------------------- Location -- */
-/* Used by Open-Meteo. Decimal degrees; south/west are negative. */
-#define WEATHER_LATITUDE        44.7866
-#define WEATHER_LONGITUDE       20.4489
+/* Used by Open-Meteo. Decimal degrees; south/west are negative.
+ * Default: Abu Dhabi, UAE. Changeable on-device via Settings. */
+#define DEFAULT_LATITUDE        24.4539
+#define DEFAULT_LONGITUDE       54.3773
 
 /* "celsius" or "fahrenheit" — passed straight to the Open-Meteo query. */
+#define DEFAULT_CITY_NAME       "Abu Dhabi"
 #define WEATHER_TEMPERATURE_UNIT "celsius"
 
 /* Degree suffix drawn on screen. */
@@ -37,13 +52,16 @@
  * libc uses this to handle DST for you, so daylight saving is never
  * something this firmware computes.
  *
- *   Central Europe   "CET-1CEST,M3.5.0,M10.5.0/3"
- *   UK               "GMT0BST,M3.5.0/1,M10.5.0"
- *   US Eastern       "EST5EDT,M3.2.0,M11.1.0"
- *   US Pacific       "PST8PDT,M3.2.0,M11.1.0"
- *   UTC              "UTC0"
+ *   Abu Dhabi / Dubai  "<+04>-4"                        (UTC+4, no DST)
+ *   Central Europe     "CET-1CEST,M3.5.0,M10.5.0/3"
+ *   UK                 "GMT0BST,M3.5.0/1,M10.5.0"
+ *   US Eastern         "EST5EDT,M3.2.0,M11.1.0"
+ *   UTC                "UTC0"
+ *
+ * The angle-bracket form is what tzdata itself emits for zones whose
+ * abbreviation is a bare numeric offset. Verified against Asia/Dubai.
  */
-#define TIMEZONE_POSIX          "CET-1CEST,M3.5.0,M10.5.0/3"
+#define DEFAULT_TIMEZONE_POSIX  "<+04>-4"   /* Abu Dhabi, UTC+4, no DST */
 
 /* Full NTP resync interval, in hours. */
 #define NTP_RESYNC_HOURS        24
@@ -55,13 +73,13 @@
  * than "35%" suggests. Tune by eye.
  * See docs/decisions/D008 - Brightness scale.md
  */
-#define BRIGHTNESS_DAY          90      /* ~35% of max */
-#define BRIGHTNESS_NIGHT        25      /* ~10% of max */
+#define DEFAULT_BRIGHTNESS_DAY  90      /* ~35% of max */
+#define DEFAULT_BRIGHTNESS_NIGHT 25      /* ~10% of max */
 
 /* Night runs from NIGHT_START_HOUR until NIGHT_END_HOUR, local time.
  * Wrapping past midnight is expected and handled. 24h clock. */
-#define NIGHT_START_HOUR        22
-#define NIGHT_END_HOUR          7
+#define DEFAULT_NIGHT_START     22
+#define DEFAULT_NIGHT_END        7
 
 /* --------------------------------------------------------------- Network -- */
 #define MDNS_HOSTNAME           "flipclock"     /* -> flipclock.local */
