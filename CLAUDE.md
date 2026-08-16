@@ -211,15 +211,14 @@ The clock can express what we are doing. Two transports, **identical JSON**.
 > returns to the clock on its own within half a minute. Long durations strand
 > an animation on a clock nobody can read.
 >
-> **2. Let it EXPIRE; do not hush a short turn.** `tools/hush` wipes the panel
-> instantly. On a conversational turn the work takes seconds, so hushing at the
-> end clears the line before the owner has looked up from typing — which reads
-> as "the display does nothing". Set a duration that covers the turn *and the
-> time spent reading the reply* (90–120 s for chat, 60 s per build step) and let
-> it lapse on its own.
+> **2. `tools/hush` as the LAST action of every turn.** The panel shows what you
+> are *doing*, so when you stop it should stop. The 30 s default only has to
+> outlive the gap between commands while you are working; once you are done,
+> anything still on screen is dead time.
 >
-> Reach for `tools/hush` only when a long duration is left dangling — you asked
-> for 300 s and finished in 20.
+> This reverses an earlier rule. That one said never to hush, because state was
+> then pushed only once at the start of a turn and hushing killed the only
+> signal. Prefixing every command fixed that, which makes hushing correct again.
 >
 > **The old rule, for reference:**
 >
