@@ -42,6 +42,25 @@ const TimezoneEntry TIMEZONES[] = {
 };
 const int TIMEZONE_COUNT = sizeof(TIMEZONES) / sizeof(TIMEZONES[0]);
 
+/*
+ * Arduino's Preferences logs an ESP_LOGE for every absent key even when a
+ * default is supplied. The first-boot sentinel handled a virgin device, but
+ * not a key ADDED BY A LATER FIRMWARE VERSION — the `blen` (BLE name) key
+ * did exactly that and put an error line back in a healthy boot log.
+ *
+ * These wrappers read a key only when it exists, leave the config.h default
+ * in place when it does not, and record that a backfill is needed. That
+ * makes adding a setting in future a non-event.
+ */
+static bool nvs_incomplete;
+
+static bool have(const char *k)
+{
+    if (prefs.isKey(k)) return true;
+    nvs_incomplete = true;
+    return false;
+}
+
 static void copy_str(char *dst, size_t cap, const char *src)
 {
     strncpy(dst, src, cap - 1);
@@ -63,6 +82,8 @@ static void apply_defaults(void)
     s.night_end_hour   = DEFAULT_NIGHT_END;
     s.show_weather     = true;
     s.burnin_guard     = true;
+    s.ble_enabled      = true;
+    copy_str(s.ble_name, sizeof(s.ble_name), DEFAULT_BLE_NAME);
 }
 
 void settings_load(void)
@@ -89,23 +110,33 @@ void settings_load(void)
         return;
     }
 
-    String v;
-    v = prefs.getString("ssid", s.wifi_ssid); copy_str(s.wifi_ssid, sizeof(s.wifi_ssid), v.c_str());
-    v = prefs.getString("pass", s.wifi_pass); copy_str(s.wifi_pass, sizeof(s.wifi_pass), v.c_str());
-    v = prefs.getString("tz",   s.tz_posix);  copy_str(s.tz_posix,  sizeof(s.tz_posix),  v.c_str());
-    v = prefs.getString("city", s.city);      copy_str(s.city,      sizeof(s.city),      v.c_str());
+    nvs_incomplete = false;
 
-    s.latitude         = prefs.getFloat("lat",    s.latitude);
-    s.longitude        = prefs.getFloat("lon",    s.longitude);
-    s.brightness_day   = prefs.getUChar("bday",   s.brightness_day);
-    s.brightness_night = prefs.getUChar("bnight", s.brightness_night);
-    s.night_start_hour = prefs.getUChar("nstart", s.night_start_hour);
-    s.night_end_hour   = prefs.getUChar("nend",   s.night_end_hour);
-    s.use_24h          = prefs.getBool("h24",     s.use_24h);
-    s.show_weather     = prefs.getBool("wx",      s.show_weather);
-    s.burnin_guard     = prefs.getBool("burn",    s.burnin_guard);
+    if (have("ssid")) copy_str(s.wifi_ssid, sizeof(s.wifi_ssid), prefs.getString("ssid").c_str());
+    if (have("pass")) copy_str(s.wifi_pass, sizeof(s.wifi_pass), prefs.getString("pass").c_str());
+    if (have("tz"))   copy_str(s.tz_posix,  sizeof(s.tz_posix),  prefs.getString("tz").c_str());
+    if (have("city")) copy_str(s.city,      sizeof(s.city),      prefs.getString("city").c_str());
+    if (have("blen")) copy_str(s.ble_name,  sizeof(s.ble_name),  prefs.getString("blen").c_str());
+
+    if (have("lat"))    s.latitude         = prefs.getFloat("lat");
+    if (have("lon"))    s.longitude        = prefs.getFloat("lon");
+    if (have("bday"))   s.brightness_day   = prefs.getUChar("bday");
+    if (have("bnight")) s.brightness_night = prefs.getUChar("bnight");
+    if (have("nstart")) s.night_start_hour = prefs.getUChar("nstart");
+    if (have("nend"))   s.night_end_hour   = prefs.getUChar("nend");
+    if (have("h24"))    s.use_24h          = prefs.getBool("h24");
+    if (have("wx"))     s.show_weather     = prefs.getBool("wx");
+    if (have("burn"))   s.burnin_guard     = prefs.getBool("burn");
+    if (have("ble"))    s.ble_enabled      = prefs.getBool("ble");
 
     prefs.end();
+
+    /* A key added by a newer firmware build is missing on a device that has
+     * already been provisioned. Backfill once so the next boot is silent. */
+    if (nvs_incomplete) {
+        Serial.println("[settings] backfilling keys added by a newer firmware");
+        settings_save();
+    }
 }
 
 void settings_save(void)
@@ -128,6 +159,8 @@ void settings_save(void)
     prefs.putBool("h24",      s.use_24h);
     prefs.putBool("wx",       s.show_weather);
     prefs.putBool("burn",     s.burnin_guard);
+    prefs.putBool("ble",      s.ble_enabled);
+    prefs.putString("blen",   s.ble_name);
 
     prefs.end();
 }

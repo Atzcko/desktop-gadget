@@ -34,6 +34,12 @@ struct Settings {
     uint8_t night_end_hour;
     bool    show_weather;
     bool    burnin_guard;
+
+    /* Bluetooth LE */
+    bool    ble_enabled;
+    char    ble_name[24];       /* advertised name; 24 keeps the adv packet
+                                 * inside the 31-byte legacy limit alongside
+                                 * the service UUID */
 };
 
 /* Load from NVS, falling back to config.h defaults for anything absent. */

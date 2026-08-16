@@ -85,6 +85,17 @@
 #define MDNS_HOSTNAME           "flipclock"     /* -> flipclock.local */
 #define HTTP_PORT               80
 
+/*
+ * Bluetooth LE advertised name. This is what the device calls itself when
+ * a BLE scanner (or tools/flipclock.py) looks for it. Editable on-device
+ * under Settings -> BLE.
+ *
+ * Note this is a GATT peripheral, not a HID device: it is discoverable by
+ * anything doing a BLE scan, but it will not generally show up in macOS
+ * System Settings > Bluetooth, which lists pairable classic/HID profiles.
+ */
+#define DEFAULT_BLE_NAME        "FlipClock" 
+
 /* ------------------------------------------------------------------ Care -- */
 /* Anti burn-in: layout drifts on a random walk bounded to +/- this many px. */
 #define BURNIN_SHIFT_PX         2

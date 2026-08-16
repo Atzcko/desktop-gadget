@@ -2,7 +2,7 @@
 title: Desktop gadget — Fliqlo flip clock
 type: index
 device: LilyGO T4-S3
-status: settings-flashed
+status: feature-complete-pending-verification
 updated: 2026-08-16
 tags:
   - index
@@ -27,7 +27,7 @@ This vault is the project's memory: every decision, why it was made, and what ha
 | [[Settings screen]] | 5-second hold → full settings | ✅ flashed, needs visual check |
 | [[Stage 3 - Weather]] | Open-Meteo on its own task | ✅ flashed, needs Wi-Fi |
 | [[Stage 5 - Touch and burn-in guard]] | Touch gestures + pixel walk | ✅ flashed, needs visual check |
-| [[Stage 4 - Emotion API]] | HTTP API + `CLAUDE.md` | ⚪ next |
+| [[Stage 4 - Emotion API]] | HTTP + **BLE** + `CLAUDE.md` | ✅ flashed, BLE unverified |
 
 ## Decisions
 
@@ -49,6 +49,8 @@ This vault is the project's memory: every decision, why it was made, and what ha
 | [[D014 - Touch hit-testing]] | Every LVGL object is CLICKABLE by default — strip it |
 | [[D015 - Abu Dhabi locale]] | `<+04>-4`; brackets required, offset sign inverted |
 | [[D016 - Wi-Fi is provisioned on-device]] | The password never leaves the owner's hands |
+| [[D017 - BLE and Wi-Fi coexistence]] | One radio: BLE must init first, modem sleep is mandatory |
+| [[D018 - Emotion API - one engine, two transports]] | Shared engine, NUS over BLE, same JSON |
 
 ## Reference
 
@@ -60,7 +62,7 @@ This vault is the project's memory: every decision, why it was made, and what ha
 ## Scope boundaries
 
 > [!warning] Explicitly out of scope for v1
-> - **BLE / HID** — that is a later phase. Wi-Fi only.
+> - **BLE HID** (keyboard/mouse emulation) — still a later phase. A BLE **GATT peripheral** for the emotion API now exists, see [[D017 - BLE and Wi-Fi coexistence]].
 > - **Battery / deep sleep** — USB-powered always-on.
 > - **SD card** — slot unused, init skipped.
 > - **Any cloud beyond Open-Meteo and NTP.** All rendering is local.

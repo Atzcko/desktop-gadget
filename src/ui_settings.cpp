@@ -10,6 +10,7 @@
 #include "net.h"
 #include "ui.h"
 #include "app.h"
+#include "ble.h"
 
 #include <Arduino.h>
 #include <lvgl.h>
@@ -24,7 +25,8 @@ static lv_obj_t *kb;
 static bool      is_open;
 
 /* Wi-Fi tab */
-static lv_obj_t *lbl_wifi_state, *list_wifi, *ta_pass, *lbl_pick;
+static lv_obj_t *lbl_wifi_state, *list_wifi, *ta_pass, *lbl_pick, *cb_show_pass;
+static lv_timer_t *wifi_poll;
 static char      scan_ssid[MAX_SCAN][33];
 static int       scan_rssi[MAX_SCAN];
 static bool      scan_sec[MAX_SCAN];
@@ -42,6 +44,9 @@ static lv_obj_t *roller_tz, *sw_24h;
 /* Screen tab */
 static lv_obj_t *sl_day, *sl_night, *lbl_day, *lbl_night;
 static lv_obj_t *roller_ns, *roller_ne, *sw_wx, *sw_burn;
+
+/* BLE tab */
+static lv_obj_t *sw_ble, *ta_ble_name, *lbl_ble_state;
 
 /* Info tab */
 static lv_obj_t *lbl_info_body;
@@ -144,6 +149,33 @@ static void wifi_scan_cb(lv_event_t *e)
 
     char buf[48];
     snprintf(buf, sizeof(buf), "%d network%s found", scan_n, scan_n == 1 ? "" : "s");
+    lv_label_set_text(lbl_wifi_state, buf);
+}
+
+static void show_pass_cb(lv_event_t *e)
+{
+    bool show = lv_obj_has_state(lv_event_get_target(e), LV_STATE_CHECKED);
+    lv_textarea_set_password_mode(ta_pass, !show);
+}
+
+/*
+ * Without this the screen said "Connecting..." forever and a mistyped
+ * password was indistinguishable from a slow router. Poll the real state
+ * and report the 802.11 reason code in plain words.
+ */
+static void wifi_poll_cb(lv_timer_t *)
+{
+    if (!lbl_wifi_state) return;
+    NetStatus st = net_status();
+    char buf[112];
+    if (st.wifi_up) {
+        snprintf(buf, sizeof(buf), "Connected to %s   %s   %d dBm",
+                 settings_get().wifi_ssid, st.ip, st.rssi);
+    } else {
+        uint8_t r = net_last_disconnect();
+        if (r) snprintf(buf, sizeof(buf), "Failed: %s", net_disconnect_text(r));
+        else   snprintf(buf, sizeof(buf), "Not connected");
+    }
     lv_label_set_text(lbl_wifi_state, buf);
 }
 
@@ -268,12 +300,30 @@ static void close_cb(lv_event_t *e)
     s.night_start_hour = lv_roller_get_selected(roller_ns);
     s.night_end_hour   = lv_roller_get_selected(roller_ne);
 
+    /* Detect a BLE change before saving so we know whether to bounce the
+     * stack — restarting NimBLE unnecessarily drops a connected client. */
+    bool ble_was_on = s.ble_enabled;
+    char old_name[sizeof(s.ble_name)];
+    strncpy(old_name, s.ble_name, sizeof(old_name));
+
+    s.ble_enabled = lv_obj_has_state(sw_ble, LV_STATE_CHECKED);
+    strncpy(s.ble_name, lv_textarea_get_text(ta_ble_name), sizeof(s.ble_name) - 1);
+    s.ble_name[sizeof(s.ble_name) - 1] = '\0';
+    if (!s.ble_name[0]) strncpy(s.ble_name, DEFAULT_BLE_NAME, sizeof(s.ble_name) - 1);
+
     settings_save();
     net_apply_timezone(s.tz_posix);
+
+    if (!s.ble_enabled && ble_was_on)                     ble_stop();
+    else if (s.ble_enabled && !ble_was_on)                ble_begin();
+    else if (s.ble_enabled && strcmp(old_name, s.ble_name) != 0) ble_apply_name(s.ble_name);
 
     ui_show_weather_block(s.show_weather);
     app_refresh_clock(false);
     app_apply_brightness(s.brightness_day);
+
+    if (wifi_poll) { lv_timer_del(wifi_poll); wifi_poll = nullptr; }
+    lbl_wifi_state = nullptr;
 
     lv_obj_t *dead = scr_set;
     scr_set = nullptr;
@@ -307,6 +357,7 @@ void ui_settings_open(void)
     lv_obj_t *t_time   = lv_tabview_add_tab(tv, "Time");
     lv_obj_t *t_place  = lv_tabview_add_tab(tv, "Place");
     lv_obj_t *t_screen = lv_tabview_add_tab(tv, "Screen");
+    lv_obj_t *t_ble    = lv_tabview_add_tab(tv, "BLE");
     lv_obj_t *t_info   = lv_tabview_add_tab(tv, "Info");
 
     /* ---- Wi-Fi ---- */
@@ -334,7 +385,14 @@ void ui_settings_open(void)
     lv_obj_set_width(ta_pass, 560);
     lv_obj_add_event_cb(ta_pass, ta_event, LV_EVENT_FOCUSED, nullptr);
 
+    cb_show_pass = lv_checkbox_create(t_wifi);
+    lv_checkbox_set_text(cb_show_pass, "Show password");
+    lv_obj_set_style_text_font(cb_show_pass, &lv_font_montserrat_18, LV_PART_MAIN);
+    lv_obj_add_event_cb(cb_show_pass, show_pass_cb, LV_EVENT_VALUE_CHANGED, nullptr);
+
     make_button(t_wifi, LV_SYMBOL_OK "  Connect", wifi_connect_cb, nullptr);
+
+    wifi_poll = lv_timer_create(wifi_poll_cb, 1000, nullptr);
 
     /* ---- Time ---- */
     lv_obj_set_flex_flow(t_time, LV_FLEX_FLOW_COLUMN);
@@ -462,6 +520,43 @@ void ui_settings_open(void)
         if (s.burnin_guard) lv_obj_add_state(sw_burn, LV_STATE_CHECKED);
     }
 
+    /* ---- BLE ---- */
+    lv_obj_set_flex_flow(t_ble, LV_FLEX_FLOW_COLUMN);
+    lv_obj_set_style_pad_row(t_ble, 10, LV_PART_MAIN);
+    {
+        lv_obj_t *row = lv_obj_create(t_ble);
+        lv_obj_remove_style_all(row);
+        lv_obj_set_size(row, 520, 40);
+        lv_obj_set_flex_flow(row, LV_FLEX_FLOW_ROW);
+        lv_obj_set_flex_align(row, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER,
+                              LV_FLEX_ALIGN_CENTER);
+        lv_obj_set_style_pad_column(row, 16, LV_PART_MAIN);
+        body_label(row, "Bluetooth LE");
+        sw_ble = lv_switch_create(row);
+        if (s.ble_enabled) lv_obj_add_state(sw_ble, LV_STATE_CHECKED);
+    }
+
+    section(t_ble, "Device name (as advertised)");
+    ta_ble_name = lv_textarea_create(t_ble);
+    lv_textarea_set_one_line(ta_ble_name, true);
+    lv_textarea_set_max_length(ta_ble_name, sizeof(s.ble_name) - 1);
+    lv_textarea_set_text(ta_ble_name, s.ble_name);
+    lv_obj_set_width(ta_ble_name, 520);
+    lv_obj_add_event_cb(ta_ble_name, ta_event, LV_EVENT_FOCUSED, nullptr);
+
+    {
+        char buf[96];
+        snprintf(buf, sizeof(buf), "Status: %s%s",
+                 ble_is_running() ? "advertising" : "off",
+                 ble_is_connected() ? ", client connected" : "");
+        lbl_ble_state = body_label(t_ble, buf);
+    }
+
+    section(t_ble,
+            "This is a GATT peripheral, not a pairable HID device.\n"
+            "It will not appear in macOS Bluetooth settings; it is\n"
+            "found by a BLE scan, e.g. tools/flipclock.py.");
+
     /* ---- Info ---- */
     lv_obj_set_flex_flow(t_info, LV_FLEX_FLOW_COLUMN);
     lv_obj_set_style_pad_row(t_info, 8, LV_PART_MAIN);
@@ -478,6 +573,7 @@ void ui_settings_open(void)
         }
         snprintf(buf, sizeof(buf),
                  "Host      %s.local\n"
+                 "BLE       %s (%s)\n"
                  "SSID      %s\n"
                  "IP        %s\n"
                  "RSSI      %d dBm\n"
@@ -487,6 +583,7 @@ void ui_settings_open(void)
                  "PSRAM     %u KB free\n"
                  "Heap      %u KB free",
                  MDNS_HOSTNAME,
+                 s.ble_name, ble_is_running() ? (ble_is_connected() ? "connected" : "advertising") : "off",
                  s.wifi_ssid[0] ? s.wifi_ssid : "(none)",
                  st.wifi_up ? st.ip : "-",
                  st.rssi,

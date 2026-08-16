@@ -40,6 +40,11 @@ struct GeoResult {
 void net_begin(void);
 
 NetStatus   net_status(void);
+
+/* Last 802.11 disconnect reason code, and a human reading of it. 0 = none.
+ * Surfaced in Settings so a wrong password says so instead of just failing. */
+uint8_t     net_last_disconnect(void);
+const char *net_disconnect_text(uint8_t reason);
 WeatherData net_weather(void);
 
 /* Re-associate with new credentials (from the Settings screen) and persist

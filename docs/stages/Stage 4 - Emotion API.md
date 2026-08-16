@@ -2,7 +2,8 @@
 title: Stage 4 - Emotion API
 type: stage
 stage: 4
-status: planned
+status: awaiting-hardware-verification
+date_started: 2026-08-16
 tags:
   - stage
 ---
@@ -38,6 +39,28 @@ All of it stays inside the existing aesthetic — black, charcoal, white, one ac
 ## Validation
 
 Malformed JSON, unknown state, absent `duration_s`, and an over-length message must all produce a clean 4xx rather than a reboot. `duration_s` gets clamped to a sane ceiling so a typo cannot hide the clock for an hour.
+
+## Outcome — 2026-08-16
+
+Built with **two** transports rather than one — the owner asked for BLE, so the
+engine is shared and both speak the same JSON. See
+[[D018 - Emotion API - one engine, two transports]] and
+[[D017 - BLE and Wi-Fi coexistence]].
+
+- `POST /emotion` and `GET /health` on ESPAsyncWebServer, mDNS `flipclock.local`.
+- BLE GATT peripheral over Nordic UART Service, name set in Settings.
+- `tools/flipclock.py` drives either, defaulting to HTTP-then-BLE.
+- `CLAUDE.md` documents both and carries the **standing permission** for Claude
+  to drive the clock unprompted.
+
+Two boot-loop crashes were fixed along the way, both radio coexistence — see D017.
+
+> [!warning] BLE could not be verified from this session
+> A BLE scan from the agent's sandboxed shell is killed with **SIGABRT
+> (exit 134)** the instant CoreBluetooth is touched — macOS TCC denies
+> Bluetooth to the process, and denies it by killing rather than erroring.
+> The BLE path must be exercised from the owner's own Terminal, which will
+> prompt for permission on first run.
 
 ## Acceptance
 

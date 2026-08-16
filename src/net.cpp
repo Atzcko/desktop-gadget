@@ -1,6 +1,7 @@
 #include "net.h"
 #include "settings.h"
 #include "config.h"
+#include "ble.h"
 
 #include <Arduino.h>
 #include <WiFi.h>
@@ -14,6 +15,9 @@
 static WeatherData      wx;
 static SemaphoreHandle_t wx_lock;
 static volatile bool     wx_fetch_now = false;
+static volatile uint8_t  last_disconnect;
+static volatile uint32_t reconnect_at_ms;
+static uint32_t          reconnect_backoff_ms = 2000;
 static time_t            last_ntp = 0;
 
 /* ------------------------------------------------------------- helpers -- */
@@ -113,8 +117,20 @@ static void weather_task(void *)
         wx_fetch_now = false;
 
         if (WiFi.status() != WL_CONNECTED) {
+            /* The retry lives here rather than in the event handler so it is
+             * rate-limited and off the event task. */
+            uint32_t due = reconnect_at_ms;
+            if (due && (int32_t)(millis() - due) >= 0) {
+                reconnect_at_ms = 0;
+                Settings &st = settings_get();
+                if (st.wifi_ssid[0]) {
+                    Serial.println("[net] retrying association");
+                    WiFi.disconnect();
+                    WiFi.begin(st.wifi_ssid, st.wifi_pass);
+                }
+            }
             mark_stale();
-            wait_ms = 15000;
+            wait_ms = 3000;
             continue;
         }
 
@@ -133,10 +149,28 @@ static void weather_task(void *)
 
 /* ---------------------------------------------------------------- wifi -- */
 
-static void on_wifi_event(WiFiEvent_t event)
+/* Reason codes worth recognising on sight, from esp_wifi_types.h. */
+const char *net_disconnect_text(uint8_t r)
+{
+    switch (r) {
+    case 2:   return "AUTH_EXPIRE";
+    case 4:   return "ASSOC_EXPIRE";
+    case 15:  return "4WAY_HANDSHAKE_TIMEOUT (wrong password?)";
+    case 201: return "NO_AP_FOUND (wrong SSID, or 5 GHz-only network?)";
+    case 202: return "AUTH_FAIL (wrong password)";
+    case 203: return "ASSOC_FAIL";
+    case 205: return "CONNECTION_FAIL";
+    default:  return "see esp_wifi_types.h";
+    }
+}
+
+static void on_wifi_event(WiFiEvent_t event, WiFiEventInfo_t info)
 {
     switch (event) {
     case ARDUINO_EVENT_WIFI_STA_GOT_IP:
+        reconnect_backoff_ms = 2000;
+        reconnect_at_ms      = 0;
+        last_disconnect      = 0;
         Serial.printf("[net] IP %s  RSSI %d\n",
                       WiFi.localIP().toString().c_str(), WiFi.RSSI());
         /* Kick NTP as soon as we have a route. */
@@ -144,10 +178,21 @@ static void on_wifi_event(WiFiEvent_t event)
                      "time.nist.gov", "time.cloudflare.com");
         wx_fetch_now = true;
         break;
-    case ARDUINO_EVENT_WIFI_STA_DISCONNECTED:
-        Serial.println("[net] disconnected, retrying");
-        WiFi.reconnect();
+    case ARDUINO_EVENT_WIFI_STA_DISCONNECTED: {
+        uint8_t reason  = info.wifi_sta_disconnected.reason;
+        last_disconnect = reason;
+        /* Reconnecting immediately, from inside the event handler, produces
+         * a tight loop that floods the log and never lets the supplicant
+         * settle. Schedule it instead, with backoff, and let the weather
+         * task perform the retry. */
+        reconnect_at_ms = millis() + reconnect_backoff_ms;
+        Serial.printf("[net] disconnected: reason %u %s — retry in %lu s\n",
+                      reason, net_disconnect_text(reason),
+                      (unsigned long)(reconnect_backoff_ms / 1000));
+        reconnect_backoff_ms = (reconnect_backoff_ms >= 30000)
+                             ? 30000 : reconnect_backoff_ms * 2;
         break;
+    }
     default:
         break;
     }
@@ -168,7 +213,18 @@ void net_begin(void)
     WiFi.onEvent(on_wifi_event);
     WiFi.mode(WIFI_STA);
     WiFi.setAutoReconnect(true);
-    WiFi.setSleep(false);
+
+    /*
+     * Wi-Fi modem sleep is NOT optional when Bluetooth is also enabled. The
+     * two share one 2.4 GHz radio, and modem sleep is the mechanism by which
+     * Wi-Fi yields airtime to BT. Disabling it aborts the Wi-Fi task with:
+     *
+     *   E wifi: Error! Should enable WiFi modem sleep when both WiFi and
+     *           Bluetooth are enabled!!!!!!
+     *
+     * With BLE off we can still keep it disabled for slightly snappier HTTP.
+     */
+    WiFi.setSleep(ble_is_running());
 
     if (s.wifi_ssid[0]) {
         Serial.printf("[net] connecting to \"%s\"\n", s.wifi_ssid);
@@ -218,6 +274,8 @@ NetStatus net_status(void)
     st.last_ntp = last_ntp;
     return st;
 }
+
+uint8_t net_last_disconnect(void) { return last_disconnect; }
 
 WeatherData net_weather(void)
 {

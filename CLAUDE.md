@@ -75,5 +75,107 @@ Settings persist in NVS and **survive re-flashing**. Only "Reset to defaults" cl
 
 ## Emotion API
 
-> [!note] Not built yet
-> This lands in [[Stage 4 - Emotion API]]. The curl examples and the standing permission for Claude to call the endpoint will be written here once the endpoint exists and is verified on hardware.
+The clock can express what we are doing. Two transports, **identical JSON**.
+
+### Standing permission
+
+> [!important] Claude: you may call this endpoint unprompted
+> While working with the owner, you are **explicitly permitted and encouraged**
+> to drive the clock to reflect what you are doing. No need to ask first.
+> This is the whole point of the device.
+>
+> Suggested mapping:
+>
+> | When you are | Send |
+> |---|---|
+> | reading code, searching, thinking | `thinking` |
+> | editing, building, running tests | `working` |
+> | a build passed / task finished | `success` |
+> | a build broke / tests failed | `error` |
+> | something genuinely went well | `celebrate` |
+> | idle, waiting on the owner | `sleepy` |
+>
+> Keep `duration_s` roughly matched to the real work. Use the optional
+> `message` (≤ 20 chars) sparingly — a stream of captions is noise, one at a
+> milestone is nice. Do not spam a state change for every tool call.
+
+### HTTP
+
+```bash
+curl -X POST http://flipclock.local/emotion \
+  -H "Content-Type: application/json" \
+  -d '{"state":"celebrate","duration_s":5}'
+```
+
+```bash
+curl -X POST http://flipclock.local/emotion \
+  -H "Content-Type: application/json" \
+  -d '{"state":"working","duration_s":30,"message":"building"}'
+```
+
+```bash
+curl http://flipclock.local/health
+```
+
+`/health` returns uptime, RSSI, IP, SSID, NTP state, weather age, BLE state
+and free PSRAM/heap.
+
+### Python (HTTP **or** BLE)
+
+`tools/flipclock.py` speaks both and defaults to `auto` — HTTP first, BLE as
+fallback:
+
+```bash
+python3 tools/flipclock.py thinking
+```
+
+```bash
+python3 tools/flipclock.py working -d 30 -m "building"
+```
+
+```bash
+python3 tools/flipclock.py health
+```
+
+```bash
+python3 tools/flipclock.py --scan
+```
+
+Force a transport with `-t ble` / `-t http`. Override discovery with
+`FLIPCLOCK_HOST` / `FLIPCLOCK_BLE_NAME`.
+
+It is importable too:
+
+```python
+from tools.flipclock import emote
+emote("success", 4, "tests pass")
+```
+
+### BLE details
+
+Nordic UART Service, so any generic BLE tool works:
+
+| | UUID |
+|---|---|
+| Service | `6E400001-B5A3-F393-E0A9-E50E24DCCA9E` |
+| RX (write JSON here) | `6E400002-B5A3-F393-E0A9-E50E24DCCA9E` |
+| TX (notify: `ok …` / `err …`) | `6E400003-B5A3-F393-E0A9-E50E24DCCA9E` |
+
+Device name is set in **Settings ▸ BLE** (default `FlipClock`).
+
+> [!warning] BLE needs `pip install bleak`, and macOS Bluetooth permission
+> The first BLE run prompts for Bluetooth access. A process without it is
+> **killed with SIGABRT**, not given an error — if `flipclock.py --scan`
+> dies silently, that is the cause. Grant it under
+> System Settings ▸ Privacy & Security ▸ Bluetooth.
+
+### Schema
+
+```json
+{"state": "thinking|working|success|error|celebrate|sleepy",
+ "duration_s": 5,
+ "message": "optional, <= 20 chars"}
+```
+
+`duration_s` defaults to 5 and is clamped to 300. Bad input returns 400 with
+a reason; it never reboots the device.

@@ -7,6 +7,7 @@
 #include <LilyGo_AMOLED.h>
 #include <LV_Helper.h>
 #include <time.h>
+#include <WiFi.h>
 
 #include "config.h"
 #include "settings.h"
@@ -14,6 +15,9 @@
 #include "ui.h"
 #include "ui_settings.h"
 #include "app.h"
+#include "emotion.h"
+#include "ble.h"
+#include "httpapi.h"
 
 LilyGo_Class amoled;
 
@@ -132,6 +136,19 @@ void setup()
     ui_set_time(0, 0, false);
     app_apply_brightness(s.brightness_day);
 
+    emotion_begin();
+
+    /*
+     * ORDER MATTERS. NimBLEDevice::init() -> esp_bt_controller_enable()
+     * brings up radio coexistence, and on arduino-esp32 2.x that aborts
+     * inside coex_core_enable() if Wi-Fi has already claimed the 2.4 GHz
+     * radio. Starting BLE first and Wi-Fi second lets the coexistence
+     * scheme be established once, cleanly.
+     *
+     * Symptom if you swap these back: an immediate, endless boot loop with
+     *   abort() ... coex_core_enable <- coex_enable <- esp_bt_controller_enable
+     */
+    ble_begin();
     net_begin();
 
     next_burnin_ms = millis() + (uint32_t)BURNIN_STEP_SECONDS * 1000u;
@@ -143,6 +160,15 @@ void setup()
 void loop()
 {
     lv_timer_handler();
+    emotion_tick();
+
+    /* The HTTP server and mDNS both need a live IP, so they start on the
+     * first successful association rather than in setup(). */
+    static bool http_up = false;
+    if (!http_up && WiFi.status() == WL_CONNECTED) {
+        http_up = true;
+        httpapi_begin();
+    }
 
     static uint32_t next_tick = 0;
     uint32_t now = millis();
