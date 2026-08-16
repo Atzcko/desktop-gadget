@@ -602,8 +602,11 @@ void ui_init(uint16_t screen_w, uint16_t screen_h)
      * widest card in the row is no longer the least important one. */
     mini_card(weather_grp, w_temp,   &fliqlo_mid, WX_H, WX_RADIUS,
               COL_TEMP,               "--" WEATHER_UNIT_SUFFIX);
+    /* Same white as the current temperature. Hierarchy is carried entirely by
+     * SIZE now — 22 px against 44 — so colour no longer has to do the ranking
+     * as well, and the row reads as one palette instead of three greys. */
     mini_card(weather_grp, w_minmax, &fliqlo_wx_small, WX_SMALL_H, 6,
-              lv_color_hex(0x8A8A8A), "--/--");
+              COL_TEMP, "--/--");
     mini_card(weather_grp, w_hum,    &fliqlo_mid, WX_H, WX_RADIUS,
               lv_color_hex(0x8E8E8E), "--%");
 

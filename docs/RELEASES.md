@@ -11,6 +11,14 @@ Semantic versioning; the scheme and the release procedure live in [[CLAUDE]].
 The version is reported by the boot log, `GET /health` and Settings ▸ Info,
 each with a compiler build stamp so a stale flash is detectable.
 
+## v1.7.2 — 2026-08-16
+
+**min/max shares the temperature's white.** With the size ratio now carrying the
+hierarchy — 22 px against 44 — colour no longer has to rank things as well, so
+the row reads as one palette instead of three separate greys.
+
+Humidity is still `#8E8E8E`, i.e. the only remaining grey in the row.
+
 ## v1.7.1 — 2026-08-16
 
 - **min/max at 22 px — exactly half the 44 px live readings**, so the hierarchy

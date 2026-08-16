@@ -449,3 +449,11 @@ Owner: min/max should be **50 % of the temperature size**. Temperature is 44 px,
 Fixed with `scripts/version_stamp.py`, a PlatformIO pre-action that injects the git revision as a **build flag**. A flag cannot go stale — changing it forces a rebuild — and it names the source revision exactly rather than approximately. `+dirty` marks uncommitted work, which is the normal state mid-session. `CLAUDE.md` now says to trust `git` over `build`.
 
 Worth noting the shape of this: the diagnostic was wrong, and it was wrong in the direction of false reassurance. Only comparing it against a second signal (the image size) exposed it.
+
+## [2026-08-16] release | v1.7.2 — min/max on the temperature's palette
+
+Owner: min/max should be on the same palette as the current temperature. Changed from `#8A8A8A` to the same white.
+
+It is the right call now that size carries the hierarchy. When everything was 44 px, colour was doing the ranking; at 22 px against 44 px the size difference is unambiguous on its own, so a second signal is redundant and the row reads as one palette rather than three greys.
+
+Left open: humidity is still `#8E8E8E` and is now the only grey in the row.
