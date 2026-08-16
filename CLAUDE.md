@@ -188,7 +188,17 @@ The clock can express what we are doing. Two transports, **identical JSON**.
 > returns to the clock on its own within half a minute. Long durations strand
 > an animation on a clock nobody can read.
 >
-> **2. Always stop explicitly when you finish a turn:**
+> **2. Let it EXPIRE; do not hush a short turn.** `tools/hush` wipes the panel
+> instantly. On a conversational turn the work takes seconds, so hushing at the
+> end clears the line before the owner has looked up from typing — which reads
+> as "the display does nothing". Set a duration that covers the turn *and the
+> time spent reading the reply* (90–120 s for chat, 60 s per build step) and let
+> it lapse on its own.
+>
+> Reach for `tools/hush` only when a long duration is left dangling — you asked
+> for 300 s and finished in 20.
+>
+> **The old rule, for reference:**
 >
 > ```bash
 > curl -X POST http://flipclock.local/emotion -H "Content-Type: application/json" -d '{"state":"clear"}'
