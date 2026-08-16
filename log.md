@@ -229,3 +229,17 @@ Rebuilt so the device visibly changes **mode** rather than gaining decoration: c
 The resting clock is untouched: the accent bar is fully transparent and the border zero-width at rest, so the default Fliqlo face is still exactly what the brief specifies. ([[D023 - Emotions must change the mode, not decorate it]])
 
 Second time in this project a *design* failure presented as a *code* failure — the other was the invisible 5-second hold before a progress bar was added. Both times the mechanism was perfect and the human could not tell. The cheap `Serial.printf` that distinguishes "broken" from "invisible" paid for itself in one flash cycle.
+
+## [2026-08-16] design | v3 emotions — the neon wave
+
+Owner's photo of v2 settled it: the eyes rendered as **pale blobs colliding with the numerals**. Visible, but ugly and nothing like the product's aesthetic. Their redirection was better than the fix I would have reached for:
+
+> "When I say emotions it doesn't have to be with eyes. It can be something like the 80s vibe line that moves and changes color."
+
+A line is the right shape for this problem. It does not fight the digits for the same real estate the way an eye-shaped blob does — it owns a band, and the clock reads straight through it.
+
+So: a synthwave sine line running **through the card seam**, 30 segments at ~30 fps, each with a dim oversized pass underneath faking a neon bloom (the panel has no glow; on true black it reads convincingly). Hue is computed per segment in HSV and rotated over time, so the line genuinely shifts colour rather than switching between fixed ones. Per-state *motion* carries the meaning: gentle for thinking, tight and quick for working, a broad swell for success, hard squared-off spikes for error, full-spectrum and fast for celebrate, barely-moving violet for sleepy. Eyes and card borders are gone; digits stay at 30 %.
+
+**The decision that made 30 fps possible:** it is ONE object with a custom `LV_EVENT_DRAW_MAIN` callback, not 30 moving objects. Thirty movers would queue up to 60 invalidated rects per frame; overflow `LV_INV_BUF_SIZE` and LVGL abandons partial redraw and repaints the whole screen — 540 KB/frame, 16 MB/s at 30 fps against a ~18 MB/s QSPI ceiling. Custom-drawing into a single object gives exactly one invalid region: the 600×96 band, ~115 KB/frame, ~3.4 MB/s. ([[D023 - Emotions must change the mode, not decorate it]])
+
+Third design for this feature. The first two failed for the same underlying reason — I was designing decoration instead of asking what the owner would actually *see* from across a desk.

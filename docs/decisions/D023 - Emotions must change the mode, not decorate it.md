@@ -6,6 +6,7 @@ date: 2026-08-16
 status: accepted
 supersedes: the visual design in D018
 origin: owner, from hardware use
+revisions: v1 seam line -> v2 eyes -> v3 neon wave
 tags:
   - decision
   - design
@@ -43,18 +44,40 @@ The fix is not a brighter accent. It is to make the device visibly change **mode
 
 The clock is still there and still correct — it simply stops being where your eye lands. Everything reverts precisely on `duration_s`, and the resting screen is untouched: the accent bar is fully transparent and the border is zero-width at rest, so the default Fliqlo face is exactly as the brief specifies.
 
-## Per-state motion
+## v2 — eyes. Also wrong.
 
-Eyes are now the primary carrier, with distinct motion rather than distinct shapes — motion is far more visible at a glance:
+Adding eyes made the state visible but produced something genuinely ugly: on hardware they read as **pale blobs colliding with the numerals**, not as a face. The owner's photo settled it in one look, and the redirection was better than the fix I would have reached for:
 
-| State | Colour | Eyes |
+> "When I say emotions it doesn't have to be with eyes. It can be something like the 80s vibe line that moves and changes color."
+
+That is a far better idea than a face. A line does not compete with the digits for the same screen real estate the way an eye-shaped blob does — it occupies a band, and the clock reads straight through it.
+
+## v3 — the neon wave
+
+A synthwave sine line running **through the card seam**, drawn every frame at ~30 fps:
+
+- 30 segments, each with a dim oversized pass underneath to fake a neon bloom (the panel has no real glow; on true black this reads convincingly)
+- hue computed per segment in **HSV** and rotated over time, so the line genuinely shifts colour rather than switching between fixed ones
+- the seam is already this design's line, so the wave reads as *that line coming alive* rather than a new element bolted on
+- the digits stay at 30 % opacity and remain perfectly legible
+
+| State | Motion | Hue |
 |---|---|---|
-| `thinking` | blue | glance side to side, plus a ripple alternating across the cards |
-| `working` | blue | slow blink |
-| `success` | green | bounce up, both cards ripple once |
-| `error` | red | fast horizontal shake |
-| `celebrate` | amber | rapid bounce, continuous ripples |
-| `sleepy` | amber | flat bars, slow breathing fade |
+| `thinking` | slow, gentle amplitude | cyan → blue, slow drift |
+| `working` | quick, tight, low amplitude | blue, faster drift |
+| `success` | broad confident swell | green |
+| `error` | hard alternating spikes (squared-off wave) | red, no drift |
+| `celebrate` | fast and tall | **full 360° spectrum**, fast rotation |
+| `sleepy` | barely moving, shallow | violet, almost static |
+
+## The performance decision that made it possible
+
+Drawn as **one object with a custom `LV_EVENT_DRAW_MAIN` callback**, not 30 moving objects.
+
+> [!warning] Thirty moving objects would have redrawn the whole screen
+> Each moved object queues invalidated rectangles — up to 60 per frame. LVGL's invalid-area buffer is finite (`LV_INV_BUF_SIZE`); overflow it and LVGL abandons partial redraw and repaints **everything**: 600×450×2 = 540 KB per frame, 16 MB/s at 30 fps, against a QSPI ceiling of roughly 18 MB/s. It would visibly stutter.
+>
+> One custom-drawn object yields exactly one invalid region — the 600×96 band, ~115 KB per frame, ~3.4 MB/s. Comfortable, and the reason this can run at 30 fps on top of everything else.
 
 ## The general lesson
 
