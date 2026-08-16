@@ -98,5 +98,9 @@
 
 /* ------------------------------------------------------------------ Care -- */
 /* Anti burn-in: layout drifts on a random walk bounded to +/- this many px. */
+/* Upside-down landscape. Defaults to ON because that is the orientation the
+ * clock is actually sitting in; flip it in Settings > Screen. */
+#define DEFAULT_ROTATE_180      true
+
 #define BURNIN_SHIFT_PX         2
 #define BURNIN_STEP_SECONDS     180

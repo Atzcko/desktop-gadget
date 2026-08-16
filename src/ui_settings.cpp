@@ -43,7 +43,7 @@ static lv_obj_t *roller_tz, *sw_24h;
 
 /* Screen tab */
 static lv_obj_t *sl_day, *sl_night, *lbl_day, *lbl_night;
-static lv_obj_t *roller_ns, *roller_ne, *sw_wx, *sw_hum, *sw_burn;
+static lv_obj_t *roller_ns, *roller_ne, *sw_wx, *sw_hum, *sw_burn, *sw_rot;
 
 /* BLE tab */
 static lv_obj_t *sw_ble, *sw_hid, *sw_kbd, *ta_ble_name, *lbl_ble_state;
@@ -431,6 +431,7 @@ static bool dirty(void)
     if ((bool)lv_obj_has_state(sw_wx,   LV_STATE_CHECKED) != snapshot.show_weather)   return true;
     if ((bool)lv_obj_has_state(sw_hum,  LV_STATE_CHECKED) != snapshot.show_humidity)  return true;
     if ((bool)lv_obj_has_state(sw_burn, LV_STATE_CHECKED) != snapshot.burnin_guard)   return true;
+    if ((bool)lv_obj_has_state(sw_rot,  LV_STATE_CHECKED) != snapshot.rotate_180)     return true;
     if ((bool)lv_obj_has_state(sw_ble,  LV_STATE_CHECKED) != snapshot.ble_enabled)    return true;
     if ((bool)lv_obj_has_state(sw_hid,  LV_STATE_CHECKED) != snapshot.ble_hid)        return true;
     if ((bool)lv_obj_has_state(sw_kbd,  LV_STATE_CHECKED) != snapshot.ble_as_keyboard) return true;
@@ -474,6 +475,7 @@ static void apply_widgets(void)
     s.show_weather     = lv_obj_has_state(sw_wx,   LV_STATE_CHECKED);
     s.show_humidity    = lv_obj_has_state(sw_hum,  LV_STATE_CHECKED);
     s.burnin_guard     = lv_obj_has_state(sw_burn, LV_STATE_CHECKED);
+    s.rotate_180       = lv_obj_has_state(sw_rot,  LV_STATE_CHECKED);
     s.brightness_day   = lv_slider_get_value(sl_day);
     s.brightness_night = lv_slider_get_value(sl_night);
     s.night_start_hour = lv_roller_get_selected(roller_ns);
@@ -538,6 +540,7 @@ static void revert_live(void)
     ui_show_humidity(snapshot.show_humidity);
     app_refresh_clock(false);
     app_apply_brightness(snapshot.brightness_day);
+    app_apply_rotation(snapshot.rotate_180);
 }
 
 static void teardown(void)
@@ -774,6 +777,13 @@ void ui_settings_open(void)
         body_label(r4, "Burn-in guard");
         sw_burn = lv_switch_create(r4);
         if (s.burnin_guard) lv_obj_add_state(sw_burn, LV_STATE_CHECKED);
+        body_label(r4, "Flip 180");
+        sw_rot = lv_switch_create(r4);
+        if (s.rotate_180) lv_obj_add_state(sw_rot, LV_STATE_CHECKED);
+        lv_obj_add_event_cb(sw_rot, [](lv_event_t *e) {
+            /* Apply live — you cannot judge an orientation you cannot see. */
+            app_apply_rotation(lv_obj_has_state(lv_event_get_target(e), LV_STATE_CHECKED));
+        }, LV_EVENT_VALUE_CHANGED, nullptr);
     }
 
     /* ---- BLE ---- */

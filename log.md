@@ -572,3 +572,15 @@ Flashed by detecting the port from the USB ID `0x303A:0x1001` rather than trusti
 Confirmed on hardware: `version 1.8.0 | git 1ed02e0` — **no `+dirty`**, so what is running is exactly the committed tree, which is precisely what the git stamp was added for two releases ago. `weather_code 1`, `is_day false` → the moon is showing, at 35.3 °C and 68 % humidity.
 
 Both queued changes are now live and tagged: the crescent after dark, and the charge LED silenced.
+
+## [2026-08-16] release | v1.9.0 — flip 180°
+
+Owner: flip the screen 180 degrees.
+
+Rotation **2** is the other landscape — identical 600×450, and `setRotation()` re-applies the CST226SE swap and mirror alongside the MADCTL write, so touch follows the screen without any work on our side. Because the dimensions do not change, LVGL needs no re-init, which is what makes this a **live toggle** rather than a reboot: `Settings ▸ Screen ▸ Flip 180`, applied the instant the switch moves, since you cannot judge an orientation you cannot see. Persisted to NVS; defaults on, as that is how the clock actually sits.
+
+[[D004 - Rotation 0 is already landscape]] said never to call `setRotation()`, so it is now marked superseded in part — but the finding underneath it is exactly why this was one line. Landscape is native, so flipping is a choice between two landscape rotations rather than a re-layout.
+
+**Boot-looped on the first flash:** `Guru Meditation Error … LoadProhibited`, `EXCVADDR 0x00000008`. `app_apply_rotation()` repaints through `lv_scr_act()`, and the boot call runs **before** `beginLvglHelper()` — so LVGL was uninitialised and `lv_scr_act()` returned NULL. The repaint is now guarded on `lv_disp_get_default()`; only the Settings toggle needs it, because nothing has been drawn at boot.
+
+Worth noting how cheap that diagnosis was compared with the ones earlier today: the register dump named the fault type and the exact null offset, so it took one read rather than any instrumenting.

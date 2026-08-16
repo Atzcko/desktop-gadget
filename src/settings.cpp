@@ -83,6 +83,7 @@ static void apply_defaults(void)
     s.show_weather     = true;
     s.show_humidity    = true;
     s.burnin_guard     = true;
+    s.rotate_180       = DEFAULT_ROTATE_180;
     s.ble_enabled      = true;
     s.ble_hid          = true;
     s.ble_as_keyboard  = false;
@@ -131,6 +132,7 @@ void settings_load(void)
     if (have("wx"))     s.show_weather     = prefs.getBool("wx");
     if (have("hum"))    s.show_humidity    = prefs.getBool("hum");
     if (have("burn"))   s.burnin_guard     = prefs.getBool("burn");
+    if (have("rot"))    s.rotate_180       = prefs.getBool("rot");
     if (have("ble"))    s.ble_enabled      = prefs.getBool("ble");
     if (have("bhid"))   s.ble_hid          = prefs.getBool("bhid");
     if (have("bkbd"))   s.ble_as_keyboard  = prefs.getBool("bkbd");
@@ -166,6 +168,7 @@ void settings_save(void)
     prefs.putBool("wx",       s.show_weather);
     prefs.putBool("hum",      s.show_humidity);
     prefs.putBool("burn",     s.burnin_guard);
+    prefs.putBool("rot",      s.rotate_180);
     prefs.putBool("ble",      s.ble_enabled);
     prefs.putBool("bhid",     s.ble_hid);
     prefs.putBool("bkbd",     s.ble_as_keyboard);
@@ -195,8 +198,8 @@ void settings_dump(const char *tag)
     Serial.printf("           bright day=%u night=%u  night %02u:00-%02u:00\n",
                   s.brightness_day, s.brightness_night,
                   s.night_start_hour, s.night_end_hour);
-    Serial.printf("           weather=%d humidity=%d burnin=%d\n",
-                  s.show_weather, s.show_humidity, s.burnin_guard);
+    Serial.printf("           weather=%d humidity=%d burnin=%d rot180=%d\n",
+                  s.show_weather, s.show_humidity, s.burnin_guard, s.rotate_180);
     Serial.printf("           ble=%d hid=%d as_keyboard=%d name=\"%s\"\n",
                   s.ble_enabled, s.ble_hid, s.ble_as_keyboard, s.ble_name);
 }

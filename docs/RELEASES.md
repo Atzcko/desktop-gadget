@@ -11,7 +11,24 @@ Semantic versioning; the scheme and the release procedure live in [[CLAUDE]].
 The version is reported by the boot log, `GET /health` and Settings ▸ Info,
 each with a compiler build stamp so a stale flash is detectable.
 
-## v1.8.0 — 2026-08-16 *(built, awaiting a USB connection to flash)*
+## v1.9.0 — 2026-08-16
+
+**The panel can be flipped 180°.** `Settings ▸ Screen ▸ Flip 180`, applied live
+so you can judge an orientation while looking at it, and persisted to NVS.
+Defaults on, since that is the way the clock actually sits.
+
+Rotation **2** is the other landscape: identical 600×450, and the library
+re-applies the CST226SE swap and mirror with it, so touch follows the screen.
+Because the dimensions are unchanged, LVGL needs no re-init and this is a live
+toggle rather than a reboot.
+
+*Fixed during the flash:* the first build boot-looped with `LoadProhibited` at
+`0x8`. `app_apply_rotation()` repaints via `lv_scr_act()`, and the boot call
+happens **before** `beginLvglHelper()` — so LVGL was uninitialised and
+`lv_scr_act()` was NULL. The repaint is now guarded on `lv_disp_get_default()`;
+only the runtime toggle needs it, since nothing has been drawn at boot.
+
+## v1.8.0 — 2026-08-16
 
 **A moon after dark.** The clear-sky icons follow the sun: sunny by day, a
 crescent by night.

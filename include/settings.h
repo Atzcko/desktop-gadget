@@ -35,6 +35,7 @@ struct Settings {
     bool    show_weather;
     bool    show_humidity;
     bool    burnin_guard;
+    bool    rotate_180;     /* upside-down landscape (setRotation(2)) */
 
     /* Bluetooth LE */
     bool    ble_enabled;

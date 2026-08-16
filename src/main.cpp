@@ -37,6 +37,23 @@ void app_apply_brightness(uint8_t level)
     amoled.setBrightness(level);
 }
 
+/*
+ * Rotation 2 is the OTHER landscape: same 600x450, and the library re-applies
+ * the CST226SE swap/mirror with it, so touch follows the screen. Panel
+ * dimensions are unchanged either way, which is why LVGL needs no re-init and
+ * this can be toggled live from Settings.
+ */
+void app_apply_rotation(bool flipped)
+{
+    amoled.setRotation(flipped ? 2 : 0);
+
+    /* This is called once at boot BEFORE beginLvglHelper(), where lv_scr_act()
+     * is still NULL — dereferencing it panics with LoadProhibited at address
+     * 0x8. Only the runtime toggle from Settings needs a repaint anyway; the
+     * boot call happens before anything has been drawn. */
+    if (lv_disp_get_default()) lv_obj_invalidate(lv_scr_act());
+}
+
 void app_refresh_clock(bool animate)
 {
     struct tm tm_now;
@@ -134,7 +151,11 @@ void setup()
         while (true) delay(1000);
     }
 
-    Serial.printf("Panel   : %u x %u\n", amoled.width(), amoled.height());
+    /* Before LVGL starts, so the first frame is already the right way up. */
+    app_apply_rotation(s.rotate_180);
+
+    Serial.printf("Panel   : %u x %u  %s\n", amoled.width(), amoled.height(),
+                  s.rotate_180 ? "(180)" : "");
     Serial.printf("Touch   : %s\n", amoled.hasTouch() ? "online" : "OFFLINE");
     Serial.printf("City    : %s (%.4f, %.4f)\n", s.city, s.latitude, s.longitude);
     Serial.printf("TZ      : %s\n", s.tz_posix);
