@@ -18,7 +18,7 @@ lv_obj_t *ui_screen(void);
 void ui_set_time(int hour, int minute, bool animate);
 
 void ui_set_weather(float current, float lo, float hi, float humidity,
-                    int code, bool valid, bool stale);
+                    int code, bool is_day, bool valid, bool stale);
 void ui_show_weather_block(bool visible);
 void ui_show_humidity(bool visible);
 

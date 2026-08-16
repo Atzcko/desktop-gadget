@@ -11,6 +11,30 @@ Semantic versioning; the scheme and the release procedure live in [[CLAUDE]].
 The version is reported by the boot log, `GET /health` and Settings ▸ Info,
 each with a compiler build stamp so a stale flash is detectable.
 
+## v1.8.0 — 2026-08-16 *(built, awaiting a USB connection to flash)*
+
+**A moon after dark.** The clear-sky icons follow the sun: sunny by day, a
+crescent by night.
+
+Day/night comes from Open-Meteo's **`is_day`**, which the API derives from
+sunrise and sunset for the exact coordinates — so the device never does solar
+geometry or reasons about the timezone, and it stays correct when the city
+changes. Verified against the same response: sunrise 05:57, sunset 18:56,
+`is_day: 0`.
+
+Only `clear` and `partly cloudy` change. A cloud looks the same after dark, and
+every weather UI worth copying leaves the rest alone.
+
+The crescent is carved by drawing the card colour back over an offset disc —
+cheaper and crisper than arc maths, though it only works because the icon sits
+inside a card of known colour.
+
+`is_day` added to `GET /health`.
+
+Includes **v1.7.6**: the red charge LED on the back stops blinking. It was never
+reporting power — with no battery the SY6970 cannot complete a cycle, and a
+blink is how it reports that fault.
+
 ## v1.7.6 — 2026-08-16
 
 **The red LED on the back stops blinking.** `beginAMOLED_241(..., disable_state_led=true)`.

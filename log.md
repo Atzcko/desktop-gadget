@@ -550,3 +550,15 @@ It is the SY6970 charge-status LED, and [[D007 - Skip SD, silence the charge LED
 D007 said at the time it would be "trivially reversible if it turns out to be visually distracting". It did, and it was: one boolean.
 
 **Could not flash.** `/dev/cu.usbmodem2101` has disappeared and `ioreg` reports zero USB JTAG devices, so `pio run -t upload` failed. The device is fine — `/health` answers with uptime 1057 s and RSSI −53, so it never lost power; only the USB *data* link dropped. Committed unflashed and deliberately **not tagged**: the release procedure ends with "flash and confirm on the device", and tagging something unverified would hollow that out.
+
+## [2026-08-16] feature | v1.8.0 — a moon after dark (built, not flashed)
+
+Owner: the weather icon should be a moon at night, worked out from the sun being up or down.
+
+Open-Meteo has exactly the right field — **`is_day`** in the current block, which it derives from sunrise and sunset for the supplied coordinates. Using it means the device never does solar geometry, never reasons about the timezone, and stays correct automatically when the city changes in Settings. Confirmed against the same response before writing any code: sunrise 05:57, sunset 18:56, `is_day: 0` — it is night in Abu Dhabi right now, so this is testable the moment it flashes.
+
+Only the clear-sky icons change. A cloud looks the same after dark, and every weather UI worth copying leaves the overcast and precipitation icons alone.
+
+The crescent is carved by drawing the **card colour** back over an offset disc — cheaper and crisper than arc maths, but it only works because the icon sits inside a card of known colour. Noted in the code, because moving the icon onto the bare background would silently break it.
+
+Still cannot flash: `/dev/cu.usbmodem2101` remains absent. Built clean, committed, deliberately untagged.

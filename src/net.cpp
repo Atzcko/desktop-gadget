@@ -56,7 +56,7 @@ static bool fetch_weather(void)
     String url = "https://api.open-meteo.com/v1/forecast";
     url += "?latitude=";  url += String(s.latitude, 4);
     url += "&longitude="; url += String(s.longitude, 4);
-    url += "&current=temperature_2m,relative_humidity_2m,weather_code";
+    url += "&current=temperature_2m,relative_humidity_2m,weather_code,is_day";
     url += "&daily=temperature_2m_max,temperature_2m_min";
     url += "&forecast_days=1&timezone=auto&temperature_unit=";
     url += WEATHER_TEMPERATURE_UNIT;
@@ -80,6 +80,9 @@ static bool fetch_weather(void)
      * confidently displaying 0 %. */
     float rh  = doc["current"]["relative_humidity_2m"] | -1.0f;
     int   wc  = doc["current"]["weather_code"] | -1;
+    /* Open-Meteo computes this from sunrise/sunset for the coordinates, so the
+     * device never has to do solar geometry or reason about the timezone. */
+    bool  day = (doc["current"]["is_day"] | 1) != 0;
 
     xSemaphoreTake(wx_lock, portMAX_DELAY);
     wx.current   = cur;
@@ -87,12 +90,14 @@ static bool fetch_weather(void)
     wx.hi        = hi;
     wx.humidity  = rh;
     wx.code      = wc;
+    wx.is_day    = day;
     wx.valid     = true;
     wx.stale     = false;
     wx.last_sync = time(nullptr);
     xSemaphoreGive(wx_lock);
 
-    Serial.printf("[net] weather %.1f (%.1f..%.1f) rh %.0f%% code %d\n", cur, lo, hi, rh, wc);
+    Serial.printf("[net] weather %.1f (%.1f..%.1f) rh %.0f%% code %d %s\n",
+                  cur, lo, hi, rh, wc, day ? "day" : "night");
     return true;
 }
 
@@ -211,6 +216,7 @@ void net_begin(void)
     /* memset leaves code == 0, which is WMO "clear sky" — the panel would show
      * a sun before the first fetch ever succeeded. -1 means "unreported". */
     wx.code = -1;
+    wx.is_day = true;
 
     Settings &s = settings_get();
 

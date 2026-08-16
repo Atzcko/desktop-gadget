@@ -373,7 +373,8 @@ static void make_card(Card &c, int x, int y)
 enum WxIcon : uint8_t { WX_SUN, WX_PARTLY, WX_CLOUD, WX_FOG,
                         WX_DRIZZLE, WX_RAIN, WX_SNOW, WX_STORM };
 
-static int wx_code = -1;
+static int  wx_code   = -1;
+static bool wx_is_day = true;
 
 static WxIcon wx_icon_for(int code)
 {
@@ -439,6 +440,14 @@ static void wx_icon_draw_cb(lv_event_t *e)
         lv_draw_rect(ctx, &rd, &base);
         rd.radius = LV_RADIUS_CIRCLE;
     };
+    /* A crescent, carved by drawing the card colour back over an offset disc.
+     * Cheaper and crisper than any arc maths, and it only works because the
+     * icon sits inside a card of known colour — worth remembering if it ever
+     * moves onto the bare background. */
+    auto moon = [&](int cx, int cy, int rad) {
+        disc(cx, cy, rad, C_SUN);
+        disc(cx + rad / 2 + 2, cy - rad / 3, rad, COL_CARD);
+    };
     auto sun = [&](int cx, int cy, int rad, bool rays) {
         disc(cx, cy, rad, C_SUN);
         if (!rays) return;
@@ -451,8 +460,12 @@ static void wx_icon_draw_cb(lv_event_t *e)
     };
 
     switch (wx_icon_for(wx_code)) {
-    case WX_SUN:     sun(20, 20, 9, true); break;
-    case WX_PARTLY:  sun(14, 13, 7, true); cloud(4); break;
+    /* Only the clear-sky icons change at night. A cloud looks the same after
+     * dark, and every weather UI worth copying leaves them alone. */
+    case WX_SUN:     if (wx_is_day) sun(20, 20, 9, true); else moon(20, 20, 10);
+                     break;
+    case WX_PARTLY:  if (wx_is_day) sun(14, 13, 7, true); else moon(15, 13, 8);
+                     cloud(4); break;
     case WX_CLOUD:   cloud(2); break;
     case WX_FOG:     cloud(-2);
                      seg(9, 32, 31, 32, 3, C_PPT);
@@ -751,11 +764,12 @@ void ui_set_time(int hour, int minute, bool animate)
 }
 
 void ui_set_weather(float current, float lo, float hi, float humidity,
-                    int code, bool valid, bool stale)
+                    int code, bool is_day, bool valid, bool stale)
 {
     if (valid) {
-        if (code != wx_code) {
-            wx_code = code;
+        if (code != wx_code || is_day != wx_is_day) {
+            wx_code   = code;
+            wx_is_day = is_day;
             if (w_temp.icon) lv_obj_invalidate(w_temp.icon);
         }
         char t1[16], t2[24], t3[12];
