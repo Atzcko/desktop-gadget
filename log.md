@@ -516,3 +516,15 @@ Fixed by installing `~/.local/bin/flipclock` (already on PATH) and writing `~/.c
 - **Backgrounding killed the request.** The script backgrounded curl and then exited immediately, so the subshell died before the retry ran. At 45 ms the synchronous call is cheaper than the bug the backgrounding was hiding, so it is synchronous now.
 
 The lesson generalises: *fire-and-forget* and *silent* are not the same property, and conflating them cost three rounds of the owner telling me the display was dark.
+
+## [2026-08-16] process | The Chat app could never have worked — MCP bridge added
+
+Owner, a third time and now unambiguous: the display does nothing when they talk to me **in other conversations**. I had read that twice as "other Claude Code sessions" and fixed real but different problems. It meant the **Chat** side of Claude Desktop.
+
+There it was never a configuration gap — it was impossible. Chat has no shell, and the clock is at `192.168.0.181`, an RFC1918 address Anthropic's servers cannot route to. No amount of instruction fixes a missing network path. `claude_desktop_config.json` confirmed it: `mcpServers: NONE`, so there was no local tool bridging the gap either.
+
+MCP is the one mechanism that closes it, because Claude Desktop runs MCP servers as **local processes** — which can reach the LAN. Wrote `~/.local/share/flipclock-mcp/server.py`: JSON-RPC over stdio, **stdlib only**, no pip, no venv, nothing to break on a python upgrade. Exposes `flipclock_say` and `flipclock_status`, with the "message is an object, never a verb" rule written into the tool description so it travels with the tool rather than depending on a doc being loaded.
+
+Tested the whole handshake over stdio before registering it — `initialize`, `tools/list`, a real `tools/call` that lit the panel, and `flipclock_status` reading back `active: True`. Registered under `mcpServers` with the existing config backed up first and all other keys preserved.
+
+**The pattern worth remembering:** three rounds were spent fixing progressively better versions of the wrong problem, because I inferred what "outside this conversation" meant instead of establishing it. The evidence that settled it — no shell in Chat, RFC1918 address, empty `mcpServers` — took one command to gather and should have been the first thing I did.
