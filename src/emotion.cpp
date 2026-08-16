@@ -48,8 +48,11 @@ bool emotion_parse(const char *json, EmotionRequest *out, char *err, size_t errc
 
     int st = emotion_from_name(state);
     if (st < 0) {
+        /* Single quotes, not double: this string is interpolated straight
+         * into a JSON error body, and a raw " would make the response
+         * unparseable by the very client trying to read the error. */
         snprintf(err, errcap,
-                 "unknown state \"%s\" (thinking|working|success|error|celebrate|sleepy)",
+                 "unknown state '%s' (thinking|working|success|error|celebrate|sleepy)",
                  state);
         return false;
     }

@@ -16,8 +16,8 @@ This vault is the project's memory: every decision, why it was made, and what ha
 
 ## Current state
 
-> [!success] Clock + weather + Settings flashed — needs Wi-Fi set on the device
-> Locale is **Abu Dhabi** (`<+04>-4`, no DST). NTP, the split-flap fold, the weather task and a full on-device Settings screen are on the device. **Hold a finger on the screen for 3 seconds** to open Settings and join Wi-Fi — until then there is no NTP and no weather. See [[Settings screen]].
+> [!success] Online and feature-complete
+> Wi-Fi joined, NTP synced, weather live for **Abu Dhabi** (32.0 °C, 30.5–40.7). `flipclock.local` resolves and both `GET /health` and `POST /emotion` are verified end-to-end, including clean 400s on bad input. BLE advertises as **"Flip Clock"**. Only the BLE transport remains unverified — see [[Stage 4 - Emotion API]].
 
 | Stage | What | Status |
 |---|---|---|
@@ -51,6 +51,7 @@ This vault is the project's memory: every decision, why it was made, and what ha
 | [[D016 - Wi-Fi is provisioned on-device]] | The password never leaves the owner's hands |
 | [[D017 - BLE and Wi-Fi coexistence]] | One radio: BLE must init first, modem sleep is mandatory |
 | [[D018 - Emotion API - one engine, two transports]] | Shared engine, NUS over BLE, same JSON |
+| [[D019 - Text entry gets its own screen]] | `LV_EVENT_FOCUSED` is an edge, not a level |
 
 ## Reference
 

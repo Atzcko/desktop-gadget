@@ -46,12 +46,19 @@ The brief originally specified "long press → cycle brightness. Nothing else." 
 - Day brightness previews **live** as the slider moves — a brightness control you cannot see the effect of is useless.
 - City search uses Open-Meteo's **geocoding** endpoint. This stays inside the brief's "no cloud beyond Open-Meteo and NTP" constraint: same provider, no key, no account.
 
+## Text entry
+
+Every text field (Wi-Fi password, city search, BLE name) opens a **full-screen editor** rather than sliding a keyboard over the tab. See [[D019 - Text entry gets its own screen]].
+
 ## Acceptance
 
 - [x] Builds and boots clean
 - [ ] Hold anywhere for 3 s opens Settings — **including on top of a card**, see [[D014 - Touch hit-testing]]
 - [ ] Hold progress bar appears at ~1.2 s
-- [ ] Wi-Fi scan lists networks; connecting works; survives reboot
+- [x] Wi-Fi scan lists networks; connecting works; survives reboot
+- [x] Weather live for Abu Dhabi (32.0, 30.5..40.7)
+- [x] `flipclock.local` resolves; `/health` and `/emotion` verified
+- [ ] Text editor: field visible while typing, reopens on every tap
 - [ ] Timezone roller changes the clock
 - [ ] City search returns Abu Dhabi and sets coordinates
 - [ ] Brightness sliders preview live and persist

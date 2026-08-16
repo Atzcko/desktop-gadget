@@ -13,10 +13,25 @@
 static AsyncWebServer server(HTTP_PORT);
 static bool started;
 
+/* The message may quote user input, so it cannot be trusted to be
+ * JSON-safe. Escape rather than hope. */
+static void json_escape(const char *in, char *out, size_t cap)
+{
+    size_t o = 0;
+    for (const char *p = in; *p && o + 2 < cap; p++) {
+        if (*p == '"' || *p == '\\') { out[o++] = '\\'; out[o++] = *p; }
+        else if ((unsigned char)*p < 0x20) { out[o++] = ' '; }
+        else out[o++] = *p;
+    }
+    out[o] = '\0';
+}
+
 static void send_err(AsyncWebServerRequest *req, int code, const char *msg)
 {
-    char body[192];
-    snprintf(body, sizeof(body), "{\"ok\":false,\"error\":\"%s\"}", msg);
+    char safe[192];
+    json_escape(msg, safe, sizeof(safe));
+    char body[224];
+    snprintf(body, sizeof(body), "{\"ok\":false,\"error\":\"%s\"}", safe);
     req->send(code, "application/json", body);
 }
 

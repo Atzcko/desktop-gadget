@@ -103,9 +103,33 @@ void ble_begin(void)
 
     svc->start();
 
+    /*
+     * Advertising payload is 31 bytes. A 128-bit service UUID eats 18 of
+     * them, which leaves too little for the name — NimBLE then silently
+     * demotes the name to the scan response, and a scanner doing a passive
+     * scan never sees it. The device appears as "(unnamed)".
+     *
+     * So: NAME in the primary advertisement, service UUID in the scan
+     * response. The name is what a human identifies the device by; the UUID
+     * only matters once something has decided to connect.
+     */
     NimBLEAdvertising *adv = NimBLEDevice::getAdvertising();
-    adv->addServiceUUID(NUS_SERVICE);
+
+    NimBLEAdvertisementData advData;
+    advData.setFlags(BLE_HS_ADV_F_DISC_GEN | BLE_HS_ADV_F_BREDR_UNSUP);
+    advData.setName(s.ble_name);
+    advData.setAppearance(0x0100);          /* Generic Clock */
+    adv->setAdvertisementData(advData);
+
+    NimBLEAdvertisementData scanData;
+    scanData.setCompleteServices(NimBLEUUID(NUS_SERVICE));
+    adv->setScanResponseData(scanData);
+
     adv->setScanResponse(true);
+    /* Fast-ish interval: this device is mains-powered, so there is no
+     * reason to make a laptop wait to discover it. 100 ms units of 0.625 ms. */
+    adv->setMinInterval(160);   /* 100 ms */
+    adv->setMaxInterval(320);   /* 200 ms */
     adv->start();
 
     running = true;

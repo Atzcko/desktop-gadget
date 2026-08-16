@@ -21,7 +21,6 @@
 #define MAX_GEO  6
 
 static lv_obj_t *scr_set;
-static lv_obj_t *kb;
 static bool      is_open;
 
 /* Wi-Fi tab */
@@ -95,24 +94,112 @@ static void hours_options(char *buf, size_t cap)
     }
 }
 
-/* -------------------------------------------------------------- keyboard -- */
+/* ---------------------------------------------------------- text editor -- */
+/*
+ * Text entry gets its own full-screen overlay instead of a keyboard that
+ * slides over the tab content. Two bugs made that necessary:
+ *
+ *  1. The keyboard covered the bottom half of the screen, and a textarea
+ *     laid out low in a tab ended up BEHIND it — you could not see what you
+ *     were typing.
+ *  2. It was shown on LV_EVENT_FOCUSED, which fires only on the FIRST tap.
+ *     Once the field already had focus, tapping it again did nothing, so a
+ *     dismissed keyboard could only be recovered by switching tabs and back.
+ *
+ * The overlay puts the field at the top, the keyboard at the bottom, and
+ * explicit Done/Cancel buttons in between. Opening it is driven by
+ * LV_EVENT_CLICKED, which fires on every tap.
+ */
+static lv_obj_t *editor, *editor_ta;
+static lv_obj_t *edit_target;
 
-static void kb_event(lv_event_t *e)
+static void editor_close(bool commit)
 {
-    lv_event_code_t c = lv_event_get_code(e);
-    if (c == LV_EVENT_READY || c == LV_EVENT_CANCEL) {
-        lv_obj_add_flag(kb, LV_OBJ_FLAG_HIDDEN);
-        lv_keyboard_set_textarea(kb, nullptr);
+    if (!editor) return;
+    if (commit && edit_target && editor_ta) {
+        lv_textarea_set_text(edit_target, lv_textarea_get_text(editor_ta));
     }
+    lv_obj_del(editor);
+    editor = nullptr; editor_ta = nullptr; edit_target = nullptr;
 }
 
-static void ta_event(lv_event_t *e)
+static void editor_kb_event(lv_event_t *e)
 {
-    if (lv_event_get_code(e) == LV_EVENT_FOCUSED) {
-        lv_keyboard_set_textarea(kb, lv_event_get_target(e));
-        lv_obj_clear_flag(kb, LV_OBJ_FLAG_HIDDEN);
-        lv_obj_move_foreground(kb);
+    lv_event_code_t c = lv_event_get_code(e);
+    if (c == LV_EVENT_READY)  editor_close(true);
+    if (c == LV_EVENT_CANCEL) editor_close(false);
+}
+
+static void editor_done_cb(lv_event_t *)   { editor_close(true); }
+static void editor_cancel_cb(lv_event_t *) { editor_close(false); }
+
+static void editor_mask_cb(lv_event_t *e)
+{
+    bool hide = lv_obj_has_state(lv_event_get_target(e), LV_STATE_CHECKED);
+    lv_textarea_set_password_mode(editor_ta, hide);
+}
+
+static void editor_open(lv_obj_t *target, const char *title, bool is_password)
+{
+    editor_close(false);
+    edit_target = target;
+
+    editor = lv_obj_create(scr_set);
+    lv_obj_remove_style_all(editor);
+    lv_obj_set_size(editor, 600, 450);
+    lv_obj_set_pos(editor, 0, 0);
+    lv_obj_set_style_bg_color(editor, lv_color_hex(0x0A0A0A), LV_PART_MAIN);
+    lv_obj_set_style_bg_opa(editor, LV_OPA_COVER, LV_PART_MAIN);
+    lv_obj_clear_flag(editor, LV_OBJ_FLAG_SCROLLABLE);
+
+    lv_obj_t *lbl = lv_label_create(editor);
+    lv_obj_set_style_text_font(lbl, &lv_font_montserrat_18, LV_PART_MAIN);
+    lv_obj_set_style_text_color(lbl, lv_color_hex(0x9A9A9A), LV_PART_MAIN);
+    lv_label_set_text(lbl, title);
+    lv_obj_set_pos(lbl, 20, 10);
+
+    editor_ta = lv_textarea_create(editor);
+    lv_textarea_set_one_line(editor_ta, true);
+    lv_obj_set_style_text_font(editor_ta, &lv_font_montserrat_24, LV_PART_MAIN);
+    lv_obj_set_size(editor_ta, 560, 56);
+    lv_obj_set_pos(editor_ta, 20, 34);
+    lv_textarea_set_text(editor_ta, lv_textarea_get_text(target));
+    /* Visible by default even for a password: the entire point of this
+     * overlay is that you can see what you are typing. "Hide" is there for
+     * anyone who wants it. */
+    lv_textarea_set_password_mode(editor_ta, false);
+
+    if (is_password) {
+        lv_obj_t *cb = lv_checkbox_create(editor);
+        lv_checkbox_set_text(cb, "Hide");
+        lv_obj_set_style_text_font(cb, &lv_font_montserrat_18, LV_PART_MAIN);
+        lv_obj_set_pos(cb, 22, 106);
+        lv_obj_add_event_cb(cb, editor_mask_cb, LV_EVENT_VALUE_CHANGED, nullptr);
     }
+
+    lv_obj_t *b_cancel = make_button(editor, LV_SYMBOL_CLOSE "  Cancel",
+                                     editor_cancel_cb, nullptr);
+    lv_obj_set_size(b_cancel, 150, 46);
+    lv_obj_set_pos(b_cancel, 256, 100);
+
+    lv_obj_t *b_done = make_button(editor, LV_SYMBOL_OK "  Done",
+                                   editor_done_cb, nullptr);
+    lv_obj_set_size(b_done, 150, 46);
+    lv_obj_set_pos(b_done, 424, 100);
+
+    /* 450 - 162 = 288 px of keyboard, with the field parked safely above. */
+    lv_obj_t *kb = lv_keyboard_create(editor);
+    lv_obj_set_size(kb, 600, 288);
+    lv_obj_set_pos(kb, 0, 162);
+    lv_keyboard_set_textarea(kb, editor_ta);
+    lv_obj_add_event_cb(kb, editor_kb_event, LV_EVENT_ALL, nullptr);
+}
+
+/* CLICKED, not FOCUSED — fires on every tap, including a re-tap. */
+static void ta_open_editor(lv_event_t *e)
+{
+    lv_obj_t *ta = lv_event_get_target(e);
+    editor_open(ta, (const char *)lv_event_get_user_data(e), ta == ta_pass);
 }
 
 /* ------------------------------------------------------------------ Wi-Fi -- */
@@ -221,7 +308,6 @@ static void geo_search_cb(lv_event_t *e)
     if (!q || !q[0]) return;
 
     lv_obj_clean(list_geo);
-    lv_obj_add_flag(kb, LV_OBJ_FLAG_HIDDEN);
     lv_refr_now(nullptr);
 
     geo_n = net_geocode(q, geo, MAX_GEO);
@@ -322,6 +408,7 @@ static void close_cb(lv_event_t *e)
     app_refresh_clock(false);
     app_apply_brightness(s.brightness_day);
 
+    editor_close(false);
     if (wifi_poll) { lv_timer_del(wifi_poll); wifi_poll = nullptr; }
     lbl_wifi_state = nullptr;
 
@@ -383,7 +470,7 @@ void ui_settings_open(void)
     lv_textarea_set_password_mode(ta_pass, true);
     lv_textarea_set_placeholder_text(ta_pass, "Wi-Fi password");
     lv_obj_set_width(ta_pass, 560);
-    lv_obj_add_event_cb(ta_pass, ta_event, LV_EVENT_FOCUSED, nullptr);
+    lv_obj_add_event_cb(ta_pass, ta_open_editor, LV_EVENT_CLICKED, (void *)"Wi-Fi password");
 
     cb_show_pass = lv_checkbox_create(t_wifi);
     lv_checkbox_set_text(cb_show_pass, "Show password");
@@ -438,7 +525,7 @@ void ui_settings_open(void)
     lv_textarea_set_one_line(ta_city, true);
     lv_textarea_set_placeholder_text(ta_city, "City name");
     lv_obj_set_width(ta_city, 560);
-    lv_obj_add_event_cb(ta_city, ta_event, LV_EVENT_FOCUSED, nullptr);
+    lv_obj_add_event_cb(ta_city, ta_open_editor, LV_EVENT_CLICKED, (void *)"City name");
 
     make_button(t_place, LV_SYMBOL_GPS "  Search", geo_search_cb, nullptr);
 
@@ -542,7 +629,7 @@ void ui_settings_open(void)
     lv_textarea_set_max_length(ta_ble_name, sizeof(s.ble_name) - 1);
     lv_textarea_set_text(ta_ble_name, s.ble_name);
     lv_obj_set_width(ta_ble_name, 520);
-    lv_obj_add_event_cb(ta_ble_name, ta_event, LV_EVENT_FOCUSED, nullptr);
+    lv_obj_add_event_cb(ta_ble_name, ta_open_editor, LV_EVENT_CLICKED, (void *)"Bluetooth device name");
 
     {
         char buf[96];
@@ -611,13 +698,6 @@ void ui_settings_open(void)
     lv_obj_t *done = make_button(bar, LV_SYMBOL_OK "  Save & close", close_cb, nullptr);
     lv_obj_set_width(done, 240);
     lv_obj_align(done, LV_ALIGN_CENTER, 0, 0);
-
-    /* Keyboard floats above everything; hidden until a textarea is tapped. */
-    kb = lv_keyboard_create(scr_set);
-    lv_obj_set_size(kb, 600, 220);
-    lv_obj_align(kb, LV_ALIGN_BOTTOM_MID, 0, 0);
-    lv_obj_add_event_cb(kb, kb_event, LV_EVENT_ALL, nullptr);
-    lv_obj_add_flag(kb, LV_OBJ_FLAG_HIDDEN);
 
     lv_scr_load(scr_set);
 }
