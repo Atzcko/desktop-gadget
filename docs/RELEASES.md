@@ -11,6 +11,23 @@ Semantic versioning; the scheme and the release procedure live in [[CLAUDE]].
 The version is reported by the boot log, `GET /health` and Settings ▸ Info,
 each with a compiler build stamp so a stale flash is detectable.
 
+## v1.4.1 — 2026-08-16
+
+**Seam removed from every card.** The original brief specified a horizontal
+centre seam and it had been there since Stage 1 — but once the same card
+language was applied at 55 px and 58 px as well as 232 px, a 2 px black line
+across a 55 px card has too few pixels to sit cleanly and reads as choppy
+rather than as a split-flap gap.
+
+**The fold animation is untouched.** It still hinges at `CARD_H/2`. The seam was
+only ever a drawn hint of where that hinge is, and the fold itself shows it
+better than a static line did.
+
+Also removed the per-card `accent` object — a transparent child on every card,
+dead since the v4 line renderer stopped pulsing it.
+
+RAM 18.2 % (59 708 B) · Flash 26.4 % (1 730 117 B).
+
 ## v1.4.0 — 2026-08-16
 
 **The two halves of the transition are now strictly sequential.**

@@ -371,3 +371,15 @@ Four cases that had to behave, and now do:
 - **New emotion during a fade-out** brings the line straight back with no spurious scale, because a `layout_small` flag records that the clock is already parked.
 - **Clear mid-flight**, before the line ever appeared, simply flies back.
 - **Deleting the wave timer from inside its own callback** is what the teardown does; LVGL supports this by flagging the timer and skipping its post-callback bookkeeping.
+
+## [2026-08-16] release | v1.4.1 — seam removed
+
+Owner, from hardware: keep the flip animation on all the numbers, but remove the centre line — it looks choppy, there are not enough pixels to play with.
+
+The seam was in the original brief ("two large rounded dark-charcoal cards with a horizontal center seam") and had been there since Stage 1. It worked at 232 px. What changed is that the same card language now also runs at **55 px** (corner clock) and **58 px** (weather): a 2 px black line across a 55 px card has too few pixels to sit cleanly, and reads as a rendering artefact rather than as the gap between two physical flaps.
+
+**The fold animation is untouched** — it still hinges at `CARD_H/2`. The seam was only ever the drawn hint of where that hinge is, and the fold itself demonstrates it far better than a static line did. Removing it costs nothing that the animation was not already saying.
+
+Removed alongside it: the per-card `accent` object, a transparent child on every card that has been dead since the v4 line renderer stopped pulsing it. Also dropped `SEAM_H`/`MINI_SEAM` and the z-order calls that existed only to keep the seam above the flaps.
+
+This supersedes a line of the original brief, so the vault was corrected rather than left contradicting the firmware — [[D012 - Card geometry]] and [[Stage 1 - Static digits]] now record the removal and why.

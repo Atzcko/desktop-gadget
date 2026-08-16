@@ -3,7 +3,7 @@
  *
  * Aesthetic rules from the brief: pure #000000 background so AMOLED pixels
  * are genuinely off; two rounded charcoal cards with a horizontal centre
- * seam; huge white digits; nothing on screen but the clock and weather.
+ * huge white digits; nothing on screen but the clock and weather.
  */
 #include "ui.h"
 #include "config.h"
@@ -44,7 +44,6 @@ LV_FONT_DECLARE(fliqlo_mid);
 #define CARD_H          232
 #define CARD_GAP        36
 #define CARD_RADIUS     26
-#define SEAM_H          3
 #define COLON_DOT       14
 #define LABEL_H         154      /* fliqlo_digits line_height */
 #define DIGIT_TOP       ((CARD_H - LABEL_H) / 2)
@@ -56,11 +55,22 @@ LV_FONT_DECLARE(fliqlo_mid);
 #define BRIGHT_MIN_MS   1200
 #define SETTINGS_MS     3000     /* hold-to-open-Settings */
 
+/*
+ * NO SEAM.
+ *
+ * The brief originally specified a horizontal centre seam, and it was there
+ * from Stage 1. Removed at the owner's request after seeing it on hardware:
+ * once the same card language was applied at 55 px and 58 px as well as 232 px,
+ * a 2 px black line across a 55 px card has too few pixels to sit cleanly and
+ * reads as choppy rather than as a split-flap gap.
+ *
+ * The fold animation is unaffected — it still hinges at CARD_H/2. The seam was
+ * only ever the drawn hint of where that hinge is, and the fold itself shows it
+ * far better than a static line did.
+ */
 struct Card {
     lv_obj_t *root;
     lv_obj_t *label;
-    lv_obj_t *seam;
-    lv_obj_t *accent;   /* emotion pulse, sits on the seam, hidden at rest */
     char      text[4];
 };
 
@@ -72,7 +82,7 @@ static lv_color_t *zoom_buf;
 #define ZOOM_W (CARD_W * 2 + CARD_GAP)
 #define ZOOM_H CARD_H
 
-/* The strip shown in line mode: the same charcoal cards, the same seam, the
+/* The strip shown in line mode: the same charcoal cards, the
  * same colon — scaled down. LVGL 8 cannot transform text, so "smaller" means
  * a second compiled face (fliqlo_small, 38 px) rather than a zoom. */
 /*
@@ -90,7 +100,6 @@ static lv_color_t *zoom_buf;
 #define MINI_W       64
 #define MINI_H       55
 #define MINI_RADIUS   6
-#define MINI_SEAM     2
 #define MINI_GAP      9
 #define MINI_X       14
 #define MINI_Y       14
@@ -100,7 +109,7 @@ static lv_color_t *zoom_buf;
 #define WX_PAD_X     11
 #define WX_Y        330
 
-struct MiniCard { lv_obj_t *root, *label, *seam; };
+struct MiniCard { lv_obj_t *root, *label; };
 static MiniCard m_hh, m_mm;                            /* corner clock     */
 static MiniCard w_temp, w_minmax, w_hum;               /* resting weather  */
 static Card      card_h, card_m;
@@ -177,7 +186,7 @@ static lv_obj_t *make_flap(Card &c, const char *text, bool top_half, int height)
  * Classic two-phase split-flap:
  *   phase A — the OLD top folds down to nothing, revealing the NEW top
  *             underneath, while a static cover keeps the OLD bottom visible
- *   phase B — the NEW bottom grows from the seam downward, covering it
+ *   phase B — the NEW bottom grows from the hinge downward, covering it
  */
 static void flip_card(Card &c, const char *next)
 {
@@ -194,7 +203,6 @@ static void flip_card(Card &c, const char *next)
 
     lv_obj_t *cover_bottom = make_flap(c, prev, false, CARD_H / 2);
     lv_obj_t *flap_top     = make_flap(c, prev, true,  CARD_H / 2);
-    lv_obj_move_foreground(c.seam);
 
     /* Phase A */
     lv_anim_t a;
@@ -210,7 +218,6 @@ static void flip_card(Card &c, const char *next)
 
     /* Phase B, delayed by exactly phase A's duration. */
     lv_obj_t *flap_bottom = make_flap(c, c.text, false, 0);
-    lv_obj_move_foreground(c.seam);
 
     lv_anim_t b;
     lv_anim_init(&b);
@@ -324,28 +331,10 @@ static void make_card(Card &c, int x, int y)
 
     /* Created last so it draws over the digits — in Fliqlo the split line
      * crosses the numerals, it is not behind them. */
-    c.seam = lv_obj_create(c.root);
-    decor(c.seam);
-    lv_obj_set_size(c.seam, CARD_W, SEAM_H);
-    lv_obj_set_style_bg_color(c.seam, COL_BG, LV_PART_MAIN);
-    lv_obj_set_style_bg_opa(c.seam, LV_OPA_COVER, LV_PART_MAIN);
-    lv_obj_align(c.seam, LV_ALIGN_CENTER, 0, 0);
-
-    /* The accent line lives on the seam and is transparent at rest, so the
-     * default clock is exactly as the brief specifies — nothing extra. */
-    c.accent = lv_obj_create(c.root);
-    decor(c.accent);
-    /* 10 px, not 3: at rest it is fully transparent so the clock is exactly
-     * as the brief specifies, but when an emotion lights it up it has to be
-     * visible across a room, not a hairline. */
-    lv_obj_set_size(c.accent, CARD_W, 10);
-    lv_obj_set_style_bg_color(c.accent, COL_ACCENT, LV_PART_MAIN);
-    lv_obj_set_style_bg_opa(c.accent, LV_OPA_TRANSP, LV_PART_MAIN);
-    lv_obj_align(c.accent, LV_ALIGN_CENTER, 0, 0);
 }
 
 /* One card, at whatever scale is asked for. Every value on this device now
- * wears the same charcoal rounded card with a centre seam — only the size
+ * wears the same charcoal rounded card — only the size
  * changes between the clock, the weather row and the line-mode strip. */
 static void mini_card(lv_obj_t *parent, MiniCard &c, const lv_font_t *font,
                       lv_coord_t h, lv_coord_t radius, lv_color_t colour,
@@ -365,20 +354,12 @@ static void mini_card(lv_obj_t *parent, MiniCard &c, const lv_font_t *font,
     lv_label_set_text(c.label, init);
     lv_obj_center(c.label);
 
-    /* Seam last so it draws over the glyphs, exactly as on the big cards. */
-    c.seam = lv_obj_create(c.root);
-    decor(c.seam);
-    lv_obj_set_size(c.seam, 60, MINI_SEAM);
-    lv_obj_set_style_bg_color(c.seam, COL_BG, LV_PART_MAIN);
-    lv_obj_set_style_bg_opa(c.seam, LV_OPA_COVER, LV_PART_MAIN);
-    lv_obj_align(c.seam, LV_ALIGN_CENTER, 0, 0);
 }
 
 /*
- * Cards size themselves to their text, which changes ("5°" vs "34°"). Rather
- * than LV_SIZE_CONTENT — whose content measurement would feed back into a
- * full-width seam child and fight itself — measure the label after layout and
- * set card and seam explicitly. Deterministic, and flex re-centres the strip.
+ * Cards size themselves to their text, which changes ("5°" vs "34°"). Measure
+ * the label after layout and set the card explicitly rather than using
+ * LV_SIZE_CONTENT — deterministic, and flex re-centres the row afterwards.
  */
 static void card_sync(lv_obj_t *group, MiniCard **cards, int n,
                       lv_coord_t h, lv_coord_t pad)
@@ -388,8 +369,6 @@ static void card_sync(lv_obj_t *group, MiniCard **cards, int n,
     for (int i = 0; i < n; i++) {
         lv_coord_t w = lv_obj_get_width(cards[i]->label) + 2 * pad;
         lv_obj_set_size(cards[i]->root, w, h);
-        lv_obj_set_size(cards[i]->seam, w, MINI_SEAM);
-        lv_obj_align(cards[i]->seam, LV_ALIGN_CENTER, 0, 0);
     }
 }
 
@@ -468,7 +447,7 @@ void ui_init(uint16_t screen_w, uint16_t screen_h)
      * it in the one smaller size. Two sizes total, per the brief. */
     /*
      * Resting weather: the same charcoal cards as the clock, at 44 px.
-     * Every value on this screen now wears the same card with a centre seam —
+     * Every value on this screen now wears the same card —
      * nothing is a stray text label. Hierarchy is carried by scale (the clock
      * is 4.8x the type size) and by colour, not by two different treatments.
      */
@@ -512,10 +491,6 @@ void ui_init(uint16_t screen_w, uint16_t screen_h)
     lv_obj_set_pos(m_hh.root, 0, 0);
     lv_obj_set_size(m_mm.root, MINI_W, MINI_H);
     lv_obj_set_pos(m_mm.root, MINI_W + MINI_GAP, 0);
-    lv_obj_set_size(m_hh.seam, MINI_W, MINI_SEAM);
-    lv_obj_set_size(m_mm.seam, MINI_W, MINI_SEAM);
-    lv_obj_align(m_hh.seam, LV_ALIGN_CENTER, 0, 0);
-    lv_obj_align(m_mm.seam, LV_ALIGN_CENTER, 0, 0);
 
     /* Canvas the big clock is rendered into so it can actually be SCALED.
      * lv_canvas derives from lv_img, so lv_img_set_zoom works on it — LVGL 8
@@ -913,14 +888,6 @@ static void zoom_render(void)
     l.align = LV_TEXT_ALIGN_CENTER;
     lv_canvas_draw_text(zoom_canvas, 0, DIGIT_TOP, CARD_W, &l, card_h.text);
     lv_canvas_draw_text(zoom_canvas, CARD_W + CARD_GAP, DIGIT_TOP, CARD_W, &l, card_m.text);
-
-    /* Seam over the glyphs, as on the real cards. */
-    lv_draw_rect_dsc_init(&r);
-    r.bg_color = COL_BG;
-    r.bg_opa   = LV_OPA_COVER;
-    lv_canvas_draw_rect(zoom_canvas, 0, CARD_H / 2 - SEAM_H / 2, CARD_W, SEAM_H, &r);
-    lv_canvas_draw_rect(zoom_canvas, CARD_W + CARD_GAP, CARD_H / 2 - SEAM_H / 2,
-                        CARD_W, SEAM_H, &r);
 }
 
 /* Right-align the weather row against the far edge, measured rather than
