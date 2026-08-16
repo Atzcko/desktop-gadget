@@ -562,3 +562,13 @@ Only the clear-sky icons change. A cloud looks the same after dark, and every we
 The crescent is carved by drawing the **card colour** back over an offset disc — cheaper and crisper than arc maths, but it only works because the icon sits inside a card of known colour. Noted in the code, because moving the icon onto the bare background would silently break it.
 
 Still cannot flash: `/dev/cu.usbmodem2101` remains absent. Built clean, committed, deliberately untagged.
+
+## [2026-08-16] release | v1.8.0 flashed and confirmed
+
+USB came back — on a **different port**. `/dev/cu.usbmodem2101` had become `/dev/cu.usbmodem1101`, because macOS names the port after the physical socket and the cable had moved. That is the whole explanation for the earlier `Error 2`: nothing was broken, the address had changed.
+
+Flashed by detecting the port from the USB ID `0x303A:0x1001` rather than trusting the name, and `CLAUDE.md` now documents that instead of the hardcoded path. The device identity is stable; the port name is not.
+
+Confirmed on hardware: `version 1.8.0 | git 1ed02e0` — **no `+dirty`**, so what is running is exactly the committed tree, which is precisely what the git stamp was added for two releases ago. `weather_code 1`, `is_day false` → the moon is showing, at 35.3 °C and 68 % humidity.
+
+Both queued changes are now live and tagged: the crescent after dark, and the charge LED silenced.

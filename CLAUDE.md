@@ -19,7 +19,18 @@ PlatformIO lives in a Python 3.12 venv because the system Python is 3.14 ([[D005
 export PATH="$HOME/.platformio-venv/bin:$PATH"
 ```
 
-The board is at `/dev/cu.usbmodem2101` (`0x303A:0x1001`).
+**Do not hardcode the serial port.** It is named after the physical USB socket,
+so moving the cable renames it — `usbmodem2101` became `usbmodem1101` mid-session
+and the upload failed with a bare `Error 2`. Detect it by USB ID instead:
+
+```bash
+PORT=$(pio device list --json-output | python3 -c "
+import json,sys
+for d in json.load(sys.stdin):
+    if '303A:1001' in (d.get('hwid') or '').upper(): print(d['port']); break")
+```
+
+`0x303A:0x1001` is the ESP32-S3 USB-JTAG identity and does not change.
 
 ## Commands
 
@@ -32,7 +43,7 @@ export PATH="$HOME/.platformio-venv/bin:$PATH" && pio run
 Flash:
 
 ```bash
-export PATH="$HOME/.platformio-venv/bin:$PATH" && pio run -t upload --upload-port /dev/cu.usbmodem2101
+export PATH="$HOME/.platformio-venv/bin:$PATH" && pio run -t upload --upload-port "$PORT"
 ```
 
 Serial monitor:
