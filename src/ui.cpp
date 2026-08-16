@@ -44,6 +44,7 @@ LV_FONT_DECLARE(fliqlo_mid);
 #define CARD_H          232
 #define CARD_GAP        36
 #define CARD_RADIUS     26
+#define SEAM_H           2      /* big cards only — thin */
 #define COLON_DOT       14
 #define LABEL_H         154      /* fliqlo_digits line_height */
 #define DIGIT_TOP       ((CARD_H - LABEL_H) / 2)
@@ -56,21 +57,21 @@ LV_FONT_DECLARE(fliqlo_mid);
 #define SETTINGS_MS     3000     /* hold-to-open-Settings */
 
 /*
- * NO SEAM.
+ * SEAM: big cards only, and thin.
  *
- * The brief originally specified a horizontal centre seam, and it was there
- * from Stage 1. Removed at the owner's request after seeing it on hardware:
- * once the same card language was applied at 55 px and 58 px as well as 232 px,
- * a 2 px black line across a 55 px card has too few pixels to sit cleanly and
- * reads as choppy rather than as a split-flap gap.
+ * It reads correctly at 232 px, where 2 px is a hairline that sits cleanly and
+ * says "split-flap". It does NOT survive being scaled: the same card language
+ * now also runs at 55 px (corner clock) and 58 px (weather), and a line across
+ * a 55 px card has too few pixels to land on and reads as choppy — so the
+ * small cards have none.
  *
- * The fold animation is unaffected — it still hinges at CARD_H/2. The seam was
- * only ever the drawn hint of where that hinge is, and the fold itself shows it
- * far better than a static line did.
+ * The fold animation never depended on it. It hinges at CARD_H/2 regardless;
+ * the seam is the resting hint of where that hinge is.
  */
 struct Card {
     lv_obj_t *root;
     lv_obj_t *label;
+    lv_obj_t *seam;
     char      text[4];
 };
 
@@ -203,6 +204,7 @@ static void flip_card(Card &c, const char *next)
 
     lv_obj_t *cover_bottom = make_flap(c, prev, false, CARD_H / 2);
     lv_obj_t *flap_top     = make_flap(c, prev, true,  CARD_H / 2);
+    lv_obj_move_foreground(c.seam);
 
     /* Phase A */
     lv_anim_t a;
@@ -218,6 +220,7 @@ static void flip_card(Card &c, const char *next)
 
     /* Phase B, delayed by exactly phase A's duration. */
     lv_obj_t *flap_bottom = make_flap(c, c.text, false, 0);
+    lv_obj_move_foreground(c.seam);
 
     lv_anim_t b;
     lv_anim_init(&b);
@@ -331,6 +334,12 @@ static void make_card(Card &c, int x, int y)
 
     /* Created last so it draws over the digits — in Fliqlo the split line
      * crosses the numerals, it is not behind them. */
+    c.seam = lv_obj_create(c.root);
+    decor(c.seam);
+    lv_obj_set_size(c.seam, CARD_W, SEAM_H);
+    lv_obj_set_style_bg_color(c.seam, COL_BG, LV_PART_MAIN);
+    lv_obj_set_style_bg_opa(c.seam, LV_OPA_COVER, LV_PART_MAIN);
+    lv_obj_align(c.seam, LV_ALIGN_CENTER, 0, 0);
 }
 
 /* One card, at whatever scale is asked for. Every value on this device now
@@ -888,6 +897,16 @@ static void zoom_render(void)
     l.align = LV_TEXT_ALIGN_CENTER;
     lv_canvas_draw_text(zoom_canvas, 0, DIGIT_TOP, CARD_W, &l, card_h.text);
     lv_canvas_draw_text(zoom_canvas, CARD_W + CARD_GAP, DIGIT_TOP, CARD_W, &l, card_m.text);
+
+    /* The seam belongs to the big clock, so the canvas carries it. It scales
+     * with everything else and is sub-pixel by the time the seamless corner
+     * cards take over, so the handover stays invisible. */
+    lv_draw_rect_dsc_init(&r);
+    r.bg_color = COL_BG;
+    r.bg_opa   = LV_OPA_COVER;
+    lv_canvas_draw_rect(zoom_canvas, 0, CARD_H / 2 - SEAM_H / 2, CARD_W, SEAM_H, &r);
+    lv_canvas_draw_rect(zoom_canvas, CARD_W + CARD_GAP, CARD_H / 2 - SEAM_H / 2,
+                        CARD_W, SEAM_H, &r);
 }
 
 /* Right-align the weather row against the far edge, measured rather than

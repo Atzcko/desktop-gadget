@@ -20,7 +20,7 @@ All numbers below fall out of the one font metric from [[D011 - Generate the dig
 | `CARD_H` | 232 | digits are 153 px → fill ~66 % of card height, Fliqlo's proportion |
 | `CARD_GAP` | 36 | colon zone |
 | `CARD_RADIUS` | 26 | large, per the brief's "large rounded cards" |
-| ~~`SEAM_H`~~ | ~~3~~ | **removed in v1.4.1** — see below |
+| `SEAM_H` | 2 | thin centre seam, **big cards only** — see below |
 | `COLON_DOT` | 14 | dots at 1/3 and 2/3 card height, straddling the seam |
 
 Clock row total width = `268 × 2 + 36 = 572`, leaving **14 px margin** each side of the 600 px panel — comfortably more than the ±2 px the Stage 5 burn-in walk needs.
@@ -29,10 +29,12 @@ Clock row total width = `268 × 2 + 36 = 572`, leaving **14 px margin** each sid
 
 ## Two details that are easy to get backwards
 
-> [!warning] The seam is gone as of v1.4.1
-> It drew *over* the numerals, correctly, for as long as it existed — in Fliqlo the split line crosses the glyphs because it is the gap between two physical flaps.
+> [!tip] The seam is scale-dependent, not all-or-nothing
+> It draws *over* the numerals — in Fliqlo the split line crosses the glyphs because it is the gap between two physical flaps, so `make_card()` creates it after the label.
 >
-> It was removed once the same card language was applied at 55 px and 58 px as well as 232 px. A 2 px black line across a 55 px card has too few pixels to sit cleanly and reads as choppy. **The fold animation still hinges at `CARD_H/2`** — the seam was only the drawn hint of where that hinge is, and the fold shows it better.
+> It reads correctly at **232 px**, where 2 px is a hairline. It does **not** survive being scaled: on the 55 px corner clock and 58 px weather cards there are too few pixels for a line to land on, and it reads as choppy. Hence: **big cards keep it, small cards have none** (v1.4.1 removed it everywhere, v1.4.2 restored it where it works).
+>
+> The fold animation never depended on it — it hinges at `CARD_H/2` regardless.
 
 > [!tip] `clip_corner` on the card
 > Set now, needed later: when the Stage 2 fold animation moves a digit copy past the card edge, clipping keeps it inside the rounded rectangle instead of spilling onto the black background.

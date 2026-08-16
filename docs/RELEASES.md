@@ -11,6 +11,29 @@ Semantic versioning; the scheme and the release procedure live in [[CLAUDE]].
 The version is reported by the boot log, `GET /health` and Settings ▸ Info,
 each with a compiler build stamp so a stale flash is detectable.
 
+## v1.4.2 — 2026-08-16
+
+**Seam back on the big clock only, and thinner: 3 px → 2 px.**
+
+The v1.4.1 removal went one card too far. At 232 px the seam reads correctly —
+2 px is a hairline that sits cleanly and says split-flap. What it does not
+survive is being *scaled*: on the 55 px corner clock and 58 px weather cards
+there are too few pixels for a line to land on, which is what looked choppy.
+
+So the rule is now scale-dependent rather than all-or-nothing:
+
+| Card | Height | Seam |
+|---|---|---|
+| Clock | 232 px | **2 px** |
+| Weather | 58 px | none |
+| Corner clock | 55 px | none |
+
+The zoom canvas carries the seam, since it renders the big clock. It scales
+with everything else and is sub-pixel by the time the seamless corner cards
+take over, so the handover stays invisible.
+
+RAM 18.2 % (59 716 B) · Flash 26.4 % (1 730 229 B).
+
 ## v1.4.1 — 2026-08-16
 
 **Seam removed from every card.** The original brief specified a horizontal

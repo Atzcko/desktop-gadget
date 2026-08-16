@@ -383,3 +383,15 @@ The seam was in the original brief ("two large rounded dark-charcoal cards with 
 Removed alongside it: the per-card `accent` object, a transparent child on every card that has been dead since the v4 line renderer stopped pulsing it. Also dropped `SEAM_H`/`MINI_SEAM` and the z-order calls that existed only to keep the seam above the flaps.
 
 This supersedes a line of the original brief, so the vault was corrected rather than left contradicting the firmware — [[D012 - Card geometry]] and [[Stage 1 - Static digits]] now record the removal and why.
+
+## [2026-08-16] release | v1.4.2 — seam back on the big clock, thinner
+
+Owner, immediately after v1.4.1: keep the line on the time, it is big enough — and keep it thin.
+
+The v1.4.1 removal went one card too far. The right rule is **scale-dependent, not all-or-nothing**: at 232 px a 2 px seam is a hairline that sits cleanly and says split-flap; on a 55 px corner card or a 58 px weather card there are simply too few pixels for a line to land on, which is what looked choppy. Same element, opposite verdict at different sizes.
+
+So: big clock keeps it at **2 px** (thinner than the original 3), small cards have none.
+
+The zoom canvas carries the seam, since it renders the big clock — it scales with everything else and is sub-pixel by the time the seamless corner cards take over, so the handover stays invisible. Restored the two `lv_obj_move_foreground(c.seam)` calls so the seam stays above the moving flaps during a fold.
+
+Vault corrected again: [[D012 - Card geometry]] now records the scale-dependent rule rather than either absolute, and the Stage 1 note matches. Two corrections in two releases is worth noting — the underlying lesson is that a design element evaluated at one size cannot be assumed to hold at another.
