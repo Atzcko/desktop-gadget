@@ -26,6 +26,12 @@ LV_FONT_DECLARE(fliqlo_digits);
 #define COL_COLON       lv_color_hex(0x707070)
 #define COL_TEMP        lv_color_hex(0xFFFFFF)
 #define COL_SECONDARY   lv_color_hex(0x8A8A8A)
+/* Humidity is deliberately the quietest thing on the panel: same 28 px size
+ * as min/max — introducing a third type size would break the brief's cap —
+ * so it recedes by CONTRAST instead. Roughly half the luminance of the
+ * min/max grey, which reads as present-but-secondary rather than as
+ * another number competing for attention. */
+#define COL_TERTIARY    lv_color_hex(0x4E4E4E)
 #define COL_ACCENT      lv_color_hex(0x3C7DD9)
 #define COL_STALE       lv_color_hex(0x8A6A2A)
 
@@ -60,7 +66,7 @@ static lv_obj_t *scr_clock;
 static lv_obj_t *root;
 static Card      card_h, card_m;
 static lv_obj_t *lbl_ampm;
-static lv_obj_t *wrow, *lbl_temp, *lbl_minmax, *dot_stale;
+static lv_obj_t *wrow, *lbl_temp, *lbl_minmax, *lbl_humid, *dot_stale;
 static lv_obj_t *lbl_info;
 static lv_obj_t *hold_bar;
 static lv_timer_t *info_timer;
@@ -375,6 +381,14 @@ void ui_init(uint16_t screen_w, uint16_t screen_h)
     lv_obj_set_style_text_color(lbl_minmax, COL_SECONDARY, LV_PART_MAIN);
     lv_label_set_text(lbl_minmax, "-- / --");
 
+    lbl_humid = lv_label_create(wrow);
+    lv_obj_set_style_text_font(lbl_humid, &lv_font_montserrat_28, LV_PART_MAIN);
+    lv_obj_set_style_text_color(lbl_humid, COL_TERTIARY, LV_PART_MAIN);
+    /* A little extra breathing room so it reads as a separate, quieter fact
+     * rather than as part of the min/max pair. */
+    lv_obj_set_style_pad_left(lbl_humid, 14, LV_PART_MAIN);
+    lv_label_set_text(lbl_humid, "");
+
     /* Stale marker is a shape, not a third type size. */
     dot_stale = lv_obj_create(wrow);
     decor(dot_stale);
@@ -440,7 +454,8 @@ void ui_set_time(int hour, int minute, bool animate)
     }
 }
 
-void ui_set_weather(float current, float lo, float hi, bool valid, bool stale)
+void ui_set_weather(float current, float lo, float hi, float humidity,
+                    bool valid, bool stale)
 {
     if (valid) {
         char buf[28];
@@ -449,9 +464,24 @@ void ui_set_weather(float current, float lo, float hi, bool valid, bool stale)
         snprintf(buf, sizeof(buf), "%d" WEATHER_UNIT_SUFFIX " / %d" WEATHER_UNIT_SUFFIX,
                  (int)lroundf(lo), (int)lroundf(hi));
         lv_label_set_text(lbl_minmax, buf);
+
+        /* Negative means the endpoint did not report it — show nothing
+         * rather than a confident 0%. */
+        if (humidity >= 0.0f) {
+            snprintf(buf, sizeof(buf), "%d%%", (int)lroundf(humidity));
+            lv_label_set_text(lbl_humid, buf);
+        } else {
+            lv_label_set_text(lbl_humid, "");
+        }
     }
     if (stale) lv_obj_clear_flag(dot_stale, LV_OBJ_FLAG_HIDDEN);
     else       lv_obj_add_flag(dot_stale, LV_OBJ_FLAG_HIDDEN);
+}
+
+void ui_show_humidity(bool visible)
+{
+    if (visible) lv_obj_clear_flag(lbl_humid, LV_OBJ_FLAG_HIDDEN);
+    else         lv_obj_add_flag(lbl_humid, LV_OBJ_FLAG_HIDDEN);
 }
 
 void ui_show_weather_block(bool visible)

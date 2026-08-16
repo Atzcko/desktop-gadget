@@ -56,7 +56,7 @@ static bool fetch_weather(void)
     String url = "https://api.open-meteo.com/v1/forecast";
     url += "?latitude=";  url += String(s.latitude, 4);
     url += "&longitude="; url += String(s.longitude, 4);
-    url += "&current=temperature_2m";
+    url += "&current=temperature_2m,relative_humidity_2m";
     url += "&daily=temperature_2m_max,temperature_2m_min";
     url += "&forecast_days=1&timezone=auto&temperature_unit=";
     url += WEATHER_TEMPERATURE_UNIT;
@@ -76,17 +76,21 @@ static bool fetch_weather(void)
     float cur = doc["current"]["temperature_2m"].as<float>();
     float hi  = doc["daily"]["temperature_2m_max"][0] | cur;
     float lo  = doc["daily"]["temperature_2m_min"][0] | cur;
+    /* -1 marks "not reported" so the UI can hide the field rather than
+     * confidently displaying 0 %. */
+    float rh  = doc["current"]["relative_humidity_2m"] | -1.0f;
 
     xSemaphoreTake(wx_lock, portMAX_DELAY);
     wx.current   = cur;
     wx.lo        = lo;
     wx.hi        = hi;
+    wx.humidity  = rh;
     wx.valid     = true;
     wx.stale     = false;
     wx.last_sync = time(nullptr);
     xSemaphoreGive(wx_lock);
 
-    Serial.printf("[net] weather %.1f (%.1f..%.1f)\n", cur, lo, hi);
+    Serial.printf("[net] weather %.1f (%.1f..%.1f) rh %.0f%%\n", cur, lo, hi, rh);
     return true;
 }
 

@@ -17,8 +17,10 @@ lv_obj_t *ui_screen(void);
  * is false (first paint, and returning from Settings). */
 void ui_set_time(int hour, int minute, bool animate);
 
-void ui_set_weather(float current, float lo, float hi, bool valid, bool stale);
+void ui_set_weather(float current, float lo, float hi, float humidity,
+                    bool valid, bool stale);
 void ui_show_weather_block(bool visible);
+void ui_show_humidity(bool visible);
 
 /* Anti burn-in: nudge the whole layout. */
 void ui_set_offset(int dx, int dy);

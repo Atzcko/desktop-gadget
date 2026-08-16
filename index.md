@@ -52,6 +52,7 @@ This vault is the project's memory: every decision, why it was made, and what ha
 | [[D017 - BLE and Wi-Fi coexistence]] | One radio: BLE must init first, modem sleep is mandatory |
 | [[D018 - Emotion API - one engine, two transports]] | Shared engine, NUS over BLE, same JSON |
 | [[D019 - Text entry gets its own screen]] | `LV_EVENT_FOCUSED` is an edge, not a level |
+| [[D020 - Humidity recedes by contrast, not size]] | Type-size budget spent; use luminance |
 
 ## Reference
 

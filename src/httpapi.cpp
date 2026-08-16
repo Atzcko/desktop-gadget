@@ -53,6 +53,8 @@ static void handle_health(AsyncWebServerRequest *req)
              "\"time_synced\":%s,"
              "\"weather_age_s\":%ld,"
              "\"weather_valid\":%s,"
+             "\"temp_c\":%.1f,"
+             "\"humidity_pct\":%.0f,"
              "\"city\":\"%s\","
              "\"ble\":{\"running\":%s,\"connected\":%s,\"name\":\"%s\"},"
              "\"free_psram\":%u,"
@@ -64,6 +66,8 @@ static void handle_health(AsyncWebServerRequest *req)
              st.time_valid ? "true" : "false",
              age,
              w.valid ? "true" : "false",
+             w.current,
+             w.humidity,
              s.city,
              ble_is_running()   ? "true" : "false",
              ble_is_connected() ? "true" : "false",

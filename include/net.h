@@ -15,6 +15,7 @@ struct WeatherData {
     float  current;
     float  lo;
     float  hi;
+    float  humidity;     /* relative humidity, % */
     bool   valid;        /* have we ever had a good reading?  */
     time_t last_sync;    /* epoch of the last SUCCESSFUL fetch */
     bool   stale;        /* last attempt failed               */

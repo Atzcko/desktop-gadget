@@ -42,7 +42,7 @@ static lv_obj_t *roller_tz, *sw_24h;
 
 /* Screen tab */
 static lv_obj_t *sl_day, *sl_night, *lbl_day, *lbl_night;
-static lv_obj_t *roller_ns, *roller_ne, *sw_wx, *sw_burn;
+static lv_obj_t *roller_ns, *roller_ne, *sw_wx, *sw_hum, *sw_burn;
 
 /* BLE tab */
 static lv_obj_t *sw_ble, *ta_ble_name, *lbl_ble_state;
@@ -380,6 +380,7 @@ static void close_cb(lv_event_t *e)
     }
     s.use_24h          = lv_obj_has_state(sw_24h,  LV_STATE_CHECKED);
     s.show_weather     = lv_obj_has_state(sw_wx,   LV_STATE_CHECKED);
+    s.show_humidity    = lv_obj_has_state(sw_hum,  LV_STATE_CHECKED);
     s.burnin_guard     = lv_obj_has_state(sw_burn, LV_STATE_CHECKED);
     s.brightness_day   = lv_slider_get_value(sl_day);
     s.brightness_night = lv_slider_get_value(sl_night);
@@ -405,6 +406,7 @@ static void close_cb(lv_event_t *e)
     else if (s.ble_enabled && strcmp(old_name, s.ble_name) != 0) ble_apply_name(s.ble_name);
 
     ui_show_weather_block(s.show_weather);
+    ui_show_humidity(s.show_humidity);
     app_refresh_clock(false);
     app_apply_brightness(s.brightness_day);
 
@@ -602,6 +604,9 @@ void ui_settings_open(void)
         body_label(r4, "Weather");
         sw_wx = lv_switch_create(r4);
         if (s.show_weather) lv_obj_add_state(sw_wx, LV_STATE_CHECKED);
+        body_label(r4, "Humidity");
+        sw_hum = lv_switch_create(r4);
+        if (s.show_humidity) lv_obj_add_state(sw_hum, LV_STATE_CHECKED);
         body_label(r4, "Burn-in guard");
         sw_burn = lv_switch_create(r4);
         if (s.burnin_guard) lv_obj_add_state(sw_burn, LV_STATE_CHECKED);

@@ -130,6 +130,7 @@ void setup()
 
     ui_init(amoled.width(), amoled.height());
     ui_show_weather_block(s.show_weather);
+    ui_show_humidity(s.show_humidity);
 
     /* Paint something immediately — the panel is lit within a second even
      * though NTP has not landed yet. */
@@ -194,7 +195,7 @@ void loop()
             }
 
             WeatherData w = net_weather();
-            ui_set_weather(w.current, w.lo, w.hi, w.valid, w.stale);
+            ui_set_weather(w.current, w.lo, w.hi, w.humidity, w.valid, w.stale);
 
             if (now >= next_burnin_ms) {
                 next_burnin_ms = now + (uint32_t)BURNIN_STEP_SECONDS * 1000u;

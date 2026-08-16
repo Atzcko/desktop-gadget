@@ -81,6 +81,7 @@ static void apply_defaults(void)
     s.night_start_hour = DEFAULT_NIGHT_START;
     s.night_end_hour   = DEFAULT_NIGHT_END;
     s.show_weather     = true;
+    s.show_humidity    = true;
     s.burnin_guard     = true;
     s.ble_enabled      = true;
     copy_str(s.ble_name, sizeof(s.ble_name), DEFAULT_BLE_NAME);
@@ -126,6 +127,7 @@ void settings_load(void)
     if (have("nend"))   s.night_end_hour   = prefs.getUChar("nend");
     if (have("h24"))    s.use_24h          = prefs.getBool("h24");
     if (have("wx"))     s.show_weather     = prefs.getBool("wx");
+    if (have("hum"))    s.show_humidity    = prefs.getBool("hum");
     if (have("burn"))   s.burnin_guard     = prefs.getBool("burn");
     if (have("ble"))    s.ble_enabled      = prefs.getBool("ble");
 
@@ -158,6 +160,7 @@ void settings_save(void)
     prefs.putUChar("nend",    s.night_end_hour);
     prefs.putBool("h24",      s.use_24h);
     prefs.putBool("wx",       s.show_weather);
+    prefs.putBool("hum",      s.show_humidity);
     prefs.putBool("burn",     s.burnin_guard);
     prefs.putBool("ble",      s.ble_enabled);
     prefs.putString("blen",   s.ble_name);

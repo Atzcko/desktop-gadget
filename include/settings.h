@@ -33,6 +33,7 @@ struct Settings {
     uint8_t night_start_hour;
     uint8_t night_end_hour;
     bool    show_weather;
+    bool    show_humidity;
     bool    burnin_guard;
 
     /* Bluetooth LE */
