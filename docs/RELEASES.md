@@ -11,6 +11,30 @@ Semantic versioning; the scheme and the release procedure live in [[CLAUDE]].
 The version is reported by the boot log, `GET /health` and Settings ▸ Info,
 each with a compiler build stamp so a stale flash is detectable.
 
+## v1.7.0 — 2026-08-16
+
+**Weather icon, and a size hierarchy in the weather row.**
+
+- **Temperature and humidity stay at 44 px; min/max drops to 34 px.** They are
+  the live readings; min/max is a forecast you consult. Before this the min/max
+  card was the *widest* thing in the row — the least important value dominating
+  it.
+- **A weather glyph left of the temperature**, inside the same card. Eight icons
+  — clear, partly cloudy, overcast, fog, drizzle, rain, snow, thunderstorm —
+  folded from Open-Meteo's 28 WMO 4677 codes. Severity is dropped deliberately:
+  at 40 px "light drizzle" and "dense drizzle" are indistinguishable, and a
+  glance only needs the kind.
+- Drawn with **primitives, not bitmaps**: eight bitmaps would be ~13 KB of
+  flash, and drawing them means they inherit the palette and stay crisp at any
+  size. Monochrome, like everything else.
+- `weather_code` added to `GET /health`.
+
+Fixed while testing: `memset` left the code at **0**, which is WMO "clear sky",
+so a sun would show before the first fetch ever succeeded. Now −1 = unreported,
+which falls back to the neutral cloud.
+
+RAM 18.2 % (59 796 B) · Flash 26.5 % (1 734 709 B).
+
 ## v1.6.0 — 2026-08-16
 
 **The caption says what is happening, and is quiet about it.**

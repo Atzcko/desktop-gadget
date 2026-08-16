@@ -19,6 +19,7 @@
 extern "C" {
 LV_FONT_DECLARE(fliqlo_digits);
 LV_FONT_DECLARE(fliqlo_corner);
+LV_FONT_DECLARE(fliqlo_wx_small);
 LV_FONT_DECLARE(fliqlo_mid);
 }
 
@@ -107,12 +108,17 @@ static lv_color_t *zoom_buf;
 #define MINI_DOT      4      /* colon dot, 14 * 0.2381 = 3.3 -> 4 */
 #define DIM_OPA     153      /* 60% — the corners recede, the line is the subject */
 
-#define WX_H         58      /* resting weather cards, 44 px face */
+#define WX_H         58      /* temperature + humidity, 44 px face */
+#define WX_SMALL_H   46      /* min/max forecast, 34 px face — secondary */
+#define WX_ICON      40      /* weather glyph, left of the temperature */
 #define WX_RADIUS    10
 #define WX_PAD_X     11
 #define WX_Y        330
 
-struct MiniCard { lv_obj_t *root, *label; };
+struct MiniCard {
+    lv_obj_t  *root, *label, *icon;
+    lv_coord_t h;            /* cards in one row are no longer all the same */
+};
 static MiniCard m_hh, m_mm;                            /* corner clock     */
 static MiniCard w_temp, w_minmax, w_hum;               /* resting weather  */
 static bool     hum_enabled = true;                    /* the Settings toggle */
@@ -348,6 +354,118 @@ static void make_card(Card &c, int x, int y)
 /* One card, at whatever scale is asked for. Every value on this device now
  * wears the same charcoal rounded card — only the size
  * changes between the clock, the weather row and the line-mode strip. */
+/*
+ * WMO 4677 weather codes, as served by Open-Meteo, folded into eight glyphs.
+ * The full table has 28 values; at 40 px the distinctions between "light
+ * drizzle" and "dense drizzle" are unreadable, so severity is dropped and only
+ * the KIND survives — which is all a glance needs.
+ *
+ *   0,1            clear            45,48          fog
+ *   2              partly cloudy    51-57          drizzle
+ *   3              overcast         61-67, 80-82   rain
+ *   71-77, 85,86   snow             95,96,99       thunderstorm
+ */
+enum WxIcon : uint8_t { WX_SUN, WX_PARTLY, WX_CLOUD, WX_FOG,
+                        WX_DRIZZLE, WX_RAIN, WX_SNOW, WX_STORM };
+
+static int wx_code = -1;
+
+static WxIcon wx_icon_for(int code)
+{
+    if (code < 0)                                    return WX_CLOUD;
+    if (code <= 1)                                   return WX_SUN;
+    if (code == 2)                                   return WX_PARTLY;
+    if (code == 3)                                   return WX_CLOUD;
+    if (code == 45 || code == 48)                    return WX_FOG;
+    if (code >= 51 && code <= 57)                    return WX_DRIZZLE;
+    if ((code >= 61 && code <= 67) ||
+        (code >= 80 && code <= 82))                  return WX_RAIN;
+    if ((code >= 71 && code <= 77) ||
+         code == 85 || code == 86)                   return WX_SNOW;
+    if (code >= 95)                                  return WX_STORM;
+    return WX_CLOUD;
+}
+
+/* Drawn with primitives rather than shipped as bitmaps: eight icons at one
+ * size would be ~13 KB of flash, and this way they inherit the palette and
+ * stay crisp if the size ever changes. Monochrome, like everything else. */
+static void wx_icon_draw_cb(lv_event_t *e)
+{
+    lv_obj_t      *o   = lv_event_get_target(e);
+    lv_draw_ctx_t *ctx = lv_event_get_draw_ctx(e);
+    lv_area_t co;
+    lv_obj_get_coords(o, &co);
+    const int x0 = co.x1, y0 = co.y1;
+
+    const lv_color_t C_SUN  = lv_color_hex(0xFFFFFF);
+    const lv_color_t C_CLD  = lv_color_hex(0x9A9A9A);
+    const lv_color_t C_PPT  = lv_color_hex(0x767676);
+
+    lv_draw_rect_dsc_t rd;
+    lv_draw_rect_dsc_init(&rd);
+    rd.bg_opa = LV_OPA_COVER;
+    rd.radius = LV_RADIUS_CIRCLE;
+
+    lv_draw_line_dsc_t ld;
+    lv_draw_line_dsc_init(&ld);
+    ld.opa = LV_OPA_COVER;
+    ld.round_start = 1;
+    ld.round_end   = 1;
+
+    auto disc = [&](int cx, int cy, int rad, lv_color_t c) {
+        rd.bg_color = c;
+        lv_area_t a = { (lv_coord_t)(x0 + cx - rad), (lv_coord_t)(y0 + cy - rad),
+                        (lv_coord_t)(x0 + cx + rad), (lv_coord_t)(y0 + cy + rad) };
+        lv_draw_rect(ctx, &rd, &a);
+    };
+    auto seg = [&](int ax, int ay, int bx, int by, int w, lv_color_t c) {
+        ld.width = w; ld.color = c;
+        lv_point_t p1 = { (lv_coord_t)(x0 + ax), (lv_coord_t)(y0 + ay) };
+        lv_point_t p2 = { (lv_coord_t)(x0 + bx), (lv_coord_t)(y0 + by) };
+        lv_draw_line(ctx, &ld, &p1, &p2);
+    };
+    auto cloud = [&](int dy) {
+        disc(13, 23 + dy, 8, C_CLD);
+        disc(23, 19 + dy, 11, C_CLD);
+        disc(32, 24 + dy, 7, C_CLD);
+        rd.radius = 4; rd.bg_color = C_CLD;
+        lv_area_t base = { (lv_coord_t)(x0 + 13), (lv_coord_t)(y0 + 24 + dy),
+                           (lv_coord_t)(x0 + 32), (lv_coord_t)(y0 + 31 + dy) };
+        lv_draw_rect(ctx, &rd, &base);
+        rd.radius = LV_RADIUS_CIRCLE;
+    };
+    auto sun = [&](int cx, int cy, int rad, bool rays) {
+        disc(cx, cy, rad, C_SUN);
+        if (!rays) return;
+        for (int i = 0; i < 8; i++) {
+            float a = i * 0.7854f;
+            int ix = cx + (int)(cosf(a) * (rad + 3)), iy = cy + (int)(sinf(a) * (rad + 3));
+            int ox = cx + (int)(cosf(a) * (rad + 8)), oy = cy + (int)(sinf(a) * (rad + 8));
+            seg(ix, iy, ox, oy, 3, C_SUN);
+        }
+    };
+
+    switch (wx_icon_for(wx_code)) {
+    case WX_SUN:     sun(20, 20, 9, true); break;
+    case WX_PARTLY:  sun(14, 13, 7, true); cloud(4); break;
+    case WX_CLOUD:   cloud(2); break;
+    case WX_FOG:     cloud(-2);
+                     seg(9, 32, 31, 32, 3, C_PPT);
+                     seg(13, 38, 35, 38, 3, C_PPT); break;
+    case WX_DRIZZLE: cloud(-3);
+                     for (int i = 0; i < 3; i++) disc(14 + i * 8, 34, 2, C_PPT); break;
+    case WX_RAIN:    cloud(-3);
+                     for (int i = 0; i < 3; i++) seg(16 + i * 7, 31, 12 + i * 7, 39, 3, C_PPT);
+                     break;
+    case WX_SNOW:    cloud(-3);
+                     for (int i = 0; i < 3; i++) disc(14 + i * 8, 36, 3, C_SUN); break;
+    case WX_STORM:   cloud(-4);
+                     seg(23, 28, 17, 36, 3, C_SUN);
+                     seg(17, 36, 22, 36, 3, C_SUN);
+                     seg(22, 36, 17, 43, 3, C_SUN); break;
+    }
+}
+
 static void mini_card(lv_obj_t *parent, MiniCard &c, const lv_font_t *font,
                       lv_coord_t h, lv_coord_t radius, lv_color_t colour,
                       const char *init)
@@ -380,7 +498,12 @@ static void card_sync(lv_obj_t *group, MiniCard **cards, int n,
     lv_obj_update_layout(group);
     for (int i = 0; i < n; i++) {
         lv_coord_t w = lv_obj_get_width(cards[i]->label) + 2 * pad;
-        lv_obj_set_size(cards[i]->root, w, h);
+        if (cards[i]->icon) w += WX_ICON + 8;
+        lv_obj_set_size(cards[i]->root, w, cards[i]->h ? cards[i]->h : h);
+        if (cards[i]->icon) {
+            lv_obj_align(cards[i]->icon, LV_ALIGN_LEFT_MID, pad, 0);
+            lv_obj_align(cards[i]->label, LV_ALIGN_RIGHT_MID, -pad, 0);
+        }
     }
 }
 
@@ -472,12 +595,20 @@ void ui_init(uint16_t screen_w, uint16_t screen_h)
                           LV_FLEX_ALIGN_CENTER);
     lv_obj_set_style_pad_column(weather_grp, 10, LV_PART_MAIN);
 
+    /* Temperature and humidity are the LIVE readings and stay at 44 px; the
+     * min/max forecast is reference and drops to 34 px, so the widest card in
+     * the row is no longer the least important one. */
     mini_card(weather_grp, w_temp,   &fliqlo_mid, WX_H, WX_RADIUS,
-              COL_TEMP,      "--" WEATHER_UNIT_SUFFIX);
-    mini_card(weather_grp, w_minmax, &fliqlo_mid, WX_H, WX_RADIUS,
-              lv_color_hex(0x9A9A9A), "--/--");
+              COL_TEMP,               "--" WEATHER_UNIT_SUFFIX);
+    mini_card(weather_grp, w_minmax, &fliqlo_wx_small, WX_SMALL_H, 8,
+              lv_color_hex(0x8A8A8A), "--/--");
     mini_card(weather_grp, w_hum,    &fliqlo_mid, WX_H, WX_RADIUS,
-              lv_color_hex(0x6E6E6E), "--%");
+              lv_color_hex(0x8E8E8E), "--%");
+
+    w_temp.icon = lv_obj_create(w_temp.root);
+    decor(w_temp.icon);
+    lv_obj_set_size(w_temp.icon, WX_ICON, WX_ICON);
+    lv_obj_add_event_cb(w_temp.icon, wx_icon_draw_cb, LV_EVENT_DRAW_MAIN, nullptr);
 
     /* Stale marker rides beside the cards — still a shape, not a type size. */
     dot_stale = lv_obj_create(weather_grp);
@@ -589,9 +720,13 @@ void ui_set_time(int hour, int minute, bool animate)
 }
 
 void ui_set_weather(float current, float lo, float hi, float humidity,
-                    bool valid, bool stale)
+                    int code, bool valid, bool stale)
 {
     if (valid) {
+        if (code != wx_code) {
+            wx_code = code;
+            if (w_temp.icon) lv_obj_invalidate(w_temp.icon);
+        }
         char t1[16], t2[24], t3[12];
         snprintf(t1, sizeof(t1), "%d" WEATHER_UNIT_SUFFIX, (int)lroundf(current));
         snprintf(t2, sizeof(t2), "%d" WEATHER_UNIT_SUFFIX "/%d" WEATHER_UNIT_SUFFIX,

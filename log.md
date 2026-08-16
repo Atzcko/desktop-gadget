@@ -423,3 +423,19 @@ The structural problem underneath: the caption is the only text on screen, but i
 So the caption now renders **`state` + `message`**, the message limit goes 20 → 48, and it wraps to two lines at 560 px. A state sent with no message shows the state name, so the bottom of the screen is never blank while something is happening.
 
 Convention recorded in `CLAUDE.md` so the rule survives this session: **`message` is an object, never a verb.** Sending `message: "reading"` now renders "reading reading", which makes the mistake self-evident.
+
+## [2026-08-16] release | v1.7.0 — weather icon and a size hierarchy
+
+Owner: temperature and humidity should be a bit bigger than the min/max forecast, and a sun/cloud/rain glyph should sit left of the temperature.
+
+**The hierarchy was inverted.** All three weather cards used the same 44 px face, and because "31°/41°" is the longest string, the **min/max card was the widest thing in the row** — the least important value dominating it. Temperature and humidity are live readings and stay at 44 px; min/max is a forecast you consult deliberately and drops to 34 px on a shorter card.
+
+**Icons: researched, not guessed.** Open-Meteo serves WMO code table 4677, and its subset is 28 distinct values. Folded to **eight**: clear, partly cloudy, overcast, fog, drizzle, rain, snow, thunderstorm. Severity is deliberately discarded — at 40 px "light drizzle" and "dense drizzle" are indistinguishable, so encoding it would be noise pretending to be information. A glance needs the kind.
+
+Drawn with **primitives rather than bitmaps**: eight icons as images would be roughly 13 KB of flash, and drawing them means they inherit the palette, stay crisp if the size changes, and cost nothing but code. Monochrome — white sun, grey cloud, dimmer precipitation — so they sit inside the existing language rather than importing a second one.
+
+**A bug caught by testing rather than reasoning:** `memset(&wx, 0, ...)` leaves `code == 0`, and WMO 0 is *clear sky*. The panel would have shown a confident sun before the first fetch ever succeeded. Now initialised to −1, which falls through to the neutral cloud.
+
+Verified live: `code 3` (overcast), 40.3 °C, 37 % humidity in Abu Dhabi.
+
+Sources: [WMO interpretation codes](https://gist.github.com/stellasphere/9490c195ed2b53c707087c8c2db4ec0c) · [WMO Code Table 4677](https://www.nodc.noaa.gov/archive/arc0021/0002199/1.1/data/0-data/HTML/WMO-CODE/WMO4677.HTM) · [Open-Meteo docs](https://open-meteo.com/en/docs)

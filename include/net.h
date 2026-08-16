@@ -16,6 +16,7 @@ struct WeatherData {
     float  lo;
     float  hi;
     float  humidity;     /* relative humidity, % */
+    int    code;         /* WMO 4677 weather code, -1 if unreported */
     bool   valid;        /* have we ever had a good reading?  */
     time_t last_sync;    /* epoch of the last SUCCESSFUL fetch */
     bool   stale;        /* last attempt failed               */

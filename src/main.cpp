@@ -197,7 +197,7 @@ void loop()
             }
 
             WeatherData w = net_weather();
-            ui_set_weather(w.current, w.lo, w.hi, w.humidity, w.valid, w.stale);
+            ui_set_weather(w.current, w.lo, w.hi, w.humidity, w.code, w.valid, w.stale);
 
             if (now >= next_burnin_ms) {
                 next_burnin_ms = now + (uint32_t)BURNIN_STEP_SECONDS * 1000u;

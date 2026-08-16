@@ -56,7 +56,7 @@ static bool fetch_weather(void)
     String url = "https://api.open-meteo.com/v1/forecast";
     url += "?latitude=";  url += String(s.latitude, 4);
     url += "&longitude="; url += String(s.longitude, 4);
-    url += "&current=temperature_2m,relative_humidity_2m";
+    url += "&current=temperature_2m,relative_humidity_2m,weather_code";
     url += "&daily=temperature_2m_max,temperature_2m_min";
     url += "&forecast_days=1&timezone=auto&temperature_unit=";
     url += WEATHER_TEMPERATURE_UNIT;
@@ -79,18 +79,20 @@ static bool fetch_weather(void)
     /* -1 marks "not reported" so the UI can hide the field rather than
      * confidently displaying 0 %. */
     float rh  = doc["current"]["relative_humidity_2m"] | -1.0f;
+    int   wc  = doc["current"]["weather_code"] | -1;
 
     xSemaphoreTake(wx_lock, portMAX_DELAY);
     wx.current   = cur;
     wx.lo        = lo;
     wx.hi        = hi;
     wx.humidity  = rh;
+    wx.code      = wc;
     wx.valid     = true;
     wx.stale     = false;
     wx.last_sync = time(nullptr);
     xSemaphoreGive(wx_lock);
 
-    Serial.printf("[net] weather %.1f (%.1f..%.1f) rh %.0f%%\n", cur, lo, hi, rh);
+    Serial.printf("[net] weather %.1f (%.1f..%.1f) rh %.0f%% code %d\n", cur, lo, hi, rh, wc);
     return true;
 }
 
@@ -206,6 +208,9 @@ void net_begin(void)
 {
     wx_lock = xSemaphoreCreateMutex();
     memset(&wx, 0, sizeof(wx));
+    /* memset leaves code == 0, which is WMO "clear sky" — the panel would show
+     * a sun before the first fetch ever succeeded. -1 means "unreported". */
+    wx.code = -1;
 
     Settings &s = settings_get();
 
