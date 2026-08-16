@@ -11,6 +11,19 @@ Semantic versioning; the scheme and the release procedure live in [[CLAUDE]].
 The version is reported by the boot log, `GET /health` and Settings ▸ Info,
 each with a compiler build stamp so a stale flash is detectable.
 
+## v1.7.1 — 2026-08-16
+
+- **min/max at 22 px — exactly half the 44 px live readings**, so the hierarchy
+  is a stated ratio rather than a guess. Card height 32.
+- **`FW_GIT` build stamp that cannot go stale.** `FW_BUILD` uses
+  `__DATE__`/`__TIME__`, baked in when *main.cpp* is compiled — change any other
+  file and the stamp stays put while the binary genuinely changes, which is the
+  exact failure it existed to catch. Caught it live: v1.7.0's fix to `net.cpp`
+  flashed a different image under an unchanged stamp.
+  `scripts/version_stamp.py` injects the git revision as a build **flag**, so a
+  change forces a rebuild and names the source precisely. `+dirty` marks
+  uncommitted work. Reported in the boot log and `GET /health`.
+
 ## v1.7.0 — 2026-08-16
 
 **Weather icon, and a size hierarchy in the weather row.**

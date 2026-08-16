@@ -49,6 +49,7 @@ static void handle_health(AsyncWebServerRequest *req)
              "{\"ok\":true,"
              "\"version\":\"%s\","
              "\"build\":\"%s\","
+             "\"git\":\"%s\","
              "\"uptime_s\":%lu,"
              "\"rssi\":%d,"
              "\"ip\":\"%s\","
@@ -66,6 +67,7 @@ static void handle_health(AsyncWebServerRequest *req)
              "\"free_heap\":%u}",
              FW_VERSION,
              FW_BUILD,
+             FW_GIT,
              (unsigned long)(millis() / 1000UL),
              st.rssi,
              st.wifi_up ? st.ip : "",

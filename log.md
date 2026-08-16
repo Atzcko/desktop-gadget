@@ -439,3 +439,13 @@ Drawn with **primitives rather than bitmaps**: eight icons as images would be ro
 Verified live: `code 3` (overcast), 40.3 °C, 37 % humidity in Abu Dhabi.
 
 Sources: [WMO interpretation codes](https://gist.github.com/stellasphere/9490c195ed2b53c707087c8c2db4ec0c) · [WMO Code Table 4677](https://www.nodc.noaa.gov/archive/arc0021/0002199/1.1/data/0-data/HTML/WMO-CODE/WMO4677.HTM) · [Open-Meteo docs](https://open-meteo.com/en/docs)
+
+## [2026-08-16] release | v1.7.1 — min/max at half size, and a build stamp that works
+
+Owner: min/max should be **50 % of the temperature size**. Temperature is 44 px, so min/max is now 22 px on a 32 px card — the hierarchy is a stated ratio rather than an eyeballed one.
+
+**More importantly, the release tooling had a hole, and it caught itself.** After flashing the v1.7.0 `net.cpp` fix, `/health` still reported `build Aug 16 2026 13:37:29` — unchanged — while the image size had moved. `FW_BUILD` is `__DATE__`/`__TIME__`, which the compiler bakes in when the translation unit containing it is compiled. Change any file *other* than `main.cpp` and the stamp goes stale while the binary genuinely changes. That is precisely the failure the stamp existed to detect, so the rule "confirm on the device" was quietly resting on something unreliable.
+
+Fixed with `scripts/version_stamp.py`, a PlatformIO pre-action that injects the git revision as a **build flag**. A flag cannot go stale — changing it forces a rebuild — and it names the source revision exactly rather than approximately. `+dirty` marks uncommitted work, which is the normal state mid-session. `CLAUDE.md` now says to trust `git` over `build`.
+
+Worth noting the shape of this: the diagnostic was wrong, and it was wrong in the direction of false reassurance. Only comparing it against a second signal (the image size) exposed it.

@@ -65,10 +65,14 @@ export PATH="$HOME/.platformio-venv/bin:$PATH" && cd ~/.local/src/LilyGo-AMOLED-
 4. flash, and confirm the running version with `GET /health`
 
 > [!warning] Confirm the version on the DEVICE, not in the tree
-> The version is reported in three places — boot log, `GET /health`, and
-> Settings ▸ Info — and each also carries `__DATE__ __TIME__`, so a stale flash
-> is obvious even when the version number has not moved. A tree that says 1.1.0
-> proves nothing about what is running.
+> Reported in the boot log, `GET /health`, and Settings ▸ Info. A tree that says
+> 1.1.0 proves nothing about what is running.
+>
+> **Trust `git`, not `build`.** `FW_BUILD` is `__DATE__`/`__TIME__`, baked in
+> when *main.cpp* compiles — edit any other file and it goes stale while the
+> binary changes. `FW_GIT` is injected as a build flag by
+> `scripts/version_stamp.py`, so it cannot: a changed flag forces a rebuild.
+> `+dirty` means uncommitted changes are in the image.
 
 ## Hard constraints
 

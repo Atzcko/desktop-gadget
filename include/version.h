@@ -19,11 +19,26 @@
 
 #define FW_VERSION_MAJOR  1
 #define FW_VERSION_MINOR  7
-#define FW_VERSION_PATCH  0
+#define FW_VERSION_PATCH  1
 
 #define FW_STR_(x)   #x
 #define FW_STR(x)    FW_STR_(x)
 #define FW_VERSION   FW_STR(FW_VERSION_MAJOR) "." FW_STR(FW_VERSION_MINOR) "." FW_STR(FW_VERSION_PATCH)
 
-/* Compiler-stamped, so a stale flash is obvious even at the same version. */
+/*
+ * Two stamps, because one is not enough.
+ *
+ * FW_BUILD is __DATE__/__TIME__, which the compiler bakes in when THIS header's
+ * including translation unit is compiled. Change any other file and it goes
+ * stale while the binary genuinely changed — the exact failure it existed to
+ * catch. Kept because it is still useful when main.cpp is what changed.
+ *
+ * FW_GIT is injected as a build flag by scripts/version_stamp.py, so it cannot
+ * go stale: a changed flag forces a rebuild, and it names the source revision
+ * precisely instead of approximately. "+dirty" means uncommitted changes.
+ */
 #define FW_BUILD     __DATE__ " " __TIME__
+
+#ifndef FW_GIT
+#define FW_GIT       "unknown"
+#endif

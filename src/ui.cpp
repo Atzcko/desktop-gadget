@@ -109,7 +109,9 @@ static lv_color_t *zoom_buf;
 #define DIM_OPA     153      /* 60% — the corners recede, the line is the subject */
 
 #define WX_H         58      /* temperature + humidity, 44 px face */
-#define WX_SMALL_H   46      /* min/max forecast, 34 px face — secondary */
+/* min/max forecast at 22 px — exactly HALF the 44 px live readings, so the
+ * hierarchy is a ratio rather than a guess. Card height scales with it. */
+#define WX_SMALL_H   32
 #define WX_ICON      40      /* weather glyph, left of the temperature */
 #define WX_RADIUS    10
 #define WX_PAD_X     11
@@ -596,11 +598,11 @@ void ui_init(uint16_t screen_w, uint16_t screen_h)
     lv_obj_set_style_pad_column(weather_grp, 10, LV_PART_MAIN);
 
     /* Temperature and humidity are the LIVE readings and stay at 44 px; the
-     * min/max forecast is reference and drops to 34 px, so the widest card in
-     * the row is no longer the least important one. */
+     * min/max forecast is reference and drops to 22 px — exactly half — so the
+     * widest card in the row is no longer the least important one. */
     mini_card(weather_grp, w_temp,   &fliqlo_mid, WX_H, WX_RADIUS,
               COL_TEMP,               "--" WEATHER_UNIT_SUFFIX);
-    mini_card(weather_grp, w_minmax, &fliqlo_wx_small, WX_SMALL_H, 8,
+    mini_card(weather_grp, w_minmax, &fliqlo_wx_small, WX_SMALL_H, 6,
               lv_color_hex(0x8A8A8A), "--/--");
     mini_card(weather_grp, w_hum,    &fliqlo_mid, WX_H, WX_RADIUS,
               lv_color_hex(0x8E8E8E), "--%");

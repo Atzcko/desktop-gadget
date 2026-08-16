@@ -111,8 +111,8 @@ void setup()
     uint32_t t0 = millis();
     while (!Serial && millis() - t0 < 1200) delay(10);
 
-    Serial.printf("\n=== Desktop gadget — flip clock  v%s  (%s) ===\n",
-                  FW_VERSION, FW_BUILD);
+    Serial.printf("\n=== Desktop gadget — flip clock  v%s  %s  (%s) ===\n",
+                  FW_VERSION, FW_GIT, FW_BUILD);
 
     settings_load();
     Settings &s = settings_get();
