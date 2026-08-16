@@ -467,3 +467,19 @@ min/max now lives inside the temperature card, to the right of the big number: `
 The card measures itself from both labels, so it shrinks when line mode drops the range and grows back when the clock returns — the same measured-not-assumed approach the right-align shift uses.
 
 Lesson for the log: the owner's phonetic spellings have been reliable signal so far ("desecrate" → discrete, "steel" → steal), so I read "pallet" → "palette" and picked the wrong homophone. "on the same X as" was the tell — you are on a frame, not on a palette.
+
+## [2026-08-16] process | tools/say — pushing state becomes part of the work
+
+Owner, for the second time: the display stopped showing anything about what I was doing.
+
+They were right both times, and the second occurrence says the previous fix was inadequate. After the first lapse I wrote the rule into `CLAUDE.md` and into cross-conversation memory — and then broke it again, because a rule that says "remember to do X as a separate step" fails exactly when a turn gets long and busy, which is precisely when the display matters most.
+
+So the fix is structural rather than another promise. `tools/say` and `tools/hush` exist so the push is a **prefix on the command that does the work**:
+
+```bash
+tools/say building "ui.cpp" && pio run
+```
+
+That cannot be forgotten independently of the work, because it is on the same line as the work. `say` is fire-and-forget — backgrounded, 2 s cap, output discarded, always exits 0 — so it can never delay or break the command it decorates, which removes any incentive to skip it.
+
+`CLAUDE.md` and the memory entry now lead with the helper rather than with raw curl.

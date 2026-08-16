@@ -149,6 +149,21 @@ The clock can express what we are doing. Two transports, **identical JSON**.
 > scribble at ~61 px. Pick the state that matches the real intensity of the work
 > and the display reads correctly from across the room without being read.
 
+> [!important] Use `tools/say` — do NOT push as a separate step
+> ```bash
+> tools/say building "ui.cpp" && pio run
+> tools/say reading "LVGL canvas docs"; grep -rn lv_canvas src/
+> tools/hush          # at the end of the turn
+> ```
+> **Prefix the command that does the work.** Pushing the state as its own
+> separate call is a step that gets skipped once a turn runs long — this has
+> failed twice in practice, both times noticed by the owner rather than caught
+> here. Attaching it to the work makes it part of the thing being done.
+>
+> `say` is fire-and-forget: backgrounded, 2 s cap, output discarded, always
+> exits 0. It cannot delay or break the command it prefixes. Default duration
+> 60 s, which covers a build; pass a third argument for longer work.
+
 > [!important] Keep it lit while you work
 > The owner built this device to see what you are doing **from across the desk**.
 > A dark screen during a long stretch of work defeats the point of the object,

@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+# say STATE [MESSAGE] [DURATION_S] — push what is happening to the flip clock.
+#
+# WHY THIS EXISTS: pushing the state as its OWN step is a step that gets
+# skipped when a turn runs long — it happened twice. Prefixing the work
+# command instead makes it part of the thing being done rather than an
+# extra thing to remember:
+#
+#     tools/say building "ui.cpp" && pio run
+#     tools/say reading "LVGL canvas docs"; grep -rn lv_canvas ...
+#
+# Fire-and-forget: backgrounded with a 2 s cap, all output discarded, always
+# exits 0. It must never delay, fail, or break the command it prefixes.
+STATE="${1:-thinking}"
+MSG="${2:-}"
+DUR="${3:-60}"
+HOST="${FLIPCLOCK_HOST:-192.168.0.181}"
+
+payload=$(printf '{"state":"%s","duration_s":%s,"message":"%s"}' "$STATE" "$DUR" "$MSG")
+( curl -s --max-time 2 -X POST "http://$HOST/emotion" \
+       -H "Content-Type: application/json" -d "$payload" >/dev/null 2>&1 & ) >/dev/null 2>&1
+exit 0
