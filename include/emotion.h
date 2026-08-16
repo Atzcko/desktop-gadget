@@ -45,3 +45,9 @@ bool emotion_post(const EmotionRequest &req);
 void emotion_begin(void);
 void emotion_tick(void);
 bool emotion_active(void);
+
+/* Current expression and time left, for /health. Makes "does it auto-revert?"
+ * an observable fact rather than something only a human staring at the panel
+ * can confirm. */
+uint8_t  emotion_current_state(void);
+uint32_t emotion_remaining_s(void);

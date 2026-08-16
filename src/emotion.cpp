@@ -10,6 +10,7 @@
 static QueueHandle_t q;
 static uint32_t      revert_at_ms;
 static bool          active;
+static uint8_t       cur_state;
 
 static const char *NAMES[] = {
     "none", "thinking", "working", "success", "error", "celebrate", "sleepy"
@@ -90,6 +91,15 @@ void emotion_begin(void)
 
 bool emotion_active(void) { return active; }
 
+uint8_t emotion_current_state(void) { return cur_state; }
+
+uint32_t emotion_remaining_s(void)
+{
+    if (!active) return 0;
+    int32_t left = (int32_t)(revert_at_ms - millis());
+    return left <= 0 ? 0 : (uint32_t)((left + 999) / 1000);
+}
+
 void emotion_tick(void)
 {
     EmotionRequest req;
@@ -99,11 +109,13 @@ void emotion_tick(void)
                       req.message[0] ? " — " : "", req.message);
         ui_emotion_show(req.state, req.message);
         revert_at_ms = millis() + (uint32_t)req.duration_s * 1000u;
-        active = true;
+        active    = true;
+        cur_state = req.state;
     }
 
     if (active && (int32_t)(millis() - revert_at_ms) >= 0) {
         ui_emotion_clear();
-        active = false;
+        active    = false;
+        cur_state = EMO_NONE;
     }
 }

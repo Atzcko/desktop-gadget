@@ -71,9 +71,9 @@ This vault is the project's memory: every decision, why it was made, and what ha
 > - **SD card** — slot unused, init skipped.
 > - **Any cloud beyond Open-Meteo and NTP.** All rendering is local.
 
-## Acceptance criteria for v1
+## Acceptance criteria for v1 — see [[Acceptance results]]
 
-- [ ] Cold boot → correct local time on screen in under 10 s
-- [ ] Minute rollover animates, including 23:59 → 00:00
-- [ ] `POST /emotion` with `celebrate` animates then reverts
-- [ ] Wi-Fi drop → clock keeps running, weather degrades gracefully, auto-reconnects
+- [x] Cold boot → correct local time in under 10 s — **4.45 s**
+- [ ] Minute rollover, including 23:59 → 00:00 — **needs your eyes**
+- [x] `POST /emotion` animates then reverts — **5.2 s**, verified via `/health`
+- [x] Wi-Fi drop → clock runs, weather degrades, auto-reconnects — observed in the field

@@ -195,3 +195,17 @@ Kept the keyboard descriptor behind `Settings ▸ BLE ▸ Identify as keyboard (
 **Documented the trap that will otherwise waste an hour:** hosts cache the HID descriptor *per bond*. Flipping the switch on an already-paired device changes nothing until you Forget on the Mac, Clear pairings on the clock, and pair again.
 
 The new `bkbd` NVS key was picked up silently by the `isKey()` backfill added earlier — `[settings] backfilling keys added by a newer firmware`, then a clean boot. Verified: `advertising as "Flip Clock" — custom HID desktop gadget`, `as_keyboard=0`.
+
+## [2026-08-16] verification | Acceptance run
+
+Ran the brief's four acceptance criteria. Full detail in [[Acceptance results]].
+
+**1. Cold boot → correct time in under 10 s: PASS at 4.45 s.** Measured from hardware reset by correlating the serial log with `/health` polling — UI at 1.64 s, IP at 2.46 s, NTP valid at 4.45 s. 55 % headroom.
+
+**3. Emotion animates then reverts: PASS at 5.2 s.** Added `emotion.active` / `remaining_s` to `/health` so this is observable rather than a matter of faith. Validation also passes: unknown state, missing state and over-long message all return 400 with a reason; `duration_s: 99999` clamps to 300; uptime rose across the whole suite, so nothing rebooted.
+
+> A false negative worth remembering: the first run of the revert test reported FAIL. The fault was the **test**, not the firmware — it polled `flipclock.local`, and re-resolving mDNS per request made each sample slow enough to step over the entire 5 s window. Against the IP it passed immediately. Measure through the cheapest path available, or you end up debugging your own instrument. (An earlier failure in the same session was also self-inflicted: a curl and a serial reset issued in parallel, so the reset landed mid-request.)
+
+**4. Wi-Fi resilience: PASS, from field evidence** rather than a staged test — the wrong-PSK episode earlier in the project was a genuine multi-minute outage. The clock kept rendering, weather held its last values and raised the stale marker, backoff capped at 30 s, and recovery needed no intervention.
+
+**2. Minute and midnight rollover: still needs the owner's eyes.** It cannot be automated without adding a debug endpoint to production firmware. Code review confirms the property that matters: the flip is driven by "rendered digits differ from target, per card", never by arithmetic on the previous value — which is exactly what makes 23:59 → 00:00 fold correctly instead of treating `00` as a decrement.
