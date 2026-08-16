@@ -61,7 +61,7 @@ This vault is the project's memory: every decision, why it was made, and what ha
 
 ## Releases
 
-- [[RELEASES]] — **v1.5.0**, 2026-08-16. Bump `include/version.h`, log it, tag it, flash it, confirm via `/health`.
+- [[RELEASES]] — **v1.6.0**, 2026-08-16. Bump `include/version.h`, log it, tag it, flash it, confirm via `/health`.
 
 ## Reference
 

@@ -658,7 +658,10 @@ void ui_show_info(const char *date_line, const char *sync_line)
 
 #define WAVE_PTS     61                      /* 60 segments */
 #define WAVE_BAND_H  160
-#define COL_CAPTION  lv_color_hex(0xC8C8C8)
+/* The caption sits at the same 60 % as the clock and temperature, so the line
+ * is the only thing at full brightness. Pure white at DIM_OPA rather than a
+ * baked grey, so it is literally "60 % of the line". */
+#define CAPTION_W    560
 
 #define WEATHER_REST_Y WX_Y
 
@@ -1040,6 +1043,37 @@ static void layout_emotion(bool on)
     }
 }
 
+/*
+ * "building ui.cpp", not "ui.cpp".
+ *
+ * The line's motion carries the verb, but only if you can read amplitude. The
+ * caption is the only text on screen, so it should say both: the state supplies
+ * the verb, the message the object. Messages are therefore written as objects
+ * ("ui.cpp", "lvgl docs"), never as a restatement of the state.
+ *
+ * Wraps to two lines at 560 px so a real phrase fits instead of being cut.
+ */
+static void set_caption(void)
+{
+    if (lbl_emotion) { lv_obj_del(lbl_emotion); lbl_emotion = nullptr; }
+    if (!emo_state) return;
+
+    char buf[80];
+    const char *name = emotion_def(emo_state).name;
+    if (pending_msg[0]) snprintf(buf, sizeof(buf), "%s  %s", name, pending_msg);
+    else                snprintf(buf, sizeof(buf), "%s", name);
+
+    lbl_emotion = lv_label_create(root);
+    lv_obj_set_style_text_font(lbl_emotion, &lv_font_montserrat_28, LV_PART_MAIN);
+    lv_obj_set_style_text_color(lbl_emotion, lv_color_white(), LV_PART_MAIN);
+    lv_obj_set_style_opa(lbl_emotion, DIM_OPA, LV_PART_MAIN);
+    lv_obj_set_width(lbl_emotion, CAPTION_W);
+    lv_label_set_long_mode(lbl_emotion, LV_LABEL_LONG_WRAP);
+    lv_obj_set_style_text_align(lbl_emotion, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
+    lv_label_set_text(lbl_emotion, buf);
+    lv_obj_align(lbl_emotion, LV_ALIGN_BOTTOM_MID, 0, -18);
+}
+
 static void wave_start(void)
 {
     kill_wave();
@@ -1054,14 +1088,7 @@ static void wave_start(void)
     lv_obj_add_event_cb(wave, wave_draw_cb, LV_EVENT_DRAW_MAIN, nullptr);
     wave_timer = lv_timer_create(wave_tick, 40, nullptr);   /* 25 fps */
 
-    if (pending_msg[0]) {
-        if (lbl_emotion) lv_obj_del(lbl_emotion);
-        lbl_emotion = lv_label_create(root);
-        lv_obj_set_style_text_font(lbl_emotion, &lv_font_montserrat_28, LV_PART_MAIN);
-        lv_obj_set_style_text_color(lbl_emotion, COL_CAPTION, LV_PART_MAIN);
-        lv_label_set_text(lbl_emotion, pending_msg);
-        lv_obj_align(lbl_emotion, LV_ALIGN_BOTTOM_MID, 0, -26);
-    }
+    set_caption();
 }
 
 static void enter_done_cb(lv_timer_t *tm)
@@ -1102,14 +1129,7 @@ void ui_emotion_show(uint8_t state, const char *message)
         /* Already in line mode — swap the caption, keep the line running.
          * Re-entering the whole transition between two activities would be
          * distracting when the states change every few seconds. */
-        if (lbl_emotion) { lv_obj_del(lbl_emotion); lbl_emotion = nullptr; }
-        if (pending_msg[0]) {
-            lbl_emotion = lv_label_create(root);
-            lv_obj_set_style_text_font(lbl_emotion, &lv_font_montserrat_28, LV_PART_MAIN);
-            lv_obj_set_style_text_color(lbl_emotion, COL_CAPTION, LV_PART_MAIN);
-            lv_label_set_text(lbl_emotion, pending_msg);
-            lv_obj_align(lbl_emotion, LV_ALIGN_BOTTOM_MID, 0, -26);
-        }
+        set_caption();
         return;
     }
 

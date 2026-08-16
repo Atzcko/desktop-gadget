@@ -11,6 +11,26 @@ Semantic versioning; the scheme and the release procedure live in [[CLAUDE]].
 The version is reported by the boot log, `GET /health` and Settings ▸ Info,
 each with a compiler build stamp so a stale flash is detectable.
 
+## v1.6.0 — 2026-08-16
+
+**The caption says what is happening, and is quiet about it.**
+
+- **60 % brightness**, matching the clock and temperature. Pure white at
+  `DIM_OPA` rather than a baked grey, so it is literally 60 % of the line —
+  which stays the only thing at full brightness.
+- **Renders `state` + `message`.** The line's motion carries the verb, but only
+  if you can read amplitude. `ui.cpp` alone never said whether it was being
+  read, edited or debugged; **building  ui.cpp** does.
+- **Message limit 20 → 48 chars**, wrapping to two lines at 560 px, so a real
+  phrase fits instead of being cut.
+- **A state with no message shows the state name**, so the bottom of the screen
+  is never blank while something is happening.
+
+Convention recorded in `CLAUDE.md`: `message` is an **object**, never a verb —
+`"LVGL canvas docs"`, not `"reading"`, which would render "reading reading".
+
+RAM 18.2 % (59 740 B) · Flash 26.4 % (1 730 637 B).
+
 ## v1.5.0 — 2026-08-16
 
 **Line mode revised: the corners recede so the line is the subject.**

@@ -56,7 +56,10 @@ struct EmotionDef {
 extern const EmotionDef EMOTIONS[];
 extern const int        EMOTION_COUNT;
 
-#define EMOTION_MSG_MAX     20      /* per the brief */
+/* Was 20 (the brief's figure). Raised because 20 characters is enough for a
+ * filename but not for context — "ui.cpp" does not say what is being done to
+ * it. The caption now prepends the state, and wraps to two lines. */
+#define EMOTION_MSG_MAX     48
 #define EMOTION_MAX_SECONDS 300     /* clamp: a typo must not hide the clock */
 
 struct EmotionRequest {

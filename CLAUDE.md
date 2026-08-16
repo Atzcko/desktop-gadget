@@ -126,8 +126,18 @@ The clock can express what we are doing. Two transports, **identical JSON**.
 > `celebrate`, `frustrated`, `confused`, `relief`, `proud`, `sleepy`. The full
 > set is 32 states; `GET /health` and `emotion_from_name()` are the authority.
 >
-> Put the specific thing in `message` (≤ 20 chars): `"ui.cpp"`, `"lvgl docs"`,
-> `"acceptance run"`.
+> **Write `message` as an OBJECT, never a verb** (≤ 48 chars). The caption
+> renders `state` + `message`, so the state already supplies the verb:
+>
+> | Send | Screen shows |
+> |---|---|
+> | `building` + `"ui.cpp"` | **building  ui.cpp** |
+> | `reading` + `"LVGL canvas docs"` | **reading  LVGL canvas docs** |
+> | `debugging` + `"wifi reconnect backoff"` | **debugging  wifi reconnect backoff** |
+> | `thinking` + *(none)* | **thinking** |
+>
+> So: never send `message: "reading"` — that renders "reading reading". No
+> jokes, no status restatements. It wraps to two lines, so a real phrase fits.
 >
 > **The line vibrates in proportion to the process.** Amplitude, frequency and
 > speed all scale with the state's arousal — `waiting` is nearly a flat line at

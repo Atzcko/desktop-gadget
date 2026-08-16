@@ -409,3 +409,17 @@ Reviewed what line mode actually displays and found one defect among two matters
 **Temperature only while the line runs.** Min/max and humidity are reference figures — you consult them deliberately, on the resting screen. While the line is up you are watching the line. 377 px of weather becomes 86 px and the two corners stop competing. `weather_detail(false)` runs *before* the shift is measured, because the right-align target depends on how many cards are showing.
 
 **Corners dim to 60 %.** On a true-black AMOLED this costs almost no light and reads as depth rather than as something switched off. The subtle part: the zoom canvas fades to the same 60 % on the way in, so when it hands over to the corner cards there is no brightness pop — the same discipline that made the geometric hand-off invisible in v1.3.0.
+
+## [2026-08-16] release | v1.6.0 — the caption
+
+Owner: the text under the line should be 60 % brightness like the clock and temperature, and should show more so the context is understandable.
+
+The brightness half is straightforward — pure white at `DIM_OPA` rather than a baked grey, so it is literally 60 % of the line rather than an approximation of it. The line stays the only thing at full brightness.
+
+The context half needed a decision I had been avoiding. Asked earlier what the caption showed, the honest answer was **nothing systematic**: filenames (`ui.cpp`), concepts (`lv_snapshot`), restatements of the state (`reading`), version strings, and outright jokes (`can you see me`). Four registers, no rule.
+
+The structural problem underneath: the caption is the only text on screen, but it carried the **object** while the **verb** lived in the line's motion — which only helps if you can read amplitude. `ui.cpp` never said whether it was being read, edited or debugged.
+
+So the caption now renders **`state` + `message`**, the message limit goes 20 → 48, and it wraps to two lines at 560 px. A state sent with no message shows the state name, so the bottom of the screen is never blank while something is happening.
+
+Convention recorded in `CLAUDE.md` so the rule survives this session: **`message` is an object, never a verb.** Sending `message: "reading"` now renders "reading reading", which makes the mistake self-evident.
