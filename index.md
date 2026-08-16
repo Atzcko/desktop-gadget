@@ -2,7 +2,7 @@
 title: Desktop gadget — Fliqlo flip clock
 type: index
 device: LilyGO T4-S3
-status: stage-0-complete
+status: stage-1-flashed
 updated: 2026-08-16
 tags:
   - index
@@ -16,13 +16,13 @@ This vault is the project's memory: every decision, why it was made, and what ha
 
 ## Current state
 
-> [!success] Stage 0 complete — awaiting your visual check
-> Stock library example built, flashed, and confirmed by serial as `LilyGo AMOLED 2.41 inch`. Touch controller ACKed. Panel-lit and touch-responds still need a human eye. See [[Stage 0 - Stock example]].
+> [!success] Stage 1 flashed — awaiting your visual check
+> Our own firmware is on the device. Serial confirms `600 x 450`, touch online, and a 544 640 B PSRAM allocation for the LVGL buffer — all three matching what the decision notes predicted. Boot to ready: **1397 ms**. What a serial log cannot tell us is whether the Fliqlo layout actually *looks* right. See [[Stage 1 - Static digits]].
 
 | Stage | What | Status |
 |---|---|---|
-| [[Stage 0 - Stock example]] | Stock library example runs | ✅ built + flashed, needs visual check |
-| [[Stage 1 - Static digits]] | Fliqlo layout, hardcoded time | ⏸ blocked on Stage 0 sign-off |
+| [[Stage 0 - Stock example]] | Stock library example runs | ✅ built + flashed, board confirmed |
+| [[Stage 1 - Static digits]] | Fliqlo layout, hardcoded time | ✅ built + flashed, needs visual check |
 | [[Stage 2 - NTP and flip animation]] | Real time + split-flap fold | ⚪ planned |
 | [[Stage 3 - Weather]] | Open-Meteo on its own task | ⚪ planned |
 | [[Stage 4 - Emotion API]] | HTTP API + `CLAUDE.md` | ⚪ planned |
@@ -42,6 +42,8 @@ This vault is the project's memory: every decision, why it was made, and what ha
 | [[D008 - Brightness scale]] | 0–255 range; day 90 ≈ 35 %, night 25 |
 | [[D009 - LVGL buffer strategy]] | Full-screen 527 KB buffer in PSRAM |
 | [[D010 - Night dimming is a schedule, not a sensor]] | T4-S3 has no ambient light sensor |
+| [[D011 - Generate the digit font, do not scale Montserrat]] | Montserrat stops at 48 px; LVGL 8 can't scale labels |
+| [[D012 - Card geometry]] | Every constant derives from the 116.8 px digit advance |
 
 ## Reference
 

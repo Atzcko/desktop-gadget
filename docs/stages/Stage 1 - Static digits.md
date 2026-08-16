@@ -2,7 +2,8 @@
 title: Stage 1 - Static digits
 type: stage
 stage: 1
-status: planned
+status: awaiting-hardware-verification
+date_started: 2026-08-16
 tags:
   - stage
 ---
@@ -33,16 +34,53 @@ Derived from `amoled.width()` / `amoled.height()`, never hardcoded — see [[D00
 | Digits | white, the largest font in the build |
 | Colon | between the two cards, dimmer than the digits |
 
-> [!tip] Font size is the real constraint
-> LVGL 8 fonts are compiled in at fixed sizes via `LV_FONT_MONTSERRAT_*` in `lv_conf.h`, and the built-in Montserrat set tops out well below the ~200 px a 450 px-tall panel wants for Fliqlo digits. Options: enable the largest available and scale with `lv_img`/transform, or generate a custom font. This is the open question of Stage 1 and is settled on hardware, by eye.
+> [!success] Resolved — a generated font
+> Montserrat tops out at 48 px and LVGL 8 labels cannot be scaled. Settled by generating a real 210 px, digits-only LVGL font with `lv_font_conv`: ~90 KB, tabular advance of 116.8 px per digit. All card geometry derives from that number. See [[D011 - Generate the digit font, do not scale Montserrat]] and [[D012 - Card geometry]].
+
+## Outcome — 2026-08-16
+
+**Build: SUCCESS** first attempt, 18.9 s.
+
+```
+RAM:   [=         ]   6.8% (used 22140 bytes from 327680 bytes)
+Flash: [=         ]  12.7% (used 834041 bytes from 6553600 bytes)
+```
+
+Note the contrast with Stage 0's 2.5 MB — the Factory example links Wi-Fi, BLE, SD and the full sensor suite. Our Stage 1 image is a third of that. Wi-Fi lands in Stage 2 and will grow it substantially.
+
+**Flash: SUCCESS**, 834 400 B at 919 kbit/s, hash verified.
+
+**Serial:**
+
+```
+=== Desktop gadget — Stage 1 (static digits) ===
+Board      : 2.41 inch
+Panel      : 600 x 450
+Touch      : online
+PSRAM free : 8386051 bytes
+Heap free  : 358184 bytes
+PSRAM after LVGL : 7841411 bytes
+Ready in 1397 ms
+```
+
+### Three predictions confirmed on hardware
+
+| Claim | Evidence |
+|---|---|
+| [[D004 - Rotation 0 is already landscape]] — 600×450 with no `setRotation` | `Panel : 600 x 450`, and no rotation call exists in `main.cpp` |
+| [[D009 - LVGL buffer strategy]] — one ~527 KB PSRAM buffer | PSRAM dropped **544 640 B** across `beginLvglHelper()`; predicted 540 000 B + allocator overhead |
+| Touch controller present | `Touch : online`, i.e. `hasTouch()` true |
+
+**Boot time 1397 ms** against a 10 s budget. Wi-Fi association and the first NTP exchange will dominate Stage 2's number, but the headroom is large.
 
 ## Acceptance
 
-- [ ] Builds clean against our own `platformio.ini`
-- [ ] Boots to a static `12 : 34`
-- [ ] Background is true black — indistinguishable from the bezel in a dark room
-- [ ] Digits legible at desk distance
-- [ ] No PSRAM allocation failure
+- [x] Builds clean against our own `platformio.ini`
+- [x] Boots without PSRAM allocation failure
+- [x] Panel reports 600×450 landscape
+- [ ] Renders a static `12 : 34` — **needs your eyes**
+- [ ] Background is true black, indistinguishable from the bezel in a dark room
+- [ ] Digits legible at desk distance, card proportions look right
 
 ## Next
 
