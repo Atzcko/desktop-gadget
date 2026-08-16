@@ -483,3 +483,17 @@ tools/say building "ui.cpp" && pio run
 That cannot be forgotten independently of the work, because it is on the same line as the work. `say` is fire-and-forget — backgrounded, 2 s cap, output discarded, always exits 0 — so it can never delay or break the command it decorates, which removes any incentive to skip it.
 
 `CLAUDE.md` and the memory entry now lead with the helper rather than with raw curl.
+
+## [2026-08-16] fix | v1.7.5 — the temperature was zero pixels tall
+
+Owner: no temperature in line mode, and none on the home screen either.
+
+`card_sync()` sizes each card with `cards[i]->h`, and for the temperature card that value was **0**, so it was drawn zero pixels tall. Humidity survived purely because its branch reads `cards[i]->h ? cards[i]->h : h` — a fallback the temperature branch, written later, did not have.
+
+**Why `h` was zero:** `mini_card()` was supposed to record it. That assignment was written in v1.7.0 and **never landed** — the scripted edit matched on the function's closing lines, missed a blank line before the brace, and `str.replace` returns the string unchanged when the pattern is absent. Silent no-op. `c.h` kept its zero-initialised value.
+
+It then sat dormant for four releases, because nothing read `c.h` until v1.7.3 moved min/max into the temperature frame and gave that card its own sizing branch.
+
+Two fixes: the assignment is in, and the temperature branch now carries the same `?:` fallback so a zero can never blank a card again.
+
+**Process note.** Diagnosed by instrumenting rather than reasoning — a one-line `Serial.printf` of the computed geometry gave `h=0` immediately, after the code had *read* correct three times. Second time today that a printf beat inspection. The other lesson is sharper: **scripted edits must assert their patterns matched.** The fix patch above verifies each replacement and aborts if one is missing, which is how this should have been done all along.

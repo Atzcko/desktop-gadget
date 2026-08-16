@@ -11,6 +11,22 @@ Semantic versioning; the scheme and the release procedure live in [[CLAUDE]].
 The version is reported by the boot log, `GET /health` and Settings ▸ Info,
 each with a compiler build stamp so a stale flash is detectable.
 
+## v1.7.5 — 2026-08-16
+
+**Fix: the temperature disappeared from both screens.** `mini_card()` never
+recorded the card height it was given, so `card_sync()` sized the temperature
+card to **zero height**. Humidity survived only because its branch had a
+`?: fallback` that the temperature branch did not.
+
+The height assignment was written in v1.7.0 but **never applied** — the
+scripted edit's match string did not account for a blank line before the
+closing brace, and a failed string replace fails *silently*. The bug then sat
+dormant for four releases because nothing depended on `c.h` until min/max moved
+into the temperature frame.
+
+Two changes as a result: the assignment is in, and the temperature branch now
+carries the same `?:` fallback, so a zero can never make a card invisible again.
+
 ## v1.7.3 — 2026-08-16
 
 **min/max moves inside the temperature card.** One frame now carries the current

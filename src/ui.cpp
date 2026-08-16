@@ -489,6 +489,9 @@ static void mini_card(lv_obj_t *parent, MiniCard &c, const lv_font_t *font,
     lv_label_set_text(c.label, init);
     lv_obj_center(c.label);
 
+    c.icon = nullptr;
+    c.h    = h;          /* card_sync needs this; a zero here makes the card
+                          * zero-height and therefore invisible */
 }
 
 /*
@@ -512,7 +515,7 @@ static void card_sync(lv_obj_t *group, MiniCard **cards, int n,
             const lv_coord_t mw = range ? lv_obj_get_width(lbl_minmax_small) : 0;
 
             w = pad + WX_ICON + 8 + tw + (range ? 10 + mw : 0) + pad;
-            lv_obj_set_size(cards[i]->root, w, cards[i]->h);
+            lv_obj_set_size(cards[i]->root, w, cards[i]->h ? cards[i]->h : h);
             lv_obj_align(w_temp.icon,  LV_ALIGN_LEFT_MID, pad, 0);
             lv_obj_align(w_temp.label, LV_ALIGN_LEFT_MID, pad + WX_ICON + 8, 0);
             if (range) {
