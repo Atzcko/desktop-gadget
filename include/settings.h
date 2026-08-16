@@ -38,7 +38,10 @@ struct Settings {
 
     /* Bluetooth LE */
     bool    ble_enabled;
-    bool    ble_hid;        /* advertise as a HID keyboard -> pairable */
+    bool    ble_hid;        /* advertise a HID service at all -> pairable  */
+    bool    ble_as_keyboard;/* true: classic keyboard descriptor (max
+                             * compatibility). false: vendor-defined
+                             * "desktop gadget" descriptor.                 */
     char    ble_name[24];       /* advertised name; 24 keeps the adv packet
                                  * inside the 31-byte legacy limit alongside
                                  * the service UUID */

@@ -165,10 +165,15 @@ Nordic UART Service, so any generic BLE tool works:
 Device name is set in **Settings ▸ BLE** (default `FlipClock`).
 
 **Pairing from macOS Bluetooth settings.** With `Settings ▸ BLE ▸ Pairable` on
-(the default), the device also advertises a **HID keyboard** service, which is
-the only thing that puts it in System Settings ▸ Bluetooth — see
-[[D021 - BLE HID, for discoverability not typing]]. It never sends keystrokes.
-macOS may open Keyboard Setup Assistant on first pair; close it.
+(the default), the device advertises a HID service — the only thing that puts it
+in System Settings ▸ Bluetooth. Its identity is a **custom vendor-defined
+"desktop gadget"**, not a keyboard, so Keyboard Setup Assistant does not appear
+([[D022 - Custom HID identity, not a keyboard]]). If a host refuses to list it,
+`Settings ▸ BLE ▸ Identify as keyboard` is the compatible fallback.
+
+> [!warning] Hosts cache the HID descriptor per bond
+> After changing that switch you MUST forget the device on the host, Clear
+> pairings on the clock, and pair again — otherwise the old identity persists.
 
 If pairing wedges, clear it on **both** ends: *Settings ▸ BLE ▸ Clear pairings*
 on the device, and *Forget This Device* on the Mac.

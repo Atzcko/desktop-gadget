@@ -1,6 +1,7 @@
 #include "ble.h"
 #include "emotion.h"
 #include "settings.h"
+#include <string.h>
 
 #include <Arduino.h>
 #include <NimBLEDevice.h>
@@ -68,9 +69,50 @@ static const uint8_t HID_REPORT_MAP[] = {
     0xC0         /* End Collection                    */
 };
 
-#define APPEARANCE_KEYBOARD  0x03C1
-#define APPEARANCE_CLOCK     0x0100
-#define UUID_HID_SERVICE     ((uint16_t)0x1812)
+/*
+ * Vendor-defined HID descriptor — the "desktop gadget" identity.
+ *
+ * Using a vendor usage page (0xFF00) instead of Generic Desktop / Keyboard
+ * means macOS enumerates this as a generic HID device rather than an input
+ * keyboard. Two consequences, both wanted:
+ *
+ *   - Keyboard Setup Assistant never appears. It only fires because the OS
+ *     currently believes an unknown keyboard just arrived.
+ *   - The device cannot be mistaken for a text-input device by anything.
+ *
+ * Two 32-byte reports are declared. The OUTPUT report is host -> device and
+ * is wired to the emotion engine, so this is a real gadget protocol rather
+ * than a descriptor that exists only to satisfy the pairing UI.
+ */
+static const uint8_t GADGET_REPORT_MAP[] = {
+    0x06, 0x00, 0xFF,  /* Usage Page (Vendor Defined 0xFF00)   */
+    0x09, 0x01,        /* Usage (0x01) — desktop gadget        */
+    0xA1, 0x01,        /* Collection (Application)             */
+    0x85, 0x01,        /*   Report ID (1)                      */
+    0x09, 0x02,        /*   Usage (0x02) — status in           */
+    0x15, 0x00,        /*   Logical Minimum (0)                */
+    0x26, 0xFF, 0x00,  /*   Logical Maximum (255)              */
+    0x75, 0x08,        /*   Report Size (8)                    */
+    0x95, 0x20,        /*   Report Count (32)                  */
+    0x81, 0x02,        /*   Input (Data,Var,Abs)               */
+    0x09, 0x03,        /*   Usage (0x03) — command out         */
+    0x15, 0x00,
+    0x26, 0xFF, 0x00,
+    0x75, 0x08,
+    0x95, 0x20,        /*   Report Count (32)                  */
+    0x91, 0x02,        /*   Output (Data,Var,Abs)              */
+    0xC0               /* End Collection                       */
+};
+
+#define APPEARANCE_GENERIC_HID 0x03C0
+#define APPEARANCE_KEYBOARD    0x03C1
+#define APPEARANCE_CLOCK       0x0100
+#define UUID_HID_SERVICE       ((uint16_t)0x1812)
+#define UUID_MODEL_NUMBER      ((uint16_t)0x2A24)
+
+/* Compact binary emotion command over the HID output report:
+ *   [0] 0xE0 magic   [1] state 1..6   [2..3] duration_s LE   [4..] message */
+#define GADGET_CMD_MAGIC 0xE0
 
 static NimBLEServer         *server;
 static NimBLECharacteristic *tx_char;
@@ -102,6 +144,34 @@ class ServerCallbacks : public NimBLEServerCallbacks {
     }
 };
 
+/* Host -> device on the vendor HID output report. Same validation and the
+ * same queue as BLE NUS and HTTP — see D018. */
+class HidOutCallbacks : public NimBLECharacteristicCallbacks {
+    void onWrite(NimBLECharacteristic *c) override
+    {
+        std::string v = c->getValue();
+        if (v.size() < 4 || (uint8_t)v[0] != GADGET_CMD_MAGIC) return;
+
+        EmotionRequest req;
+        memset(&req, 0, sizeof(req));
+        req.state = (uint8_t)v[1];
+        if (req.state < 1 || req.state > 6) return;
+
+        uint16_t dur = (uint8_t)v[2] | ((uint16_t)(uint8_t)v[3] << 8);
+        if (dur < 1) dur = 5;
+        if (dur > EMOTION_MAX_SECONDS) dur = EMOTION_MAX_SECONDS;
+        req.duration_s = dur;
+
+        if (v.size() > 4) {
+            size_t n = v.size() - 4;
+            if (n > EMOTION_MSG_MAX) n = EMOTION_MSG_MAX;
+            memcpy(req.message, v.data() + 4, n);
+            req.message[n] = '\0';
+        }
+        emotion_post(req);
+    }
+};
+
 class RxCallbacks : public NimBLECharacteristicCallbacks {
     void onWrite(NimBLECharacteristic *c) override
     {
@@ -128,8 +198,9 @@ class RxCallbacks : public NimBLECharacteristicCallbacks {
     }
 };
 
-static ServerCallbacks server_cb;
-static RxCallbacks     rx_cb;
+static ServerCallbacks  server_cb;
+static RxCallbacks      rx_cb;
+static HidOutCallbacks  hid_out_cb;
 
 void ble_begin(void)
 {
@@ -160,10 +231,29 @@ void ble_begin(void)
     if (s.ble_hid) {
         hid = new NimBLEHIDDevice(server);
         hid->manufacturer()->setValue("LilyGO");
-        hid->pnp(0x02, 0xE502, 0xA111, 0x0210);
+
+        /* Vendor ID source 0x02 = USB-IF. 0x303A is Espressif's real VID and
+         * this genuinely is an Espressif part, so this is not VID squatting.
+         * The product ID is ours. */
+        hid->pnp(0x02, 0x303A, 0x4001, 0x0100);
         hid->hidInfo(0x00, 0x01);
-        hid->reportMap((uint8_t *)HID_REPORT_MAP, sizeof(HID_REPORT_MAP));
-        hid->inputReport(1);
+
+        /* A model string so the host has something better than a raw PID to
+         * show in device details. */
+        NimBLECharacteristic *model = hid->deviceInfo()->createCharacteristic(
+            UUID_MODEL_NUMBER, NIMBLE_PROPERTY::READ);
+        model->setValue(s.ble_as_keyboard ? "Flip Clock (HID keyboard)"
+                                          : "Flip Clock Desktop Gadget");
+
+        if (s.ble_as_keyboard) {
+            hid->reportMap((uint8_t *)HID_REPORT_MAP, sizeof(HID_REPORT_MAP));
+            hid->inputReport(1);
+        } else {
+            hid->reportMap((uint8_t *)GADGET_REPORT_MAP, sizeof(GADGET_REPORT_MAP));
+            hid->inputReport(1);
+            NimBLECharacteristic *out = hid->outputReport(1);
+            out->setCallbacks(&hid_out_cb);
+        }
         hid->startServices();
     }
 
@@ -201,7 +291,10 @@ void ble_begin(void)
      * list 4 + name (2 + len). "Flip Clock" -> 23 bytes. Fits.
      */
     if (s.ble_hid) {
-        advData.setAppearance(APPEARANCE_KEYBOARD);
+        /* Generic HID rather than Keyboard: same "pairable input device"
+         * classification, without claiming to be something that types. */
+        advData.setAppearance(s.ble_as_keyboard ? APPEARANCE_KEYBOARD
+                                                : APPEARANCE_GENERIC_HID);
         advData.setCompleteServices(NimBLEUUID(UUID_HID_SERVICE));
     } else {
         advData.setAppearance(APPEARANCE_CLOCK);
@@ -227,9 +320,10 @@ void ble_begin(void)
      * boot), it must start yielding the radio right now. */
     if (WiFi.getMode() != WIFI_MODE_NULL) WiFi.setSleep(true);
 
-    Serial.printf("[ble] advertising as \"%s\"%s\n", s.ble_name,
-                  s.ble_hid ? " (HID keyboard — pairable from Bluetooth settings)"
-                            : " (GATT only — not listed in macOS Bluetooth)");
+    Serial.printf("[ble] advertising as \"%s\" — %s\n", s.ble_name,
+                  !s.ble_hid       ? "GATT only, not listed in Bluetooth settings"
+                  : s.ble_as_keyboard ? "HID keyboard (compatibility mode)"
+                                      : "custom HID desktop gadget");
 }
 
 void ble_stop(void)

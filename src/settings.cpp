@@ -85,6 +85,7 @@ static void apply_defaults(void)
     s.burnin_guard     = true;
     s.ble_enabled      = true;
     s.ble_hid          = true;
+    s.ble_as_keyboard  = false;
     copy_str(s.ble_name, sizeof(s.ble_name), DEFAULT_BLE_NAME);
 }
 
@@ -132,6 +133,7 @@ void settings_load(void)
     if (have("burn"))   s.burnin_guard     = prefs.getBool("burn");
     if (have("ble"))    s.ble_enabled      = prefs.getBool("ble");
     if (have("bhid"))   s.ble_hid          = prefs.getBool("bhid");
+    if (have("bkbd"))   s.ble_as_keyboard  = prefs.getBool("bkbd");
 
     prefs.end();
 
@@ -166,6 +168,7 @@ void settings_save(void)
     prefs.putBool("burn",     s.burnin_guard);
     prefs.putBool("ble",      s.ble_enabled);
     prefs.putBool("bhid",     s.ble_hid);
+    prefs.putBool("bkbd",     s.ble_as_keyboard);
     prefs.putString("blen",   s.ble_name);
 
     prefs.end();
@@ -194,8 +197,8 @@ void settings_dump(const char *tag)
                   s.night_start_hour, s.night_end_hour);
     Serial.printf("           weather=%d humidity=%d burnin=%d\n",
                   s.show_weather, s.show_humidity, s.burnin_guard);
-    Serial.printf("           ble=%d hid=%d name=\"%s\"\n",
-                  s.ble_enabled, s.ble_hid, s.ble_name);
+    Serial.printf("           ble=%d hid=%d as_keyboard=%d name=\"%s\"\n",
+                  s.ble_enabled, s.ble_hid, s.ble_as_keyboard, s.ble_name);
 }
 
 int settings_timezone_index(void)

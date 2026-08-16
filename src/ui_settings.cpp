@@ -45,7 +45,7 @@ static lv_obj_t *sl_day, *sl_night, *lbl_day, *lbl_night;
 static lv_obj_t *roller_ns, *roller_ne, *sw_wx, *sw_hum, *sw_burn;
 
 /* BLE tab */
-static lv_obj_t *sw_ble, *sw_hid, *ta_ble_name, *lbl_ble_state;
+static lv_obj_t *sw_ble, *sw_hid, *sw_kbd, *ta_ble_name, *lbl_ble_state;
 
 /* Info tab */
 static lv_obj_t *lbl_info_body;
@@ -432,7 +432,9 @@ static void close_cb(lv_event_t *e)
     strncpy(old_name, s.ble_name, sizeof(old_name));
 
     bool hid_was = s.ble_hid;
-    s.ble_hid     = lv_obj_has_state(sw_hid, LV_STATE_CHECKED);
+    bool kbd_was = s.ble_as_keyboard;
+    s.ble_hid        = lv_obj_has_state(sw_hid, LV_STATE_CHECKED);
+    s.ble_as_keyboard = lv_obj_has_state(sw_kbd, LV_STATE_CHECKED);
     s.ble_enabled = lv_obj_has_state(sw_ble, LV_STATE_CHECKED);
     strncpy(s.ble_name, lv_textarea_get_text(ta_ble_name), sizeof(s.ble_name) - 1);
     s.ble_name[sizeof(s.ble_name) - 1] = '\0';
@@ -445,7 +447,8 @@ static void close_cb(lv_event_t *e)
 
     if (!s.ble_enabled && ble_was_on)                     ble_stop();
     else if (s.ble_enabled && !ble_was_on)                ble_begin();
-    else if (s.ble_enabled && (strcmp(old_name, s.ble_name) != 0 || hid_was != s.ble_hid))
+    else if (s.ble_enabled && (strcmp(old_name, s.ble_name) != 0 ||
+                               hid_was != s.ble_hid || kbd_was != s.ble_as_keyboard))
         ble_apply_name(s.ble_name);   /* bounces the stack; picks up both */
 
     ui_show_weather_block(s.show_weather);
@@ -700,13 +703,29 @@ void ui_settings_open(void)
         if (s.ble_hid) lv_obj_add_state(sw_hid, LV_STATE_CHECKED);
     }
 
+    {
+        lv_obj_t *row = lv_obj_create(t_ble);
+        lv_obj_remove_style_all(row);
+        lv_obj_set_size(row, 560, 40);
+        lv_obj_set_flex_flow(row, LV_FLEX_FLOW_ROW);
+        lv_obj_set_flex_align(row, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER,
+                              LV_FLEX_ALIGN_CENTER);
+        lv_obj_set_style_pad_column(row, 16, LV_PART_MAIN);
+        body_label(row, "Identify as keyboard (fallback)");
+        sw_kbd = lv_switch_create(row);
+        if (s.ble_as_keyboard) lv_obj_add_state(sw_kbd, LV_STATE_CHECKED);
+    }
+
     section(t_ble,
-            "Pairable ON: advertises as a HID keyboard, so it shows up in\n"
-            "macOS System Settings > Bluetooth and can be connected. It\n"
-            "never sends keystrokes. macOS may open Keyboard Setup\n"
-            "Assistant on first pair -- just close it.\n"
-            "OFF: GATT only. Invisible to Bluetooth settings; still\n"
-            "reachable from tools/flipclock.py and any BLE scanner.");
+            "Pairable ON: shows up in macOS System Settings > Bluetooth.\n"
+            "Default identity is a CUSTOM desktop gadget (vendor HID), so\n"
+            "the Mac does not think it is a keyboard and Keyboard Setup\n"
+            "Assistant never appears.\n"
+            "Turn 'Identify as keyboard' ON only if your Mac refuses to\n"
+            "list the custom device -- that is the compatible fallback.\n"
+            "After changing either switch: Forget the device on the Mac,\n"
+            "Clear pairings here, then pair again. Hosts cache the HID\n"
+            "descriptor per bond and will not re-read it.");
 
     make_button(t_ble, LV_SYMBOL_TRASH "  Clear pairings", clear_bonds_cb, nullptr);
 
