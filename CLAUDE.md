@@ -163,6 +163,12 @@ The clock can express what we are doing. Two transports, **identical JSON**.
 > `say` is fire-and-forget: backgrounded, 2 s cap, output discarded, always
 > exits 0. It cannot delay or break the command it prefixes. Default duration
 > 60 s, which covers a build; pass a third argument for longer work.
+>
+> **Conversational turns count too.** A question answered in prose runs no
+> commands, so there is nothing to prefix — which makes it the likeliest moment
+> to leave the panel dark. Run `tools/say thinking "<topic>"` on its own before
+> answering anything substantive. One extra call, and it is the whole point of
+> the device.
 
 > [!important] Keep it lit while you work
 > The owner built this device to see what you are doing **from across the desk**.
