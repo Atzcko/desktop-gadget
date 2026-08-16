@@ -122,7 +122,10 @@ struct MiniCard {
     lv_coord_t h;            /* cards in one row are no longer all the same */
 };
 static MiniCard m_hh, m_mm;                            /* corner clock     */
-static MiniCard w_temp, w_minmax, w_hum;               /* resting weather  */
+static MiniCard w_temp, w_hum;                         /* resting weather  */
+/* min/max lives INSIDE the temperature card — one frame, current reading and
+ * today's range together, so you read them as one fact rather than two. */
+static lv_obj_t *lbl_minmax_small;
 static bool     hum_enabled = true;                    /* the Settings toggle */
 static Card      card_h, card_m;
 static lv_obj_t *lbl_ampm;
@@ -500,19 +503,34 @@ static void card_sync(lv_obj_t *group, MiniCard **cards, int n,
     lv_obj_update_layout(group);
     for (int i = 0; i < n; i++) {
         lv_coord_t w = lv_obj_get_width(cards[i]->label) + 2 * pad;
-        if (cards[i]->icon) w += WX_ICON + 8;
-        lv_obj_set_size(cards[i]->root, w, cards[i]->h ? cards[i]->h : h);
-        if (cards[i]->icon) {
-            lv_obj_align(cards[i]->icon, LV_ALIGN_LEFT_MID, pad, 0);
-            lv_obj_align(cards[i]->label, LV_ALIGN_RIGHT_MID, -pad, 0);
+
+        if (cards[i] == &w_temp) {
+            /*  [pad][icon][8][ 34° ][10][31/41][pad]  — one frame  */
+            const lv_coord_t tw = lv_obj_get_width(w_temp.label);
+            const bool range = lbl_minmax_small &&
+                               !lv_obj_has_flag(lbl_minmax_small, LV_OBJ_FLAG_HIDDEN);
+            const lv_coord_t mw = range ? lv_obj_get_width(lbl_minmax_small) : 0;
+
+            w = pad + WX_ICON + 8 + tw + (range ? 10 + mw : 0) + pad;
+            lv_obj_set_size(cards[i]->root, w, cards[i]->h);
+            lv_obj_align(w_temp.icon,  LV_ALIGN_LEFT_MID, pad, 0);
+            lv_obj_align(w_temp.label, LV_ALIGN_LEFT_MID, pad + WX_ICON + 8, 0);
+            if (range) {
+                /* Dropped 8 px so it sits low against the big number, the way a
+                 * range reads next to a headline figure. */
+                lv_obj_align(lbl_minmax_small, LV_ALIGN_LEFT_MID,
+                             pad + WX_ICON + 8 + tw + 10, 8);
+            }
+            continue;
         }
+        lv_obj_set_size(cards[i]->root, w, cards[i]->h ? cards[i]->h : h);
     }
 }
 
 static void weather_sync(void)
 {
-    MiniCard *c[3] = { &w_temp, &w_minmax, &w_hum };
-    card_sync(weather_grp, c, 3, WX_H, WX_PAD_X);
+    MiniCard *c[2] = { &w_temp, &w_hum };
+    card_sync(weather_grp, c, 2, WX_H, WX_PAD_X);
 }
 
 void ui_init(uint16_t screen_w, uint16_t screen_h)
@@ -605,8 +623,6 @@ void ui_init(uint16_t screen_w, uint16_t screen_h)
     /* Same white as the current temperature. Hierarchy is carried entirely by
      * SIZE now — 22 px against 44 — so colour no longer has to do the ranking
      * as well, and the row reads as one palette instead of three greys. */
-    mini_card(weather_grp, w_minmax, &fliqlo_wx_small, WX_SMALL_H, 6,
-              COL_TEMP, "--/--");
     mini_card(weather_grp, w_hum,    &fliqlo_mid, WX_H, WX_RADIUS,
               lv_color_hex(0x8E8E8E), "--%");
 
@@ -614,6 +630,13 @@ void ui_init(uint16_t screen_w, uint16_t screen_h)
     decor(w_temp.icon);
     lv_obj_set_size(w_temp.icon, WX_ICON, WX_ICON);
     lv_obj_add_event_cb(w_temp.icon, wx_icon_draw_cb, LV_EVENT_DRAW_MAIN, nullptr);
+
+    /* Today's range, in the same frame as the current reading. Half the size
+     * and back to grey: it is context for the big number, not a peer of it. */
+    lbl_minmax_small = lv_label_create(w_temp.root);
+    lv_obj_set_style_text_font(lbl_minmax_small, &fliqlo_wx_small, LV_PART_MAIN);
+    lv_obj_set_style_text_color(lbl_minmax_small, lv_color_hex(0x8A8A8A), LV_PART_MAIN);
+    lv_label_set_text(lbl_minmax_small, "--/--");
 
     /* Stale marker rides beside the cards — still a shape, not a type size. */
     dot_stale = lv_obj_create(weather_grp);
@@ -742,7 +765,7 @@ void ui_set_weather(float current, float lo, float hi, float humidity,
         else                  snprintf(t3, sizeof(t3), "--%%");
 
         lv_label_set_text(w_temp.label,   t1);
-        lv_label_set_text(w_minmax.label, t2);
+        lv_label_set_text(lbl_minmax_small, t2);
         lv_label_set_text(w_hum.label,    t3);
         weather_sync();
 
@@ -1093,10 +1116,12 @@ static void zoom_render(void)
 static void weather_detail(bool show)
 {
     if (show) {
-        lv_obj_clear_flag(w_minmax.root, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_clear_flag(lbl_minmax_small, LV_OBJ_FLAG_HIDDEN);
         if (hum_enabled) lv_obj_clear_flag(w_hum.root, LV_OBJ_FLAG_HIDDEN);
     } else {
-        lv_obj_add_flag(w_minmax.root, LV_OBJ_FLAG_HIDDEN);
+        /* Line mode keeps the current reading only — the range collapses out
+         * of the frame and the card shrinks with it. */
+        lv_obj_add_flag(lbl_minmax_small, LV_OBJ_FLAG_HIDDEN);
         lv_obj_add_flag(w_hum.root, LV_OBJ_FLAG_HIDDEN);
     }
     weather_sync();
@@ -1107,9 +1132,9 @@ static void weather_detail(bool show)
 static int weather_shift(void)
 {
     lv_obj_update_layout(weather_grp);
-    MiniCard *c[3] = { &w_temp, &w_minmax, &w_hum };
+    MiniCard *c[2] = { &w_temp, &w_hum };
     lv_coord_t right = 0;
-    for (int i = 0; i < 3; i++) {
+    for (int i = 0; i < 2; i++) {
         if (lv_obj_has_flag(c[i]->root, LV_OBJ_FLAG_HIDDEN)) continue;
         lv_coord_t r = lv_obj_get_x(c[i]->root) + lv_obj_get_width(c[i]->root);
         if (r > right) right = r;

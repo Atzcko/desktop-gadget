@@ -457,3 +457,13 @@ Owner: min/max should be on the same palette as the current temperature. Changed
 It is the right call now that size carries the hierarchy. When everything was 44 px, colour was doing the ranking; at 22 px against 44 px the size difference is unambiguous on its own, so a second signal is redundant and the row reads as one palette rather than three greys.
 
 Left open: humidity is still `#8E8E8E` and is now the only grey in the row.
+
+## [2026-08-16] release | v1.7.3 — min/max inside the temperature frame
+
+Misread the previous instruction. "min/max need to be on the same pallet as the current temperature" meant the same **frame** — the same card — not the same palette. v1.7.2 recoloured it white; the actual ask was structural.
+
+min/max now lives inside the temperature card, to the right of the big number: `☁ 40° 31/41`. Back to grey `#8A8A8A` at 22 px, and dropped 8 px so it sits low against the headline figure the way a range does. Putting it in the same frame says "this is context for that number" structurally, rather than leaving size to imply it.
+
+The card measures itself from both labels, so it shrinks when line mode drops the range and grows back when the clock returns — the same measured-not-assumed approach the right-align shift uses.
+
+Lesson for the log: the owner's phonetic spellings have been reliable signal so far ("desecrate" → discrete, "steel" → steal), so I read "pallet" → "palette" and picked the wrong homophone. "on the same X as" was the tell — you are on a frame, not on a palette.

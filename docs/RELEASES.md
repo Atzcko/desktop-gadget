@@ -11,13 +11,29 @@ Semantic versioning; the scheme and the release procedure live in [[CLAUDE]].
 The version is reported by the boot log, `GET /health` and Settings ▸ Info,
 each with a compiler build stamp so a stale flash is detectable.
 
-## v1.7.2 — 2026-08-16
+## v1.7.3 — 2026-08-16
 
-**min/max shares the temperature's white.** With the size ratio now carrying the
-hierarchy — 22 px against 44 — colour no longer has to rank things as well, so
-the row reads as one palette instead of three separate greys.
+**min/max moves inside the temperature card.** One frame now carries the current
+reading and today's range together:
 
-Humidity is still `#8E8E8E`, i.e. the only remaining grey in the row.
+```
+┌──────────────────────────┐  ┌─────────┐
+│  ☁   40°   31/41         │  │   37%   │
+└──────────────────────────┘  └─────────┘
+```
+
+At 22 px and back to grey `#8A8A8A`, dropped 8 px so it sits low against the big
+number — the way a range reads beside a headline figure. It is context *for* the
+temperature, not a peer of it, and putting it in the same frame says so
+structurally rather than relying on size alone.
+
+The card measures itself from both labels, so it shrinks when line mode drops
+the range and grows back when the clock returns.
+
+## v1.7.2 — 2026-08-16 *(superseded)*
+
+Read "pallet" as *palette* and made min/max white. It meant **frame** — see
+v1.7.3.
 
 ## v1.7.1 — 2026-08-16
 
