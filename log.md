@@ -314,3 +314,15 @@ The version is reported in **three** places — boot log, `GET /health`, and Set
 Release procedure, four steps in order: bump `version.h`, append to `docs/RELEASES.md`, commit and tag `vX.Y.Z`, flash and confirm via `/health`.
 
 Tagged **v1.0.0** and verified on hardware: `version: 1.0.0 | build: Aug 16 2026 12:10:35`.
+
+## [2026-08-16] release | v1.1.0 — weather as cards
+
+Owner reviewed the two proposals on hardware and picked **B**: the resting weather becomes cards rather than plain text.
+
+That is the stronger reading of "everything retains its design language" — with it, every value on the screen wears the same charcoal card with a centre seam, and hierarchy is carried by **scale and colour** rather than by two different treatments sharing one screen.
+
+Needed a third face. `fliqlo_mid` at 44 px joins `fliqlo_small` at 38 px, because the mockup draws the resting weather larger than the line-mode strip — and it should be, so the strip stays visibly subordinate when the line takes over. `mini_card()` is now scale-parameterised and shared by both rows, as is the width-measuring sync.
+
+Pleasing side effect: **flash usage fell 92 KB** even after adding two faces. Removing the last reference to `lv_font_montserrat_48` let the linker discard it, and a 48 px full-Latin face costs far more than two 13-glyph numeric subsets.
+
+Followed the release procedure recorded yesterday: bumped `version.h` to 1.1.0, logged it in `docs/RELEASES.md`, committed, tagged, flashed, confirmed on the device via `/health`.

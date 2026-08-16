@@ -11,6 +11,27 @@ Semantic versioning; the scheme and the release procedure live in [[CLAUDE]].
 The version is reported by the boot log, `GET /health` and Settings ▸ Info,
 each with a compiler build stamp so a stale flash is detectable.
 
+## v1.1.0 — 2026-08-16
+
+**Every value now wears the same card.** The resting weather block changed from
+plain text labels to three charcoal cards with centre seams at 44 px, matching
+the clock's design language. Hierarchy is carried by scale — the clock is 4.8×
+the type size — and by colour, rather than by two different treatments on one
+screen.
+
+- New face `fliqlo_mid` (44 px, `0-9 ° / %`) for the weather cards, alongside
+  `fliqlo_small` (38 px) for the line-mode strip. Two scales so the strip stays
+  visibly subordinate.
+- `mini_card()` is now scale-parameterised and shared by both rows.
+- Weather sits at y 330, centred in the space the clock cards leave.
+- Stale marker is a 10 px dot beside the cards — still a shape, never a type
+  size.
+
+Flash usage **fell** 92 KB despite two new faces: dropping the last reference to
+`lv_font_montserrat_48` let the linker discard it.
+
+RAM 18.1 % (59 468 B) · Flash 26.3 % (1 723 357 B).
+
 ## v1.0.0 — 2026-08-16
 
 First tagged release. Feature-complete against the original brief, plus

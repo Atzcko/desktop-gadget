@@ -19,6 +19,7 @@
 extern "C" {
 LV_FONT_DECLARE(fliqlo_digits);
 LV_FONT_DECLARE(fliqlo_small);
+LV_FONT_DECLARE(fliqlo_mid);
 }
 
 #define COL_BG          lv_color_hex(0x000000)
@@ -70,17 +71,23 @@ static lv_obj_t *clock_grp, *weather_grp, *strip_grp;
 /* The strip shown in line mode: the same charcoal cards, the same seam, the
  * same colon — scaled down. LVGL 8 cannot transform text, so "smaller" means
  * a second compiled face (fliqlo_small, 38 px) rather than a zoom. */
-#define MINI_H       46
+#define MINI_H       46      /* line-mode strip, 38 px face  */
 #define MINI_RADIUS   8
 #define MINI_SEAM     2
 #define MINI_PAD_X   10
 #define MINI_Y       14      /* strip resting y in line mode */
 
+#define WX_H         58      /* resting weather cards, 44 px face */
+#define WX_RADIUS    10
+#define WX_PAD_X     11
+#define WX_Y        330
+
 struct MiniCard { lv_obj_t *root, *label, *seam; };
-static MiniCard m_hh, m_mm, m_temp, m_minmax, m_hum;
+static MiniCard m_hh, m_mm, m_temp, m_minmax, m_hum;   /* line-mode strip  */
+static MiniCard w_temp, w_minmax, w_hum;               /* resting weather  */
 static Card      card_h, card_m;
 static lv_obj_t *lbl_ampm;
-static lv_obj_t *wrow, *lbl_temp, *lbl_minmax, *lbl_humid, *dot_stale;
+static lv_obj_t *dot_stale;
 static lv_obj_t *lbl_info;
 static lv_obj_t *hold_bar;
 static lv_timer_t *info_timer;
@@ -319,18 +326,23 @@ static void make_card(Card &c, int x, int y)
     lv_obj_align(c.accent, LV_ALIGN_CENTER, 0, 0);
 }
 
-static void mini_card(lv_obj_t *parent, MiniCard &c, lv_color_t colour, const char *init)
+/* One card, at whatever scale is asked for. Every value on this device now
+ * wears the same charcoal rounded card with a centre seam — only the size
+ * changes between the clock, the weather row and the line-mode strip. */
+static void mini_card(lv_obj_t *parent, MiniCard &c, const lv_font_t *font,
+                      lv_coord_t h, lv_coord_t radius, lv_color_t colour,
+                      const char *init)
 {
     c.root = lv_obj_create(parent);
     decor(c.root);
-    lv_obj_set_size(c.root, 60, MINI_H);          /* real width set by strip_sync */
+    lv_obj_set_size(c.root, 60, h);               /* real width set by card_sync */
     lv_obj_set_style_bg_color(c.root, COL_CARD, LV_PART_MAIN);
     lv_obj_set_style_bg_opa(c.root, LV_OPA_COVER, LV_PART_MAIN);
-    lv_obj_set_style_radius(c.root, MINI_RADIUS, LV_PART_MAIN);
+    lv_obj_set_style_radius(c.root, radius, LV_PART_MAIN);
     lv_obj_set_style_clip_corner(c.root, true, LV_PART_MAIN);
 
     c.label = lv_label_create(c.root);
-    lv_obj_set_style_text_font(c.label, &fliqlo_small, LV_PART_MAIN);
+    lv_obj_set_style_text_font(c.label, font, LV_PART_MAIN);
     lv_obj_set_style_text_color(c.label, colour, LV_PART_MAIN);
     lv_label_set_text(c.label, init);
     lv_obj_center(c.label);
@@ -350,17 +362,29 @@ static void mini_card(lv_obj_t *parent, MiniCard &c, lv_color_t colour, const ch
  * full-width seam child and fight itself — measure the label after layout and
  * set card and seam explicitly. Deterministic, and flex re-centres the strip.
  */
-static void strip_sync(void)
+static void card_sync(lv_obj_t *group, MiniCard **cards, int n,
+                      lv_coord_t h, lv_coord_t pad)
 {
-    if (!strip_grp) return;
-    lv_obj_update_layout(strip_grp);
-    MiniCard *cards[5] = { &m_hh, &m_mm, &m_temp, &m_minmax, &m_hum };
-    for (int i = 0; i < 5; i++) {
-        lv_coord_t w = lv_obj_get_width(cards[i]->label) + 2 * MINI_PAD_X;
-        lv_obj_set_size(cards[i]->root, w, MINI_H);
+    if (!group) return;
+    lv_obj_update_layout(group);
+    for (int i = 0; i < n; i++) {
+        lv_coord_t w = lv_obj_get_width(cards[i]->label) + 2 * pad;
+        lv_obj_set_size(cards[i]->root, w, h);
         lv_obj_set_size(cards[i]->seam, w, MINI_SEAM);
         lv_obj_align(cards[i]->seam, LV_ALIGN_CENTER, 0, 0);
     }
+}
+
+static void strip_sync(void)
+{
+    MiniCard *c[5] = { &m_hh, &m_mm, &m_temp, &m_minmax, &m_hum };
+    card_sync(strip_grp, c, 5, MINI_H, MINI_PAD_X);
+}
+
+static void weather_sync(void)
+{
+    MiniCard *c[3] = { &w_temp, &w_minmax, &w_hum };
+    card_sync(weather_grp, c, 3, WX_H, WX_PAD_X);
 }
 
 void ui_init(uint16_t screen_w, uint16_t screen_h)
@@ -430,51 +454,38 @@ void ui_init(uint16_t screen_w, uint16_t screen_h)
 
     /* Weather: largest element is the current temperature, min/max beside
      * it in the one smaller size. Two sizes total, per the brief. */
+    /*
+     * Resting weather: the same charcoal cards as the clock, at 44 px.
+     * Every value on this screen now wears the same card with a centre seam —
+     * nothing is a stray text label. Hierarchy is carried by scale (the clock
+     * is 4.8x the type size) and by colour, not by two different treatments.
+     */
     weather_grp = lv_obj_create(root);
     decor(weather_grp);
-    lv_obj_set_size(weather_grp, screen_w, 70);
-    /* 58 px below the cards, not 26. The old value left 26 px under the cards
-     * and 148 px of empty black above the bezel — visibly top-heavy. This
-     * centres the block in the space the cards leave. */
-    lv_obj_set_pos(weather_grp, 0, clock_y + CARD_H + 58);
-
-    wrow = lv_obj_create(weather_grp);
-    decor(wrow);
-    lv_obj_set_size(wrow, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
-    lv_obj_set_flex_flow(wrow, LV_FLEX_FLOW_ROW);
-    lv_obj_set_flex_align(wrow, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_END,
+    lv_obj_set_size(weather_grp, screen_w, WX_H);
+    lv_obj_set_pos(weather_grp, 0, WX_Y);
+    lv_obj_set_flex_flow(weather_grp, LV_FLEX_FLOW_ROW);
+    lv_obj_set_flex_align(weather_grp, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER,
                           LV_FLEX_ALIGN_CENTER);
-    lv_obj_set_style_pad_column(wrow, 20, LV_PART_MAIN);
-    lv_obj_clear_flag(wrow, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_style_pad_column(weather_grp, 10, LV_PART_MAIN);
 
-    lbl_temp = lv_label_create(wrow);
-    lv_obj_set_style_text_font(lbl_temp, &lv_font_montserrat_48, LV_PART_MAIN);
-    lv_obj_set_style_text_color(lbl_temp, COL_TEMP, LV_PART_MAIN);
-    lv_label_set_text(lbl_temp, "--" WEATHER_UNIT_SUFFIX);
+    mini_card(weather_grp, w_temp,   &fliqlo_mid, WX_H, WX_RADIUS,
+              COL_TEMP,      "--" WEATHER_UNIT_SUFFIX);
+    mini_card(weather_grp, w_minmax, &fliqlo_mid, WX_H, WX_RADIUS,
+              lv_color_hex(0x9A9A9A), "--/--");
+    mini_card(weather_grp, w_hum,    &fliqlo_mid, WX_H, WX_RADIUS,
+              lv_color_hex(0x6E6E6E), "--%");
 
-    lbl_minmax = lv_label_create(wrow);
-    lv_obj_set_style_text_font(lbl_minmax, &lv_font_montserrat_28, LV_PART_MAIN);
-    lv_obj_set_style_text_color(lbl_minmax, COL_SECONDARY, LV_PART_MAIN);
-    lv_label_set_text(lbl_minmax, "-- / --");
-
-    lbl_humid = lv_label_create(wrow);
-    lv_obj_set_style_text_font(lbl_humid, &lv_font_montserrat_28, LV_PART_MAIN);
-    lv_obj_set_style_text_color(lbl_humid, COL_TERTIARY, LV_PART_MAIN);
-    /* A little extra breathing room so it reads as a separate, quieter fact
-     * rather than as part of the min/max pair. */
-    lv_obj_set_style_pad_left(lbl_humid, 14, LV_PART_MAIN);
-    lv_label_set_text(lbl_humid, "");
-
-    /* Stale marker is a shape, not a third type size. */
-    dot_stale = lv_obj_create(wrow);
+    /* Stale marker rides beside the cards — still a shape, not a type size. */
+    dot_stale = lv_obj_create(weather_grp);
     decor(dot_stale);
-    lv_obj_set_size(dot_stale, 8, 8);
+    lv_obj_set_size(dot_stale, 10, 10);
     lv_obj_set_style_bg_color(dot_stale, COL_STALE, LV_PART_MAIN);
     lv_obj_set_style_bg_opa(dot_stale, LV_OPA_COVER, LV_PART_MAIN);
-    lv_obj_set_style_radius(dot_stale, 4, LV_PART_MAIN);
+    lv_obj_set_style_radius(dot_stale, 5, LV_PART_MAIN);
     lv_obj_add_flag(dot_stale, LV_OBJ_FLAG_HIDDEN);
 
-    lv_obj_align(wrow, LV_ALIGN_TOP_MID, 0, 0);
+    weather_sync();
 
     /* Line-mode strip: clock and weather as one row of five small cards. */
     strip_grp = lv_obj_create(root);
@@ -487,7 +498,7 @@ void ui_init(uint16_t screen_w, uint16_t screen_h)
     lv_obj_set_style_pad_column(strip_grp, 8, LV_PART_MAIN);
     lv_obj_set_style_opa(strip_grp, LV_OPA_TRANSP, LV_PART_MAIN);
 
-    mini_card(strip_grp, m_hh, COL_DIGIT, "00");
+    mini_card(strip_grp, m_hh, &fliqlo_small, MINI_H, MINI_RADIUS, COL_DIGIT, "00");
 
     {   /* the colon, scaled with everything else */
         lv_obj_t *col = lv_obj_create(strip_grp);
@@ -504,7 +515,7 @@ void ui_init(uint16_t screen_w, uint16_t screen_h)
         }
     }
 
-    mini_card(strip_grp, m_mm, COL_DIGIT, "00");
+    mini_card(strip_grp, m_mm, &fliqlo_small, MINI_H, MINI_RADIUS, COL_DIGIT, "00");
 
     {   /* breathing room between the clock and the weather group */
         lv_obj_t *sp = lv_obj_create(strip_grp);
@@ -512,9 +523,12 @@ void ui_init(uint16_t screen_w, uint16_t screen_h)
         lv_obj_set_size(sp, 18, MINI_H);
     }
 
-    mini_card(strip_grp, m_temp,   lv_color_hex(0xDADADA), "--" WEATHER_UNIT_SUFFIX);
-    mini_card(strip_grp, m_minmax, COL_SECONDARY,          "--/--");
-    mini_card(strip_grp, m_hum,    lv_color_hex(0x6E6E6E), "--%");
+    mini_card(strip_grp, m_temp,   &fliqlo_small, MINI_H, MINI_RADIUS,
+              lv_color_hex(0xDADADA), "--" WEATHER_UNIT_SUFFIX);
+    mini_card(strip_grp, m_minmax, &fliqlo_small, MINI_H, MINI_RADIUS,
+              COL_SECONDARY, "--/--");
+    mini_card(strip_grp, m_hum,    &fliqlo_small, MINI_H, MINI_RADIUS,
+              lv_color_hex(0x6E6E6E), "--%");
     strip_sync();
 
     /* Tap overlay — reuses the smaller weather size, no new type size. */
@@ -579,29 +593,23 @@ void ui_set_weather(float current, float lo, float hi, float humidity,
                     bool valid, bool stale)
 {
     if (valid) {
-        char buf[28];
-        snprintf(buf, sizeof(buf), "%d" WEATHER_UNIT_SUFFIX, (int)lroundf(current));
-        lv_label_set_text(lbl_temp, buf);
-        snprintf(buf, sizeof(buf), "%d" WEATHER_UNIT_SUFFIX " / %d" WEATHER_UNIT_SUFFIX,
+        char t1[16], t2[24], t3[12];
+        snprintf(t1, sizeof(t1), "%d" WEATHER_UNIT_SUFFIX, (int)lroundf(current));
+        snprintf(t2, sizeof(t2), "%d" WEATHER_UNIT_SUFFIX "/%d" WEATHER_UNIT_SUFFIX,
                  (int)lroundf(lo), (int)lroundf(hi));
-        lv_label_set_text(lbl_minmax, buf);
+        /* Negative means the endpoint did not report it — show nothing rather
+         * than a confident 0%. */
+        if (humidity >= 0.0f) snprintf(t3, sizeof(t3), "%d%%", (int)lroundf(humidity));
+        else                  snprintf(t3, sizeof(t3), "--%%");
 
-        snprintf(buf, sizeof(buf), "%d" WEATHER_UNIT_SUFFIX, (int)lroundf(current));
-        lv_label_set_text(m_temp.label, buf);
-        snprintf(buf, sizeof(buf), "%d" WEATHER_UNIT_SUFFIX "/%d" WEATHER_UNIT_SUFFIX,
-                 (int)lroundf(lo), (int)lroundf(hi));
-        lv_label_set_text(m_minmax.label, buf);
+        lv_label_set_text(w_temp.label,   t1);
+        lv_label_set_text(w_minmax.label, t2);
+        lv_label_set_text(w_hum.label,    t3);
+        weather_sync();
 
-        /* Negative means the endpoint did not report it — show nothing
-         * rather than a confident 0%. */
-        if (humidity >= 0.0f) {
-            snprintf(buf, sizeof(buf), "%d%%", (int)lroundf(humidity));
-            lv_label_set_text(lbl_humid, buf);
-            lv_label_set_text(m_hum.label, buf);
-        } else {
-            lv_label_set_text(lbl_humid, "");
-            lv_label_set_text(m_hum.label, "--%");
-        }
+        lv_label_set_text(m_temp.label,   t1);
+        lv_label_set_text(m_minmax.label, t2);
+        lv_label_set_text(m_hum.label,    t3);
         strip_sync();
     }
     if (stale) lv_obj_clear_flag(dot_stale, LV_OBJ_FLAG_HIDDEN);
@@ -610,14 +618,19 @@ void ui_set_weather(float current, float lo, float hi, float humidity,
 
 void ui_show_humidity(bool visible)
 {
-    if (visible) lv_obj_clear_flag(lbl_humid, LV_OBJ_FLAG_HIDDEN);
-    else         lv_obj_add_flag(lbl_humid, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_t *o[2] = { w_hum.root, m_hum.root };
+    for (int i = 0; i < 2; i++) {
+        if (visible) lv_obj_clear_flag(o[i], LV_OBJ_FLAG_HIDDEN);
+        else         lv_obj_add_flag(o[i], LV_OBJ_FLAG_HIDDEN);
+    }
+    weather_sync();
+    strip_sync();
 }
 
 void ui_show_weather_block(bool visible)
 {
-    if (visible) lv_obj_clear_flag(wrow, LV_OBJ_FLAG_HIDDEN);
-    else         lv_obj_add_flag(wrow, LV_OBJ_FLAG_HIDDEN);
+    if (visible) lv_obj_clear_flag(weather_grp, LV_OBJ_FLAG_HIDDEN);
+    else         lv_obj_add_flag(weather_grp, LV_OBJ_FLAG_HIDDEN);
 }
 
 void ui_set_offset(int dx, int dy)
@@ -655,7 +668,7 @@ void ui_show_info(const char *date_line, const char *sync_line)
 #define WAVE_BAND_H  160
 #define COL_CAPTION  lv_color_hex(0xC8C8C8)
 
-#define WEATHER_REST_Y (44 + CARD_H + 58)
+#define WEATHER_REST_Y WX_Y
 
 static lv_obj_t   *wave, *lbl_emotion;
 static lv_timer_t *wave_timer;
