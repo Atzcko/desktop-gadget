@@ -36,6 +36,14 @@ const EmotionDef EMOTIONS[] = {
     {  "focused",         0.30f,   0.45f, CH_SMOOTH,  false },
     {  "waiting",         0.00f,   0.15f, CH_SCAN,    false },
 
+    /* --- what I am actually doing: the primary use of this device --- */
+    {  "reading",         0.10f,   0.30f, CH_SCAN,    false },
+    {  "editing",         0.25f,   0.50f, CH_SMOOTH,  false },
+    {  "building",        0.20f,   0.65f, CH_SMOOTH,  false },
+    {  "testing",         0.15f,   0.60f, CH_SCAN,    false },
+    {  "flashing",        0.30f,   0.75f, CH_SMOOTH,  false },
+    {  "debugging",      -0.15f,   0.65f, CH_TREMOR,  false },
+
     /* --- positive --- */
     {  "success",         0.80f,   0.60f, CH_SMOOTH,  false },
     {  "celebrate",       1.00f,   0.95f, CH_SMOOTH,  true  },
@@ -80,6 +88,10 @@ const char *emotion_name(uint8_t state)
 int emotion_from_name(const char *name)
 {
     if (!name) return -1;
+    /* Explicit stop. State 0 is "none", which the search loop below skips on
+     * purpose — you should not be able to reach it by accident. */
+    if (strcasecmp(name, "none")  == 0 || strcasecmp(name, "clear") == 0 ||
+        strcasecmp(name, "idle")  == 0 || strcasecmp(name, "stop")  == 0) return 0;
     for (int i = 1; i < EMOTION_COUNT; i++) {
         if (strcasecmp(name, EMOTIONS[i].name) == 0) return i;
     }
@@ -104,6 +116,11 @@ bool emotion_parse(const char *json, EmotionRequest *out, char *err, size_t errc
     }
 
     int st = emotion_from_name(state);
+    if (st == 0) {                       /* stop now, back to the clock */
+        out->state      = 0;
+        out->duration_s = 0;
+        return true;
+    }
     if (st < 0) {
         /* Single quotes, not double: this string is interpolated straight
          * into a JSON error body, and a raw " would make the response
@@ -160,13 +177,20 @@ void emotion_tick(void)
 {
     EmotionRequest req;
     if (q && xQueueReceive(q, &req, 0) == pdPASS) {
-        Serial.printf("[emotion] %s for %us%s%s\n",
-                      emotion_name(req.state), req.duration_s,
-                      req.message[0] ? " — " : "", req.message);
-        ui_emotion_show(req.state, req.message);
-        revert_at_ms = millis() + (uint32_t)req.duration_s * 1000u;
-        active    = true;
-        cur_state = req.state;
+        if (req.state == 0) {
+            Serial.println("[emotion] stop — back to the clock");
+            ui_emotion_clear();
+            active    = false;
+            cur_state = 0;
+        } else {
+            Serial.printf("[emotion] %s for %us%s%s\n",
+                          emotion_name(req.state), req.duration_s,
+                          req.message[0] ? " — " : "", req.message);
+            ui_emotion_show(req.state, req.message);
+            revert_at_ms = millis() + (uint32_t)req.duration_s * 1000u;
+            active    = true;
+            cur_state = req.state;
+        }
     }
 
     if (active && (int32_t)(millis() - revert_at_ms) >= 0) {

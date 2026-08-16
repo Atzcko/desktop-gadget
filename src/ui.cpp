@@ -677,22 +677,34 @@ static void wave_draw_cb(lv_event_t *e)
         pts[i].y = cy + (lv_coord_t)(amp * taper * wave_shape(u, wave_phase, d));
     }
 
+    /*
+     * ONE opaque stroke. Two earlier mistakes are both fixed here:
+     *
+     * The polyline is drawn as 60 independent segments with round caps. If
+     * the stroke is SEMI-TRANSPARENT, the two caps meeting at each joint
+     * overlap and their alpha ACCUMULATES — producing a visibly brighter
+     * bead at all 60 vertices. That is what read as "silver dots on top of
+     * the line", and it was the wide translucent bloom pass doing it.
+     *
+     * So: no bloom pass, and opacity is always LV_OPA_COVER. Overlapping
+     * opaque white on opaque white is just white, so the joints vanish.
+     *
+     * The fade in/out therefore cannot use opacity either. It mixes the
+     * colour toward black instead — visually identical against a black
+     * background, and it keeps every pixel opaque so no beading appears
+     * during the transition.
+     */
     lv_draw_line_dsc_t dsc;
     lv_draw_line_dsc_init(&dsc);
     dsc.round_start = 1;
     dsc.round_end   = 1;
-    dsc.color       = lv_color_white();
+    dsc.width       = 3;
+    dsc.opa         = LV_OPA_COVER;
+    dsc.color       = lv_color_mix(lv_color_white(), lv_color_black(),
+                                   (uint8_t)(wave_gain * 255.0f));
 
-    /* Thin and white. A narrow bright core over a wider dim pass — the dim
-     * pass is not decoration, it is what stops a 2 px white stroke from
-     * looking like a rendering artefact on a black AMOLED. */
-    for (int pass = 0; pass < 2; pass++) {
-        dsc.width = pass == 0 ? 9 : 2;
-        dsc.opa   = pass == 0 ? (lv_opa_t)(70  * wave_gain)
-                              : (lv_opa_t)(255 * wave_gain);
-        for (int i = 0; i < WAVE_PTS - 1; i++) {
-            lv_draw_line(ctx, &dsc, &pts[i], &pts[i + 1]);
-        }
+    for (int i = 0; i < WAVE_PTS - 1; i++) {
+        lv_draw_line(ctx, &dsc, &pts[i], &pts[i + 1]);
     }
 }
 

@@ -37,7 +37,21 @@ import sys
 import urllib.error
 import urllib.request
 
-STATES = ["thinking", "working", "success", "error", "celebrate", "sleepy"]
+STATES = [
+    # working states — what the device shows most of the time
+    "thinking", "working", "searching", "focused", "waiting",
+    "reading", "editing", "building", "testing", "flashing", "debugging",
+    # positive
+    "success", "celebrate", "joy", "excited", "proud", "trust",
+    "content", "calm", "relief",
+    # low arousal
+    "sleepy", "bored",
+    # negative
+    "sad", "disappointed", "confused", "surprise", "fear",
+    "frustrated", "anger", "error", "disgust", "anticipation",
+    # stop and revert to the clock
+    "clear",
+]
 
 HOST     = os.environ.get("FLIPCLOCK_HOST", "flipclock.local")
 BLE_NAME = os.environ.get("FLIPCLOCK_BLE_NAME", "FlipClock")
@@ -130,6 +144,8 @@ def emote(state: str, duration_s: int = 5, message: str = "",
     """Show an emotion. Returns a short human-readable result string."""
     if state not in STATES:
         raise ValueError(f"state must be one of {', '.join(STATES)}")
+    if state == "clear":
+        duration_s = 0
     if len(message) > MSG_MAX:
         raise ValueError(f"message must be <= {MSG_MAX} characters")
 

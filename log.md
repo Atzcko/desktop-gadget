@@ -276,3 +276,17 @@ The second note is the substantive one. **A single sine is periodic and symmetri
 Stroke is now pure white: a 2 px bright core over a 9 px dim pass. The dim pass is not decoration — it is what stops a thin white line from reading as a rendering artefact on a black AMOLED. Valence consequently expresses itself entirely through motion character (droop sags, jagged clips) rather than hue; the HSV mapping is one line away if colour is ever wanted back.
 
 Fifth iteration. Sample count raised 49 → 61 points because the summed waveform has more detail to resolve than a single sine did.
+
+## [2026-08-16] fix | Just a line; activity states; an explicit stop
+
+Three notes from the owner, all landing on the same session.
+
+**"Silver dots on top of the line."** Diagnosed rather than guessed: the polyline is drawn as 60 independent segments with round caps, and the wide bloom pass was **semi-transparent**. Two translucent round caps overlap at every joint, their alpha accumulates, and you get a brighter bead at each of the 60 vertices. The dots were the glow pass, not the line.
+
+Fixed by removing the bloom entirely — the owner asked for *just a line* — and forcing `LV_OPA_COVER`. Opaque white over opaque white is white, so joints vanish. That meant the fade in/out could no longer use opacity either, so it now mixes the colour toward black: visually identical on a black background, and every pixel stays opaque so no beading appears mid-transition. Single 3 px white stroke.
+
+**"Display what you are doing, not just emotions."** Added six activity states — `reading`, `editing`, `building`, `testing`, `flashing`, `debugging` — as points in the same circumplex, which cost one table row each and no new rendering code. `reading` uses the `SCAN` character so the swell travels along the line like an eye scanning. 32 states total.
+
+**"Animations need to stop when you stop."** A real design flaw: durations of 90–180 s had been in use, so an abandoned session would strand an animation on a clock nobody could read. Two fixes: `state: "clear"` (also `none`/`stop`/`idle`) reverts immediately, and `CLAUDE.md` now mandates **short 15–30 s durations, refreshed while working**, so the device self-recovers within half a minute if Claude goes quiet. Verified: a 300 s `building` was cancelled on demand, `active: true, remaining_s: 298` → `active: false`.
+
+One transient HTTP timeout during that test coincided with the revert animation's redraw; three follow-up requests returned 200 in ~150 ms, so nothing wedged.

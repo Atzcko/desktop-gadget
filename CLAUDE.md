@@ -78,27 +78,49 @@ Settings persist in NVS and **survive re-flashing**. Only "Reset to defaults" cl
 
 The clock can express what we are doing. Two transports, **identical JSON**.
 
-### Standing permission
+### Standing permission — narrate what you are DOING
 
 > [!important] Claude: you may call this endpoint unprompted
-> While working with the owner, you are **explicitly permitted and encouraged**
-> to drive the clock to reflect what you are doing. No need to ask first.
-> This is the whole point of the device.
+> The device's primary job is to show **what you are working on right now**.
+> Emotions are secondary — use them when they genuinely communicate something.
+> No need to ask first.
 >
-> Suggested mapping:
+> **Activity states** (use these most of the time):
 >
-> | When you are | Send |
+> | Doing | Send |
 > |---|---|
-> | reading code, searching, thinking | `thinking` |
-> | editing, building, running tests | `working` |
-> | a build passed / task finished | `success` |
-> | a build broke / tests failed | `error` |
-> | something genuinely went well | `celebrate` |
-> | idle, waiting on the owner | `sleepy` |
+> | reading code, grepping | `reading` |
+> | writing or editing files | `editing` |
+> | compiling | `building` |
+> | running tests | `testing` |
+> | uploading firmware | `flashing` |
+> | chasing a fault | `debugging` |
+> | web research | `searching` |
+> | reasoning before acting | `thinking` |
+> | blocked on the owner | `waiting` |
 >
-> Keep `duration_s` roughly matched to the real work. Use the optional
-> `message` (≤ 20 chars) sparingly — a stream of captions is noise, one at a
-> milestone is nice. Do not spam a state change for every tool call.
+> **Emotions** when they say something an activity cannot: `success`, `error`,
+> `celebrate`, `frustrated`, `confused`, `relief`, `proud`, `sleepy`. The full
+> set is 32 states; `GET /health` and `emotion_from_name()` are the authority.
+>
+> Put the specific thing in `message` (≤ 20 chars): `"ui.cpp"`, `"lvgl docs"`,
+> `"acceptance run"`.
+
+> [!warning] Two rules that keep the clock usable
+> **1. Short durations, refreshed.** Use `duration_s` of 15–30 s and re-send as
+> the work continues. Then if you stop, crash, or the session ends, the device
+> returns to the clock on its own within half a minute. Long durations strand
+> an animation on a clock nobody can read.
+>
+> **2. Always stop explicitly when you finish a turn:**
+>
+> ```bash
+> curl -X POST http://flipclock.local/emotion -H "Content-Type: application/json" -d '{"state":"clear"}'
+> ```
+>
+> `clear` / `none` / `stop` / `idle` all revert immediately — the line fades
+> out, the clock slides back to centre and the weather returns. The clock is
+> the default state of this object; an animation is a temporary visitor.
 
 ### HTTP
 
