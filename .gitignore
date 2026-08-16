@@ -1,0 +1,15 @@
+# Secrets — real config never leaves the machine
+include/config.h
+
+# PlatformIO
+.pio/
+.pioenvs/
+.piolibdeps/
+.vscode/
+
+# Obsidian workspace state (per-machine, not project data)
+.obsidian/workspace.json
+.obsidian/workspace-mobile.json
+
+# macOS
+.DS_Store
