@@ -149,6 +149,12 @@ The clock can express what we are doing. Two transports, **identical JSON**.
 > scribble at ~61 px. Pick the state that matches the real intensity of the work
 > and the display reads correctly from across the room without being read.
 
+> [!note] There is a GLOBAL command now
+> `flipclock` is installed at `~/.local/bin/flipclock` and instructed from
+> `~/.claude/CLAUDE.md`, so the display works from **any** conversation in any
+> directory. `tools/say` and `tools/hush` here are thin wrappers around it,
+> kept so existing muscle memory still works.
+
 > [!important] Use `tools/say` — do NOT push as a separate step
 > ```bash
 > tools/say building "ui.cpp" && pio run

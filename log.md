@@ -497,3 +497,22 @@ It then sat dormant for four releases, because nothing read `c.h` until v1.7.3 m
 Two fixes: the assignment is in, and the temperature branch now carries the same `?:` fallback so a zero can never blank a card again.
 
 **Process note.** Diagnosed by instrumenting rather than reasoning — a one-line `Serial.printf` of the computed geometry gave `h=0` immediately, after the code had *read* correct three times. Second time today that a printf beat inspection. The other lesson is sharper: **scripted edits must assert their patterns matched.** The fix patch above verifies each replacement and aborts if one is missing, which is how this should have been done all along.
+
+## [2026-08-16] process | flipclock made global
+
+Owner, third time: outside this chat, the display shows nothing when they talk to me. This time the meaning was **other conversations**, not other moments — a different problem from the two before it, and a real one.
+
+Three independent causes, all confirmed rather than assumed:
+
+1. **No global `~/.claude/CLAUDE.md`.** Nothing instructed me outside this project.
+2. **Memory is per-project.** `drive-the-flip-clock-display` lives under this directory's memory folder, so a session started anywhere else never loads it. There are eleven other project memory folders on this machine that would never see it.
+3. **`tools/say` is a relative path.** Confirmed: `no such file or directory` from any other cwd.
+
+Fixed by installing `~/.local/bin/flipclock` (already on PATH) and writing `~/.claude/CLAUDE.md`, which loads in every session regardless of directory.
+
+**Two bugs found while building it, both hidden by the same design choice.** The helper was fire-and-forget — backgrounded, output discarded, always exits 0 — which is right for something that must never break the command it prefixes, but it also meant every failure was silent.
+
+- **Host order.** `flipclock.local` takes the *full* 2 s timeout to fail from a cold shell; the LAN IP answers in **45 ms**. Trying mDNS first cost 2 s a call. IP first now, mDNS as the fallback for when the address changes, plus a cached-host file.
+- **Backgrounding killed the request.** The script backgrounded curl and then exited immediately, so the subshell died before the retry ran. At 45 ms the synchronous call is cheaper than the bug the backgrounding was hiding, so it is synchronous now.
+
+The lesson generalises: *fire-and-forget* and *silent* are not the same property, and conflating them cost three rounds of the owner telling me the display was dark.

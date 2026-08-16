@@ -1,7 +1,2 @@
 #!/usr/bin/env bash
-# hush — stop the animation and return the device to the clock.
-# Run at the end of a turn's work.
-HOST="${FLIPCLOCK_HOST:-192.168.0.181}"
-( curl -s --max-time 2 -X POST "http://$HOST/emotion" \
-       -H "Content-Type: application/json" -d '{"state":"clear"}' >/dev/null 2>&1 & ) >/dev/null 2>&1
-exit 0
+exec "$HOME/.local/bin/flipclock" hush
