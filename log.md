@@ -540,3 +540,13 @@ The mechanism was wrong in both directions. **A duration is a guess about the fu
 The right model was already there and I had stopped using it: because **every work command is prefixed**, each command *refreshes* the timer. So the duration only has to outlive the **gap between commands**, not the whole task — and what the owner actually sees idle is the tail after the last push. Default is now **30 s** in the shell command, the MCP tool, and all three sets of docs, with a longer value passed explicitly for a single long-running command like a build.
 
 Both failure modes came from treating the duration as "how long should this be visible" instead of "how long until the next refresh".
+
+## [2026-08-16] fix | v1.7.6 — silencing the charge LED (built, not yet flashed)
+
+Owner: make the red LED on the back stop blinking.
+
+It is the SY6970 charge-status LED, and [[D007 - Skip SD, silence the charge LED]] deliberately left it enabled on the reasoning that it was a useful "it has power" indicator. That reasoning was wrong about what the LED means. **It reports a fault, not power.** There is no battery, so the charger can never complete a cycle, and blinking red is exactly how the part signals that. The signal is correct and permanently useless — and on an object whose entire aesthetic is a black panel with pixels genuinely off, a red light flashing forever on the back is the only thing that looks broken.
+
+D007 said at the time it would be "trivially reversible if it turns out to be visually distracting". It did, and it was: one boolean.
+
+**Could not flash.** `/dev/cu.usbmodem2101` has disappeared and `ioreg` reports zero USB JTAG devices, so `pio run -t upload` failed. The device is fine — `/health` answers with uptime 1057 s and RSSI −53, so it never lost power; only the USB *data* link dropped. Committed unflashed and deliberately **not tagged**: the release procedure ends with "flash and confirm on the device", and tagging something unverified would hollow that out.

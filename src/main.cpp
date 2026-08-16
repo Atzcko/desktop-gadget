@@ -117,7 +117,19 @@ void setup()
     settings_load();
     Settings &s = settings_get();
 
-    if (!amoled.beginAMOLED_241(/*disable_sd=*/true, /*disable_state_led=*/false)) {
+    /*
+     * disable_sd:        the slot is unused, and SD.begin() costs boot time we
+     *                    need for the <10 s cold-boot target.
+     * disable_state_led: the SY6970 charge LED blinks red because there is NO
+     *                    BATTERY — the charger can never complete a cycle, so
+     *                    it reports a fault, and a blink is how it says so.
+     *                    Nothing is wrong; it is a charger complaining about a
+     *                    battery that was never fitted. On an always-on desk
+     *                    object whose whole aesthetic is pixels genuinely off,
+     *                    a red light flashing forever on the back is the only
+     *                    thing in the room that looks broken. See D007.
+     */
+    if (!amoled.beginAMOLED_241(/*disable_sd=*/true, /*disable_state_led=*/true)) {
         Serial.println("FATAL: beginAMOLED_241() failed");
         while (true) delay(1000);
     }

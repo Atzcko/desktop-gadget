@@ -11,6 +11,16 @@ Semantic versioning; the scheme and the release procedure live in [[CLAUDE]].
 The version is reported by the boot log, `GET /health` and Settings ▸ Info,
 each with a compiler build stamp so a stale flash is detectable.
 
+## v1.7.6 — 2026-08-16
+
+**The red LED on the back stops blinking.** `beginAMOLED_241(..., disable_state_led=true)`.
+
+It was never reporting power, as D007 assumed — it was reporting a **fault**.
+There is no battery, so the SY6970 can never complete a charge cycle, and a
+blinking red LED is precisely how it says so. Correct behaviour describing a
+condition that will never change and that nobody needs to know about. Charging
+is unaffected, because there is nothing to charge.
+
 ## v1.7.5 — 2026-08-16
 
 **Fix: the temperature disappeared from both screens.** `mini_card()` never
