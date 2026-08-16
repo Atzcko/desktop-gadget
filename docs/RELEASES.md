@@ -11,6 +11,24 @@ Semantic versioning; the scheme and the release procedure live in [[CLAUDE]].
 The version is reported by the boot log, `GET /health` and Settings ▸ Info,
 each with a compiler build stamp so a stale flash is detectable.
 
+## v1.5.0 — 2026-08-16
+
+**Line mode revised: the corners recede so the line is the subject.**
+
+- **Colon restored on the corner clock** — and in the zoom canvas. It was
+  missing from both, so the "true scale" was not faithful and the colon
+  *vanished the instant the flight began*. A defect, not a preference.
+- **Temperature only while the line runs.** Min/max and humidity are reference
+  figures you consult deliberately on the resting screen; while the line is up
+  you are watching the line. 377 px of weather becomes 86 px. They return with
+  the clock.
+- **Corners dim to 60 %** during line mode. On true black this costs almost no
+  light and reads as depth rather than as something switched off. The zoom
+  canvas fades to the same value on the way in, so the hand-off to the corner
+  cards stays invisible.
+
+RAM 18.2 % (59 716 B) · Flash 26.4 % (1 730 513 B).
+
 ## v1.4.3 — 2026-08-16
 
 Seam back to **3 px** on the big clock. Small cards still have none.

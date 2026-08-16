@@ -399,3 +399,13 @@ Vault corrected again: [[D012 - Card geometry]] now records the scale-dependent 
 ## [2026-08-16] release | v1.4.3 — seam 3 px
 
 Owner: make it 3 px. Reverted the v1.4.2 thinning; the scale-dependent rule is unchanged — big clock has a seam, small cards do not.
+
+## [2026-08-16] release | v1.5.0 — line mode revised
+
+Reviewed what line mode actually displays and found one defect among two matters of taste. Owner picked the fullest option.
+
+**The defect: the corner clock had no colon.** The big clock has one, so the "true scale" celebrated in v1.3.0 was not faithful — and worse, `zoom_render()` never drew one either, so the colon *vanished the instant the flight began* and did not return until the clock did. Fixed in both places, at the same scaled coordinates, so it now shrinks with everything else.
+
+**Temperature only while the line runs.** Min/max and humidity are reference figures — you consult them deliberately, on the resting screen. While the line is up you are watching the line. 377 px of weather becomes 86 px and the two corners stop competing. `weather_detail(false)` runs *before* the shift is measured, because the right-align target depends on how many cards are showing.
+
+**Corners dim to 60 %.** On a true-black AMOLED this costs almost no light and reads as depth rather than as something switched off. The subtle part: the zoom canvas fades to the same 60 % on the way in, so when it hands over to the corner cards there is no brightness pop — the same discipline that made the geometric hand-off invisible in v1.3.0.
