@@ -552,7 +552,7 @@ void ui_show_info(const char *date_line, const char *sync_line)
  * animation code — 26 emotions, one renderer.
  */
 
-#define WAVE_PTS     49                      /* 48 segments */
+#define WAVE_PTS     61                      /* 60 segments */
 #define WAVE_BAND_H  160
 #define COL_CAPTION  lv_color_hex(0xC8C8C8)
 
@@ -564,7 +564,7 @@ void ui_show_info(const char *date_line, const char *sync_line)
 static lv_obj_t   *wave, *lbl_emotion;
 static lv_timer_t *wave_timer;
 static uint8_t     emo_state;
-static float       wave_phase, wave_hue, wave_gain;
+static float       wave_phase, wave_gain;
 static bool        wave_out;
 
 /* ------------------------------------------------------- animation glue -- */
@@ -589,29 +589,66 @@ static void animate(lv_obj_t *obj, lv_anim_exec_xcb_t cb,
 
 /* ------------------------------------------------------------ the line -- */
 
-/* Shape of the line at position u (0..1) for this character. */
-static float wave_sample(float u, float ph, uint8_t character)
+/*
+ * The line's shape.
+ *
+ * A single sine is periodic, symmetric and instantly reads as a GRAPH. Speech
+ * does not look like that. Three ingredients make it read as a voice instead:
+ *
+ *  1. ADDITIVE HARMONICS at incommensurate ratios (1 : 2.27 : 4.13). Because
+ *     the ratios are irrational the sum never repeats on screen, so the motion
+ *     looks organic rather than looped.
+ *
+ *  2. A SPEECH ENVELOPE over time — two slow oscillators at unrelated rates
+ *     multiplied together, producing bursts and pauses the way talking does,
+ *     instead of a constant-amplitude drone.
+ *
+ *  3. A TAPER across x, so the line fades to nothing at both edges. This is
+ *     the single biggest cue: a stroke that runs edge to edge is a chart, one
+ *     that swells in the middle and dies at the ends is a voice.
+ */
+static float wave_shape(float u, float t, const EmotionDef &d)
 {
-    switch (character) {
-    case CH_JAGGED: {                    /* triangle: hard, angular, angry  */
-        float x = fmodf(ph, 6.2832f) / 3.1416f;   /* 0..2 */
-        return (x < 1.0f ? x : 2.0f - x) * 2.0f - 1.0f;
+    const float k  = 3.2f + d.arousal * 7.5f;      /* spatial frequency  */
+    const float sp = 0.7f + d.arousal * 2.4f;      /* temporal speed     */
+
+    float s = 0.55f * sinf(u * k          + t * sp)
+            + 0.30f * sinf(u * k * 2.27f  - t * sp * 1.37f + 1.7f)
+            + 0.18f * sinf(u * k * 4.13f  + t * sp * 0.71f + 3.1f);
+
+    switch (d.character) {
+    case CH_JAGGED:                       /* angular: hard, clipped peaks   */
+        s = s > 0.0f ? powf(s, 0.45f) : -powf(-s, 0.45f);
+        s += 0.25f * sinf(u * k * 8.0f + t * sp * 2.5f);
+        break;
+    case CH_TREMOR:                       /* fine judder over the carrier   */
+        s = s * 0.7f + 0.4f * sinf(u * k * 9.3f + t * sp * 3.1f);
+        break;
+    case CH_SCAN: {                       /* a swell travelling along it    */
+        float pos = fmodf(t * 0.11f, 1.7f) - 0.35f;
+        float dd  = fabsf(u - pos) * 3.6f;
+        float env = dd >= 1.0f ? 0.0f : (1.0f - dd) * (1.0f - dd);
+        s *= 0.16f + env * 1.4f;
+        break;
     }
-    case CH_TREMOR:                      /* judder riding a slow carrier    */
-        return sinf(ph) * 0.55f + sinf(ph * 6.5f) * 0.45f;
-    case CH_SCAN: {                      /* a swell travelling along it     */
-        float pos = fmodf(wave_phase * 0.09f, 1.6f) - 0.3f;
-        float d   = fabsf(u - pos) * 4.5f;
-        float env = d >= 1.0f ? 0.0f : (1.0f - d) * (1.0f - d);
-        return sinf(ph) * (0.18f + env);
-    }
-    case CH_DROOP: {                     /* sags — sad, deflated            */
-        float s = sinf(ph);
-        return s > 0.0f ? s * 0.22f : s;
-    }
+    case CH_DROOP:                        /* sags below the axis            */
+        if (s > 0.0f) s *= 0.22f;
+        break;
     default:
-        return sinf(ph);
+        break;
     }
+    return s;
+}
+
+/* Bursts and pauses, like speech. Two unrelated rates multiplied so the
+ * pattern never settles into an obvious cycle. Calm states barely modulate;
+ * activated ones burst hard. */
+static float wave_speech(float t, float arousal)
+{
+    float burst = fabsf(sinf(t * 0.85f)) * (0.45f + 0.55f * sinf(t * 0.41f + 2.3f));
+    if (burst < 0.0f) burst = -burst;
+    float amt = 0.25f + 0.70f * arousal;
+    return (1.0f - amt) + amt * (0.30f + 0.70f * burst);
 }
 
 static void wave_draw_cb(lv_event_t *e)
@@ -626,44 +663,34 @@ static void wave_draw_cb(lv_event_t *e)
     const EmotionDef &d = emotion_def(emo_state);
     const int   width = lv_area_get_width(&co);
     const int   cy    = co.y1 + lv_area_get_height(&co) / 2;
-    const float amp   = (6.0f + d.arousal * 40.0f) * wave_gain;
-    const float k     = (0.8f + d.arousal * 2.2f) * 6.2832f;   /* cycles */
-
-    /* Valence -> hue. -1 lands on red, 0 on violet-blue, +1 on cyan-green:
-     * the synthwave palette read straight off the circumplex x-axis. */
-    const float base_hue = 350.0f - (d.valence + 1.0f) * 0.5f * 185.0f;
+    const float amp   = (8.0f + d.arousal * 44.0f) * wave_gain
+                      * wave_speech(wave_phase, d.arousal);
 
     lv_point_t pts[WAVE_PTS];
-    lv_color_t col[WAVE_PTS];
 
     for (int i = 0; i < WAVE_PTS; i++) {
-        float u  = (float)i / (WAVE_PTS - 1);
-        float ph = wave_phase + u * k;
+        float u = (float)i / (WAVE_PTS - 1);
+        /* Taper: sin(pi*u) is exactly zero at both ends, so the stroke dies
+         * into the black instead of hitting the bezel. */
+        float taper = powf(sinf(u * 3.14159f), 0.75f);
         pts[i].x = co.x1 + (lv_coord_t)(u * (width - 1));
-        pts[i].y = cy + (lv_coord_t)(amp * wave_sample(u, ph, d.character));
-
-        float hue = d.spectrum
-                  ? fmodf(u * 360.0f + wave_hue, 360.0f)
-                  : base_hue + 16.0f * sinf(wave_phase * 0.25f + u * 1.6f);
-        if (hue < 0.0f) hue += 360.0f;
-        col[i] = lv_color_hsv_to_rgb((uint16_t)hue, 95, 100);
+        pts[i].y = cy + (lv_coord_t)(amp * taper * wave_shape(u, wave_phase, d));
     }
 
     lv_draw_line_dsc_t dsc;
     lv_draw_line_dsc_init(&dsc);
     dsc.round_start = 1;
     dsc.round_end   = 1;
+    dsc.color       = lv_color_white();
 
-    /* Two passes. The wide dim pass is a fake bloom — the panel has no glow,
-     * and on true black this is what sells "neon" rather than "coloured
-     * line". Round caps on both make the joints seamless, which is the whole
-     * difference between a line and the dashes of v3. */
+    /* Thin and white. A narrow bright core over a wider dim pass — the dim
+     * pass is not decoration, it is what stops a 2 px white stroke from
+     * looking like a rendering artefact on a black AMOLED. */
     for (int pass = 0; pass < 2; pass++) {
-        dsc.width = pass == 0 ? 17 : 6;
-        dsc.opa   = pass == 0 ? (lv_opa_t)(LV_OPA_40 * wave_gain)
-                              : (lv_opa_t)(LV_OPA_COVER * wave_gain);
+        dsc.width = pass == 0 ? 9 : 2;
+        dsc.opa   = pass == 0 ? (lv_opa_t)(70  * wave_gain)
+                              : (lv_opa_t)(255 * wave_gain);
         for (int i = 0; i < WAVE_PTS - 1; i++) {
-            dsc.color = col[i];
             lv_draw_line(ctx, &dsc, &pts[i], &pts[i + 1]);
         }
     }
@@ -691,9 +718,6 @@ static void wave_tick(lv_timer_t *)
 
     wave_phase += 0.03f + d.arousal * 0.45f;
     if (wave_phase > 6283.0f) wave_phase = 0.0f;
-    wave_hue += 1.2f + d.arousal * 2.5f;
-    if (wave_hue >= 360.0f) wave_hue -= 360.0f;
-
     if (wave) lv_obj_invalidate(wave);
 }
 
@@ -738,7 +762,6 @@ void ui_emotion_show(uint8_t state, const char *message)
 
     emo_state  = state;
     wave_phase = 0.0f;
-    wave_hue   = 0.0f;
     wave_gain  = 0.0f;
     wave_out   = false;
 

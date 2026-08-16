@@ -262,3 +262,17 @@ So the renderer implements the **space**, not a list. 26 named emotions share on
 **The clock now steps aside**, animated: big cards fade out and slide up, a 48 px clock fades in top-left, weather slides to top-right, and the line fades in at centre. The 210 px digit font cannot be scaled (LVGL 8 has no usable text transform), so the corner clock is a separate label kept in step rather than a shrunken object. Entrance/exit gain is ramped inside the wave timer rather than by `lv_anim`, so a rapid emotion change can never leave two animations fighting over one gain.
 
 Fourth design for this feature. Each failure was informative: invisible → ugly → dashed → this. ([[D024 - Emotions as a circumplex, rendered as one line]])
+
+## [2026-08-16] design | v5 — white, thin, and talking instead of oscillating
+
+Owner: "make the line white and thin", and "now it's just a sinusoid, I was thinking more of a dynamically moving line mimicking talking, thinking".
+
+The second note is the substantive one. **A single sine is periodic and symmetric, so it reads as a graph** — speech does not look like that. Three changes fix the reading:
+
+1. **Additive harmonics at incommensurate ratios** (1 : 2.27 : 4.13). Irrational ratios mean the sum never repeats on screen, so the motion looks organic rather than looped.
+2. **A speech envelope over time** — two slow oscillators at unrelated rates multiplied together, producing bursts and pauses the way talking does instead of a constant-amplitude drone. Its depth scales with arousal, so calm states barely modulate and activated ones burst hard.
+3. **A taper across x**, `sin(pi*u)^0.75`, exactly zero at both ends. This is the biggest single cue — a stroke running edge to edge is a chart; one that swells in the middle and dies into black is a voice.
+
+Stroke is now pure white: a 2 px bright core over a 9 px dim pass. The dim pass is not decoration — it is what stops a thin white line from reading as a rendering artefact on a black AMOLED. Valence consequently expresses itself entirely through motion character (droop sags, jagged clips) rather than hue; the HSV mapping is one line away if colour is ever wanted back.
+
+Fifth iteration. Sample count raised 49 → 61 points because the summed waveform has more detail to resolve than a single sine did.

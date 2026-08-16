@@ -57,6 +57,23 @@ v3 drew 30 rectangles with gaps between them. That is a dashed line, and the own
 
 v4 draws a **polyline**: 49 sampled points, 48 `lv_draw_line` segments with `round_start`/`round_end` set, so the caps overlap at every joint and the stroke is continuous. Two passes — a wide dim one (width 17, 40 % opacity) under a narrow bright one (width 6) — fake the neon bloom the panel cannot produce optically.
 
+## v5 — white, thin, and talking rather than oscillating
+
+Owner: *"make the line white and thin"* and *"now it's just a sinusoid, I was thinking more of a dynamically moving line mimicking talking, thinking."*
+
+Both notes are right, and the second is the substantive one. **A single sine is periodic and symmetric, so it reads as a graph.** Speech does not look like that. Three ingredients change the reading:
+
+| Ingredient | Why |
+|---|---|
+| **Additive harmonics at incommensurate ratios** — 1 : 2.27 : 4.13 | irrational ratios mean the sum never repeats on screen, so motion looks organic instead of looped |
+| **A speech envelope over time** — two slow oscillators at unrelated rates, multiplied | produces bursts and pauses the way talking does, instead of a constant-amplitude drone |
+| **A taper across x** — `sin(pi*u)^0.75`, exactly zero at both ends | the single biggest cue: a stroke running edge to edge is a chart; one that swells in the middle and dies at the ends is a voice |
+
+Amplitude modulation is scaled by arousal, so calm states barely modulate and activated ones burst hard.
+
+> [!note] Valence no longer shows as hue
+> The stroke is now pure white — a 2 px core over a 9 px dim pass, which is not decoration: it stops a thin white line from looking like a rendering artefact on a black AMOLED. Valence therefore expresses itself entirely through **motion character** — `DROOP` sags for sadness, `JAGGED` clips hard for anger — rather than colour. If colour is ever wanted back, the HSV mapping is one line.
+
 ## The clock steps aside
 
 An emotion is now a **mode change**, animated:
