@@ -105,6 +105,24 @@ The clock can express what we are doing. Two transports, **identical JSON**.
 >
 > Put the specific thing in `message` (≤ 20 chars): `"ui.cpp"`, `"lvgl docs"`,
 > `"acceptance run"`.
+>
+> **The line vibrates in proportion to the process.** Amplitude, frequency and
+> speed all scale with the state's arousal — `waiting` is nearly a flat line at
+> ~11 px, `reading` gentle, `building` busy at ~40 px, `flashing` a full-height
+> scribble at ~61 px. Pick the state that matches the real intensity of the work
+> and the display reads correctly from across the room without being read.
+
+> [!important] Keep it lit while you work
+> The owner built this device to see what you are doing **from across the desk**.
+> A dark screen during a long stretch of work defeats the point of the object,
+> and they have called this out more than once.
+>
+> - Push a state at the **start of every turn**, and refresh at each major step —
+>   switching from reading to editing, before a build, before a flash.
+> - Pushes can only happen at **tool-call boundaries**. During pure reasoning
+>   nothing can be sent, so cover the gap by setting a duration that spans the
+>   expected work.
+> - If the device does not answer, carry on silently. Never block work on it.
 
 > [!warning] Two rules that keep the clock usable
 > **1. Short durations, refreshed.** Use `duration_s` of 15–30 s and re-send as

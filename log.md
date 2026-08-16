@@ -290,3 +290,15 @@ Fixed by removing the bloom entirely — the owner asked for *just a line* — a
 **"Animations need to stop when you stop."** A real design flaw: durations of 90–180 s had been in use, so an abandoned session would strand an animation on a clock nobody could read. Two fixes: `state: "clear"` (also `none`/`stop`/`idle`) reverts immediately, and `CLAUDE.md` now mandates **short 15–30 s durations, refreshed while working**, so the device self-recovers within half a minute if Claude goes quiet. Verified: a 300 s `building` was cancelled on demand, `active: true, remaining_s: 298` → `active: false`.
 
 One transient HTTP timeout during that test coincided with the revert animation's redraw; three follow-up requests returned 200 in ~150 ms, so nothing wedged.
+
+## [2026-08-16] design | Scaled strip, lower weather, wider vibration range
+
+Owner reviewed the proposed screens in the spec sheet artifact, asked for the degree signs back in min/max, and approved the direction.
+
+**Weather dropped 32 px** on the resting screen (y 302 → 334). The old spacing left 26 px under the cards and 148 px of empty black above the bezel — top-heavy. The new value centres the block in the space the cards leave.
+
+**Line mode is now one scaled strip.** The corner clock label is gone; clock and weather are five small cards in a single centred row at y 24 — same charcoal, same radius, same seam, same colon, at 46 px tall. Since **LVGL 8 cannot transform text**, "smaller" required a second compiled face: `fliqlo_small`, 38 px, glyphs `0-9 ° / %`, ~5 KB of bitmap. Card widths are measured from the label after layout rather than using `LV_SIZE_CONTENT`, whose content measurement would feed back into a full-width seam child and fight itself.
+
+**Vibration range widened** at the owner's request so processes are distinguishable at a glance: amplitude is now `5 + arousal^1.25 * 60`, which pushes the low end down and the high end up — `waiting` ~11 px, `reading` gentle, `building` ~40 px, `flashing` ~61 px. Activity states were re-spread across the arousal axis to use that range.
+
+**Standing instruction recorded.** The owner pointed out the screen was often idle while work was happening, which defeats the purpose of the device. Two causes: pushes can only occur at tool-call boundaries, and — the real one — no discipline about refreshing. Now written to **cross-conversation memory** as well as `CLAUDE.md`: push at the start of every turn, refresh at each major step, 15–30 s durations, `clear` when done, and never block work if the device is unreachable.

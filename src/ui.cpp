@@ -18,6 +18,7 @@
 
 extern "C" {
 LV_FONT_DECLARE(fliqlo_digits);
+LV_FONT_DECLARE(fliqlo_small);
 }
 
 #define COL_BG          lv_color_hex(0x000000)
@@ -64,7 +65,19 @@ struct Card {
 
 static lv_obj_t *scr_clock;
 static lv_obj_t *root;
-static lv_obj_t *clock_grp, *weather_grp, *lbl_mini;
+static lv_obj_t *clock_grp, *weather_grp, *strip_grp;
+
+/* The strip shown in line mode: the same charcoal cards, the same seam, the
+ * same colon — scaled down. LVGL 8 cannot transform text, so "smaller" means
+ * a second compiled face (fliqlo_small, 38 px) rather than a zoom. */
+#define MINI_H       46
+#define MINI_RADIUS   8
+#define MINI_SEAM     2
+#define MINI_PAD_X   10
+#define MINI_Y       14      /* strip resting y in line mode */
+
+struct MiniCard { lv_obj_t *root, *label, *seam; };
+static MiniCard m_hh, m_mm, m_temp, m_minmax, m_hum;
 static Card      card_h, card_m;
 static lv_obj_t *lbl_ampm;
 static lv_obj_t *wrow, *lbl_temp, *lbl_minmax, *lbl_humid, *dot_stale;
@@ -306,6 +319,50 @@ static void make_card(Card &c, int x, int y)
     lv_obj_align(c.accent, LV_ALIGN_CENTER, 0, 0);
 }
 
+static void mini_card(lv_obj_t *parent, MiniCard &c, lv_color_t colour, const char *init)
+{
+    c.root = lv_obj_create(parent);
+    decor(c.root);
+    lv_obj_set_size(c.root, 60, MINI_H);          /* real width set by strip_sync */
+    lv_obj_set_style_bg_color(c.root, COL_CARD, LV_PART_MAIN);
+    lv_obj_set_style_bg_opa(c.root, LV_OPA_COVER, LV_PART_MAIN);
+    lv_obj_set_style_radius(c.root, MINI_RADIUS, LV_PART_MAIN);
+    lv_obj_set_style_clip_corner(c.root, true, LV_PART_MAIN);
+
+    c.label = lv_label_create(c.root);
+    lv_obj_set_style_text_font(c.label, &fliqlo_small, LV_PART_MAIN);
+    lv_obj_set_style_text_color(c.label, colour, LV_PART_MAIN);
+    lv_label_set_text(c.label, init);
+    lv_obj_center(c.label);
+
+    /* Seam last so it draws over the glyphs, exactly as on the big cards. */
+    c.seam = lv_obj_create(c.root);
+    decor(c.seam);
+    lv_obj_set_size(c.seam, 60, MINI_SEAM);
+    lv_obj_set_style_bg_color(c.seam, COL_BG, LV_PART_MAIN);
+    lv_obj_set_style_bg_opa(c.seam, LV_OPA_COVER, LV_PART_MAIN);
+    lv_obj_align(c.seam, LV_ALIGN_CENTER, 0, 0);
+}
+
+/*
+ * Cards size themselves to their text, which changes ("5°" vs "34°"). Rather
+ * than LV_SIZE_CONTENT — whose content measurement would feed back into a
+ * full-width seam child and fight itself — measure the label after layout and
+ * set card and seam explicitly. Deterministic, and flex re-centres the strip.
+ */
+static void strip_sync(void)
+{
+    if (!strip_grp) return;
+    lv_obj_update_layout(strip_grp);
+    MiniCard *cards[5] = { &m_hh, &m_mm, &m_temp, &m_minmax, &m_hum };
+    for (int i = 0; i < 5; i++) {
+        lv_coord_t w = lv_obj_get_width(cards[i]->label) + 2 * MINI_PAD_X;
+        lv_obj_set_size(cards[i]->root, w, MINI_H);
+        lv_obj_set_size(cards[i]->seam, w, MINI_SEAM);
+        lv_obj_align(cards[i]->seam, LV_ALIGN_CENTER, 0, 0);
+    }
+}
+
 void ui_init(uint16_t screen_w, uint16_t screen_h)
 {
     scr_w = screen_w;
@@ -376,7 +433,10 @@ void ui_init(uint16_t screen_w, uint16_t screen_h)
     weather_grp = lv_obj_create(root);
     decor(weather_grp);
     lv_obj_set_size(weather_grp, screen_w, 70);
-    lv_obj_set_pos(weather_grp, 0, clock_y + CARD_H + 26);
+    /* 58 px below the cards, not 26. The old value left 26 px under the cards
+     * and 148 px of empty black above the bezel — visibly top-heavy. This
+     * centres the block in the space the cards leave. */
+    lv_obj_set_pos(weather_grp, 0, clock_y + CARD_H + 58);
 
     wrow = lv_obj_create(weather_grp);
     decor(wrow);
@@ -416,14 +476,46 @@ void ui_init(uint16_t screen_w, uint16_t screen_h)
 
     lv_obj_align(wrow, LV_ALIGN_TOP_MID, 0, 0);
 
-    /* Small clock for emotion mode — the 210 px font cannot be scaled, so the
-     * corner clock is a different label rather than a transform. */
-    lbl_mini = lv_label_create(root);
-    lv_obj_set_style_text_font(lbl_mini, &lv_font_montserrat_48, LV_PART_MAIN);
-    lv_obj_set_style_text_color(lbl_mini, COL_DIGIT, LV_PART_MAIN);
-    lv_obj_set_style_opa(lbl_mini, LV_OPA_TRANSP, LV_PART_MAIN);
-    lv_label_set_text(lbl_mini, "00:00");
-    lv_obj_set_pos(lbl_mini, 24, 14);
+    /* Line-mode strip: clock and weather as one row of five small cards. */
+    strip_grp = lv_obj_create(root);
+    decor(strip_grp);
+    lv_obj_set_size(strip_grp, screen_w, MINI_H);
+    lv_obj_set_pos(strip_grp, 0, MINI_Y);
+    lv_obj_set_flex_flow(strip_grp, LV_FLEX_FLOW_ROW);
+    lv_obj_set_flex_align(strip_grp, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER,
+                          LV_FLEX_ALIGN_CENTER);
+    lv_obj_set_style_pad_column(strip_grp, 8, LV_PART_MAIN);
+    lv_obj_set_style_opa(strip_grp, LV_OPA_TRANSP, LV_PART_MAIN);
+
+    mini_card(strip_grp, m_hh, COL_DIGIT, "00");
+
+    {   /* the colon, scaled with everything else */
+        lv_obj_t *col = lv_obj_create(strip_grp);
+        decor(col);
+        lv_obj_set_size(col, 10, MINI_H);
+        for (int i = 0; i < 2; i++) {
+            lv_obj_t *d = lv_obj_create(col);
+            decor(d);
+            lv_obj_set_size(d, 6, 6);
+            lv_obj_set_style_radius(d, 3, LV_PART_MAIN);
+            lv_obj_set_style_bg_color(d, COL_COLON, LV_PART_MAIN);
+            lv_obj_set_style_bg_opa(d, LV_OPA_COVER, LV_PART_MAIN);
+            lv_obj_align(d, LV_ALIGN_CENTER, 0, i ? 9 : -9);
+        }
+    }
+
+    mini_card(strip_grp, m_mm, COL_DIGIT, "00");
+
+    {   /* breathing room between the clock and the weather group */
+        lv_obj_t *sp = lv_obj_create(strip_grp);
+        decor(sp);
+        lv_obj_set_size(sp, 18, MINI_H);
+    }
+
+    mini_card(strip_grp, m_temp,   lv_color_hex(0xDADADA), "--" WEATHER_UNIT_SUFFIX);
+    mini_card(strip_grp, m_minmax, COL_SECONDARY,          "--/--");
+    mini_card(strip_grp, m_hum,    lv_color_hex(0x6E6E6E), "--%");
+    strip_sync();
 
     /* Tap overlay — reuses the smaller weather size, no new type size. */
     lbl_info = lv_label_create(root);
@@ -465,11 +557,9 @@ void ui_set_time(int hour, int minute, bool animate)
     snprintf(hh, sizeof(hh), "%02d", disp);
     snprintf(mm, sizeof(mm), "%02d", minute);
 
-    {
-        char mini[8];
-        snprintf(mini, sizeof(mini), "%s:%s", hh, mm);
-        lv_label_set_text(lbl_mini, mini);
-    }
+    lv_label_set_text(m_hh.label, hh);
+    lv_label_set_text(m_mm.label, mm);
+    strip_sync();
 
     if (animate) {
         /* Driven by "rendered digits differ from target", never by
@@ -496,14 +586,23 @@ void ui_set_weather(float current, float lo, float hi, float humidity,
                  (int)lroundf(lo), (int)lroundf(hi));
         lv_label_set_text(lbl_minmax, buf);
 
+        snprintf(buf, sizeof(buf), "%d" WEATHER_UNIT_SUFFIX, (int)lroundf(current));
+        lv_label_set_text(m_temp.label, buf);
+        snprintf(buf, sizeof(buf), "%d" WEATHER_UNIT_SUFFIX "/%d" WEATHER_UNIT_SUFFIX,
+                 (int)lroundf(lo), (int)lroundf(hi));
+        lv_label_set_text(m_minmax.label, buf);
+
         /* Negative means the endpoint did not report it — show nothing
          * rather than a confident 0%. */
         if (humidity >= 0.0f) {
             snprintf(buf, sizeof(buf), "%d%%", (int)lroundf(humidity));
             lv_label_set_text(lbl_humid, buf);
+            lv_label_set_text(m_hum.label, buf);
         } else {
             lv_label_set_text(lbl_humid, "");
+            lv_label_set_text(m_hum.label, "--%");
         }
+        strip_sync();
     }
     if (stale) lv_obj_clear_flag(dot_stale, LV_OBJ_FLAG_HIDDEN);
     else       lv_obj_add_flag(dot_stale, LV_OBJ_FLAG_HIDDEN);
@@ -556,10 +655,7 @@ void ui_show_info(const char *date_line, const char *sync_line)
 #define WAVE_BAND_H  160
 #define COL_CAPTION  lv_color_hex(0xC8C8C8)
 
-#define WEATHER_REST_Y (44 + CARD_H + 26)
-#define WEATHER_EMO_Y  14
-#define WEATHER_EMO_X  150
-#define MINI_Y         14
+#define WEATHER_REST_Y (44 + CARD_H + 58)
 
 static lv_obj_t   *wave, *lbl_emotion;
 static lv_timer_t *wave_timer;
@@ -609,8 +705,10 @@ static void animate(lv_obj_t *obj, lv_anim_exec_xcb_t cb,
  */
 static float wave_shape(float u, float t, const EmotionDef &d)
 {
-    const float k  = 3.2f + d.arousal * 7.5f;      /* spatial frequency  */
-    const float sp = 0.7f + d.arousal * 2.4f;      /* temporal speed     */
+    /* Spread widened so two processes never look alike: a calm 'waiting' is
+     * nearly a flat line, a hot 'flashing' is a full-height scribble. */
+    const float k  = 2.6f + d.arousal * 9.0f;      /* spatial frequency  */
+    const float sp = 0.45f + d.arousal * 3.1f;     /* temporal speed     */
 
     float s = 0.55f * sinf(u * k          + t * sp)
             + 0.30f * sinf(u * k * 2.27f  - t * sp * 1.37f + 1.7f)
@@ -663,7 +761,10 @@ static void wave_draw_cb(lv_event_t *e)
     const EmotionDef &d = emotion_def(emo_state);
     const int   width = lv_area_get_width(&co);
     const int   cy    = co.y1 + lv_area_get_height(&co) / 2;
-    const float amp   = (8.0f + d.arousal * 44.0f) * wave_gain
+    /* powf pushes the low end down and the high end up, so the amplitude
+     * difference between processes reads at a glance rather than needing a
+     * side-by-side comparison. 0.15 -> 11 px, 0.65 -> 40 px, 0.95 -> 61 px. */
+    const float amp   = (5.0f + powf(d.arousal, 1.25f) * 60.0f) * wave_gain
                       * wave_speech(wave_phase, d.arousal);
 
     lv_point_t pts[WAVE_PTS];
@@ -738,19 +839,20 @@ static void wave_tick(lv_timer_t *)
 static void layout_emotion(bool on)
 {
     if (on) {
-        animate(clock_grp,   a_opa, LV_OPA_COVER, LV_OPA_TRANSP, 380, 0);
-        animate(clock_grp,   a_y,   0, -34, 380, 0);
-        animate(lbl_mini,    a_opa, LV_OPA_TRANSP, LV_OPA_COVER, 380, 160);
-        animate(lbl_mini,    a_y,   MINI_Y - 22, MINI_Y, 380, 160);
-        animate(weather_grp, a_y,   WEATHER_REST_Y, WEATHER_EMO_Y, 420, 0);
-        animate(weather_grp, a_x,   0, WEATHER_EMO_X, 420, 0);
+        /* Big layout collapses upward; the strip descends into its place. */
+        animate(clock_grp,   a_opa, LV_OPA_COVER, LV_OPA_TRANSP, 340, 0);
+        animate(clock_grp,   a_y,   0, -34, 340, 0);
+        animate(weather_grp, a_opa, LV_OPA_COVER, LV_OPA_TRANSP, 340, 0);
+        animate(weather_grp, a_y,   WEATHER_REST_Y, WEATHER_REST_Y + 26, 340, 0);
+        animate(strip_grp,   a_opa, LV_OPA_TRANSP, LV_OPA_COVER, 380, 180);
+        animate(strip_grp,   a_y,   MINI_Y - 20, MINI_Y, 380, 180);
     } else {
-        animate(clock_grp,   a_opa, LV_OPA_TRANSP, LV_OPA_COVER, 380, 120);
-        animate(clock_grp,   a_y,   -34, 0, 380, 120);
-        animate(lbl_mini,    a_opa, LV_OPA_COVER, LV_OPA_TRANSP, 260, 0);
-        animate(lbl_mini,    a_y,   MINI_Y, MINI_Y - 22, 260, 0);
-        animate(weather_grp, a_y,   WEATHER_EMO_Y, WEATHER_REST_Y, 420, 60);
-        animate(weather_grp, a_x,   WEATHER_EMO_X, 0, 420, 60);
+        animate(strip_grp,   a_opa, LV_OPA_COVER, LV_OPA_TRANSP, 240, 0);
+        animate(strip_grp,   a_y,   MINI_Y, MINI_Y - 20, 240, 0);
+        animate(clock_grp,   a_opa, LV_OPA_TRANSP, LV_OPA_COVER, 380, 140);
+        animate(clock_grp,   a_y,   -34, 0, 380, 140);
+        animate(weather_grp, a_opa, LV_OPA_TRANSP, LV_OPA_COVER, 380, 140);
+        animate(weather_grp, a_y,   WEATHER_REST_Y + 26, WEATHER_REST_Y, 380, 140);
     }
 }
 

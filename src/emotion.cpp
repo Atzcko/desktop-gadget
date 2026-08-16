@@ -30,19 +30,19 @@ const EmotionDef EMOTIONS[] = {
     {  "none",            0.00f,   0.00f, CH_SMOOTH,  false },
 
     /* --- working states: what this device says most of the time --- */
-    {  "thinking",        0.10f,   0.35f, CH_SMOOTH,  false },
-    {  "working",         0.20f,   0.55f, CH_SMOOTH,  false },
-    {  "searching",       0.05f,   0.50f, CH_SCAN,    false },
+    {  "thinking",        0.10f,   0.30f, CH_SMOOTH,  false },
+    {  "working",         0.20f,   0.52f, CH_SMOOTH,  false },
+    {  "searching",       0.05f,   0.46f, CH_SCAN,    false },
     {  "focused",         0.30f,   0.45f, CH_SMOOTH,  false },
-    {  "waiting",         0.00f,   0.15f, CH_SCAN,    false },
+    {  "waiting",         0.00f,   0.10f, CH_SCAN,    false },
 
     /* --- what I am actually doing: the primary use of this device --- */
-    {  "reading",         0.10f,   0.30f, CH_SCAN,    false },
-    {  "editing",         0.25f,   0.50f, CH_SMOOTH,  false },
-    {  "building",        0.20f,   0.65f, CH_SMOOTH,  false },
-    {  "testing",         0.15f,   0.60f, CH_SCAN,    false },
-    {  "flashing",        0.30f,   0.75f, CH_SMOOTH,  false },
-    {  "debugging",      -0.15f,   0.65f, CH_TREMOR,  false },
+    {  "reading",         0.10f,   0.22f, CH_SCAN,    false },
+    {  "editing",         0.25f,   0.45f, CH_SMOOTH,  false },
+    {  "building",        0.20f,   0.68f, CH_SMOOTH,  false },
+    {  "testing",         0.15f,   0.56f, CH_SCAN,    false },
+    {  "flashing",        0.30f,   0.86f, CH_SMOOTH,  false },
+    {  "debugging",      -0.15f,   0.62f, CH_TREMOR,  false },
 
     /* --- positive --- */
     {  "success",         0.80f,   0.60f, CH_SMOOTH,  false },
