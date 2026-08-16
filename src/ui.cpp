@@ -666,6 +666,23 @@ static uint8_t     emo_state;
 static float       wave_phase, wave_gain;
 static bool        wave_out;
 
+/*
+ * The two halves of the transition are STRICTLY SEQUENTIAL, never overlapped:
+ *
+ *   in    scale the clock into the corner  ->  THEN the line appears
+ *   out   the line disappears              ->  THEN scale the clock back
+ *
+ * Overlapping them reads as two unrelated things happening at once. In
+ * sequence it reads as one movement: the clock gets out of the way, and the
+ * line takes the space it vacated.
+ */
+static lv_timer_t *enter_timer;          /* fires once, when the scale lands */
+static bool        layout_small;         /* is the clock currently in the corner? */
+static char        pending_msg[EMOTION_MSG_MAX + 1];
+
+/* wave_tick() triggers the fly-back, so it needs this before the definition. */
+static void layout_emotion(bool on);
+
 /* ------------------------------------------------------- animation glue -- */
 
 static void a_opa (void *o, int32_t v) { lv_obj_set_style_opa((lv_obj_t *)o, (lv_opa_t)v, LV_PART_MAIN); }
@@ -842,7 +859,16 @@ static void wave_tick(lv_timer_t *)
      * emotion change can never leave two waves fighting over one gain. */
     if (wave_out) {
         wave_gain -= 0.09f;
-        if (wave_gain <= 0.0f) { kill_wave(); return; }
+        if (wave_gain <= 0.0f) {
+            /* The line is gone. ONLY NOW does the clock fly back. Deleting the
+             * running timer from inside its own callback is supported — LVGL
+             * flags it and skips the post-callback bookkeeping. */
+            kill_wave();
+            if (lbl_emotion) { lv_obj_del(lbl_emotion); lbl_emotion = nullptr; }
+            emo_state = 0;
+            layout_emotion(false);
+            return;
+        }
     } else if (wave_gain < 1.0f) {
         wave_gain += 0.07f;
         if (wave_gain > 1.0f) wave_gain = 1.0f;
@@ -922,6 +948,7 @@ static void arrive_big(lv_anim_t *)
 
 static void layout_emotion(bool on)
 {
+    layout_small = on;
     const int shift = weather_shift();
 
     if (!zoom_canvas) {          /* no PSRAM for the canvas — degrade to a fade */
@@ -963,49 +990,92 @@ static void layout_emotion(bool on)
     }
 }
 
-void ui_emotion_clear(void)
+static void wave_start(void)
 {
-    if (!wave && emo_state == 0) return;
-    wave_out = true;                       /* wave_tick tears it down       */
-    if (lbl_emotion) { lv_obj_del(lbl_emotion); lbl_emotion = nullptr; }
-    layout_emotion(false);
-    emo_state = 0;
-}
-
-void ui_emotion_show(uint8_t state, const char *message)
-{
-    bool was_showing = (wave != nullptr);
-
-    /* A fresh emotion replaces the old one outright — no cross-fade, which
-     * would mean two waves sharing one gain. */
     kill_wave();
-    if (lbl_emotion) { lv_obj_del(lbl_emotion); lbl_emotion = nullptr; }
-
-    emo_state  = state;
     wave_phase = 0.0f;
     wave_gain  = 0.0f;
     wave_out   = false;
-
-    if (!was_showing) layout_emotion(true);
 
     wave = lv_obj_create(root);
     decor(wave);
     lv_obj_set_size(wave, scr_w, WAVE_BAND_H);
     lv_obj_set_pos(wave, 0, scr_h / 2 - WAVE_BAND_H / 2);
     lv_obj_add_event_cb(wave, wave_draw_cb, LV_EVENT_DRAW_MAIN, nullptr);
-
     wave_timer = lv_timer_create(wave_tick, 40, nullptr);   /* 25 fps */
 
-    if (message && message[0]) {
+    if (pending_msg[0]) {
+        if (lbl_emotion) lv_obj_del(lbl_emotion);
         lbl_emotion = lv_label_create(root);
         lv_obj_set_style_text_font(lbl_emotion, &lv_font_montserrat_28, LV_PART_MAIN);
         lv_obj_set_style_text_color(lbl_emotion, COL_CAPTION, LV_PART_MAIN);
-        lv_label_set_text(lbl_emotion, message);
+        lv_label_set_text(lbl_emotion, pending_msg);
         lv_obj_align(lbl_emotion, LV_ALIGN_BOTTOM_MID, 0, -26);
+    }
+}
+
+static void enter_done_cb(lv_timer_t *tm)
+{
+    enter_timer = nullptr;
+    lv_timer_del(tm);
+    wave_start();          /* the scale has landed — now the line appears */
+}
+
+void ui_emotion_clear(void)
+{
+    if (!layout_small && !wave) return;
+
+    if (enter_timer) { lv_timer_del(enter_timer); enter_timer = nullptr; }
+
+    if (wave) {
+        /* Fade the line out first; wave_tick flies the clock back when the
+         * gain reaches zero. */
+        wave_out = true;
+        return;
+    }
+
+    /* Cleared mid-scale, before the line ever appeared — just go back. */
+    if (lbl_emotion) { lv_obj_del(lbl_emotion); lbl_emotion = nullptr; }
+    emo_state = 0;
+    layout_emotion(false);
+}
+
+void ui_emotion_show(uint8_t state, const char *message)
+{
+    emo_state = state;
+    strncpy(pending_msg, message ? message : "", EMOTION_MSG_MAX);
+    pending_msg[EMOTION_MSG_MAX] = '\0';
+
+    if (enter_timer) { lv_timer_del(enter_timer); enter_timer = nullptr; }
+
+    if (wave && !wave_out) {
+        /* Already in line mode — swap the caption, keep the line running.
+         * Re-entering the whole transition between two activities would be
+         * distracting when the states change every few seconds. */
+        if (lbl_emotion) { lv_obj_del(lbl_emotion); lbl_emotion = nullptr; }
+        if (pending_msg[0]) {
+            lbl_emotion = lv_label_create(root);
+            lv_obj_set_style_text_font(lbl_emotion, &lv_font_montserrat_28, LV_PART_MAIN);
+            lv_obj_set_style_text_color(lbl_emotion, COL_CAPTION, LV_PART_MAIN);
+            lv_label_set_text(lbl_emotion, pending_msg);
+            lv_obj_align(lbl_emotion, LV_ALIGN_BOTTOM_MID, 0, -26);
+        }
+        return;
+    }
+
+    wave_out = false;
+
+    if (layout_small) {
+        /* Clock is already parked — a new emotion arrived during a fade-out,
+         * so there is nothing to scale. Bring the line straight back. */
+        wave_start();
+    } else {
+        layout_emotion(true);
+        enter_timer = lv_timer_create(enter_done_cb, TRANSIT_MS + 30, nullptr);
+        lv_timer_set_repeat_count(enter_timer, 1);
     }
 
     const EmotionDef &d = emotion_def(state);
-    Serial.printf("[ui] %s  valence=%+.2f arousal=%.2f char=%u%s\n",
-                  d.name, d.valence, d.arousal, d.character,
-                  d.spectrum ? " spectrum" : "");
+    Serial.printf("[ui] %s  valence=%+.2f arousal=%.2f char=%u\n",
+                  d.name, d.valence, d.arousal, d.character);
 }

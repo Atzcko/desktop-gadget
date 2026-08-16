@@ -11,6 +11,32 @@ Semantic versioning; the scheme and the release procedure live in [[CLAUDE]].
 The version is reported by the boot log, `GET /health` and Settings ▸ Info,
 each with a compiler build stamp so a stale flash is detectable.
 
+## v1.4.0 — 2026-08-16
+
+**The two halves of the transition are now strictly sequential.**
+
+```
+in    scale the clock into the corner   ->  THEN the line appears
+out   the line disappears               ->  THEN the clock scales back
+```
+
+They used to overlap, which read as two unrelated things happening at once. In
+sequence it reads as one movement: the clock gets out of the way, and the line
+takes the space it vacated.
+
+- Entering, a one-shot timer fires at the end of the flight and only then
+  creates the line and its caption.
+- Leaving, the fade-out drives the hand-off — when the line's gain reaches zero
+  the wave timer itself triggers the fly-back, so the order cannot slip.
+- **A state change while the line is already up does not re-run the transition.**
+  Activities change every few seconds; re-flying the clock each time would be
+  unwatchable. Only the caption swaps.
+- A new emotion arriving mid-fade-out brings the line straight back without a
+  spurious scale, since the clock is already parked (`layout_small`).
+- Clearing mid-flight, before the line ever appeared, just flies back.
+
+RAM 18.2 % (59 740 B) · Flash 26.4 % (1 730 385 B).
+
 ## v1.3.0 — 2026-08-16
 
 **The clock now genuinely scales.** Entering line mode no longer cross-fades

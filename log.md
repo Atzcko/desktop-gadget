@@ -356,3 +356,18 @@ The route that works needs no config change: **`lv_canvas` derives from `lv_img`
 The zoom lands on **real cards**, not a permanently downscaled bitmap, because a 4× downsample of a 210 px face looks soft and the clock stays on screen. For the swap to be invisible the landing geometry must equal the flight geometry, so everything derives from one number — zoom 61/256 = 0.2381, chosen so 210 px digits land at exactly 50 px, hence `fliqlo_corner` at 50 px. Card 64×55, radius 6, gap 9, and the digit padding works out to **4.1 px both ways**. That last match is the one that matters: the glyphs sit in the same place before and after.
 
 Weather just moves, per the request — same 44 px cards, right-aligned by a **measured** shift since the row's width changes with its values. If PSRAM cannot supply the canvas the code falls back to the old cross-fade; a plainer transition beats none.
+
+## [2026-08-16] release | v1.4.0 — the transition is sequential
+
+Owner: entering, the scale must finish **before** the line appears; leaving, the line must go **before** the clock scales back.
+
+They were overlapping — the line faded in while the clock was still flying. That reads as two unrelated things happening at once. In sequence it reads as a single movement: the clock gets out of the way, and the line takes the space it vacated.
+
+Entering is driven by a one-shot timer that fires at the end of the flight and only then builds the line and its caption. Leaving is driven by the fade-out itself: when the line's gain reaches zero, the wave timer triggers the fly-back. Putting the hand-off inside the thing that finishes first means the order cannot slip, rather than relying on two independent durations happening to line up.
+
+Four cases that had to behave, and now do:
+
+- **State change while the line is up** does *not* re-run the transition. Activities change every few seconds; re-flying the clock each time would be unwatchable. Only the caption swaps.
+- **New emotion during a fade-out** brings the line straight back with no spurious scale, because a `layout_small` flag records that the clock is already parked.
+- **Clear mid-flight**, before the line ever appeared, simply flies back.
+- **Deleting the wave timer from inside its own callback** is what the teardown does; LVGL supports this by flagging the timer and skipping its post-callback bookkeeping.
