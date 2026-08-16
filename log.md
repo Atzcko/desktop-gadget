@@ -342,3 +342,17 @@ The explicit apply-now actions — Connect, city pick, Apply & sync NTP, Reset t
 Behaviour now: **Save** commits and stays open with a green "Saved" for ~2 s; **Close** with edits pending raises *"Close without saving?"* → Discard / Keep editing; Discard restores the snapshot and undoes the live effects without touching NVS, since NVS already holds those values. The Save button turns blue whenever there is something unsaved, so the dialog is an expected consequence rather than a surprise.
 
 Detail worth keeping: the confirmation uses `lv_msgbox_close_async()`. Deleting an object from inside its own event callback is a foot-gun in LVGL.
+
+## [2026-08-16] release | v1.3.0 — the clock actually scales
+
+Owner clarified what "animate" meant: the clock should **scale** into the corner and the weather should **move** to the other one. What existed was a cross-fade between two separate clocks — a different thing, and a fair correction.
+
+**LVGL 8 cannot transform text.** `transform_zoom` applies to images; a label is drawn from a compiled bitmap face at one fixed size.
+
+`lv_snapshot_take()` is the obvious answer and ships with LVGL, but the library sets `LV_USE_SNAPSHOT 0`. Adding a project `include/lv_conf.h` does not fix it — inspecting the real compile command shows LVGL's own sources get only `-I…/lvgl` and `-I…/lvgl/src`, so `lv_snapshot.c` can never see a project config. A `#error` probe confirmed the project copy reaches project translation units only. `LV_CONF_PATH` would work but is macro-stringified and this project's path contains a space. **Deleted the project `lv_conf.h`** rather than leave a file in the tree that looks authoritative and does nothing — that is worse than not having one, because it invites edits that silently fail.
+
+The route that works needs no config change: **`lv_canvas` derives from `lv_img`**, so `lv_img_set_zoom()` applies to it. The big clock is drawn into a 572×232 canvas — rects, 210 px digits, seams — and that *image* is zoomed and flown. 265 KB via `ps_malloc`; measured on device as a 268 KB drop in free PSRAM.
+
+The zoom lands on **real cards**, not a permanently downscaled bitmap, because a 4× downsample of a 210 px face looks soft and the clock stays on screen. For the swap to be invisible the landing geometry must equal the flight geometry, so everything derives from one number — zoom 61/256 = 0.2381, chosen so 210 px digits land at exactly 50 px, hence `fliqlo_corner` at 50 px. Card 64×55, radius 6, gap 9, and the digit padding works out to **4.1 px both ways**. That last match is the one that matters: the glyphs sit in the same place before and after.
+
+Weather just moves, per the request — same 44 px cards, right-aligned by a **measured** shift since the row's width changes with its values. If PSRAM cannot supply the canvas the code falls back to the old cross-fade; a plainer transition beats none.

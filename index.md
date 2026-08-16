@@ -57,10 +57,11 @@ This vault is the project's memory: every decision, why it was made, and what ha
 | [[D022 - Custom HID identity, not a keyboard]] | The report descriptor, not the appearance, defines the device |
 | [[D023 - Emotions must change the mode, not decorate it]] | Minimal means few elements, not low contrast |
 | [[D024 - Emotions as a circumplex, rendered as one line]] | 26 emotions, one renderer: valence→hue, arousal→agitation |
+| [[D025 - Scaling text LVGL cannot scale]] | Canvas derives from img, so a picture of text can be zoomed |
 
 ## Releases
 
-- [[RELEASES]] — **v1.2.0**, 2026-08-16. Bump `include/version.h`, log it, tag it, flash it, confirm via `/health`.
+- [[RELEASES]] — **v1.3.0**, 2026-08-16. Bump `include/version.h`, log it, tag it, flash it, confirm via `/health`.
 
 ## Reference
 

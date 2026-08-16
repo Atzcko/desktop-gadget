@@ -18,7 +18,7 @@
 
 extern "C" {
 LV_FONT_DECLARE(fliqlo_digits);
-LV_FONT_DECLARE(fliqlo_small);
+LV_FONT_DECLARE(fliqlo_corner);
 LV_FONT_DECLARE(fliqlo_mid);
 }
 
@@ -67,15 +67,33 @@ struct Card {
 static lv_obj_t *scr_clock;
 static lv_obj_t *root;
 static lv_obj_t *clock_grp, *weather_grp, *strip_grp;
+static lv_obj_t *zoom_canvas;
+static lv_color_t *zoom_buf;
+#define ZOOM_W (CARD_W * 2 + CARD_GAP)
+#define ZOOM_H CARD_H
 
 /* The strip shown in line mode: the same charcoal cards, the same seam, the
  * same colon — scaled down. LVGL 8 cannot transform text, so "smaller" means
  * a second compiled face (fliqlo_small, 38 px) rather than a zoom. */
-#define MINI_H       46      /* line-mode strip, 38 px face  */
-#define MINI_RADIUS   8
+/*
+ * The corner clock is a TRUE SCALE of the big one, not a smaller lookalike.
+ * Zoom 61/256 = 0.2381, chosen so the 210 px digits land at exactly 50 px —
+ * which is why fliqlo_corner is 50 px. Every dimension below is the big
+ * card's dimension multiplied by that same factor, so when the zooming canvas
+ * hands over to these real cards nothing moves or changes size.
+ *
+ *   card   268 x 232 -> 64 x 55      radius 26 -> 6
+ *   gap    36        -> 9            row 572  -> 137
+ *   pad    17.2      -> 4.1          == (64 - 2*27.8)/2 = 4.1   [matches]
+ */
+#define ZOOM_END     61      /* 256 == 1:1 */
+#define MINI_W       64
+#define MINI_H       55
+#define MINI_RADIUS   6
 #define MINI_SEAM     2
-#define MINI_PAD_X   10
-#define MINI_Y       14      /* strip resting y in line mode */
+#define MINI_GAP      9
+#define MINI_X       14
+#define MINI_Y       14
 
 #define WX_H         58      /* resting weather cards, 44 px face */
 #define WX_RADIUS    10
@@ -83,7 +101,7 @@ static lv_obj_t *clock_grp, *weather_grp, *strip_grp;
 #define WX_Y        330
 
 struct MiniCard { lv_obj_t *root, *label, *seam; };
-static MiniCard m_hh, m_mm, m_temp, m_minmax, m_hum;   /* line-mode strip  */
+static MiniCard m_hh, m_mm;                            /* corner clock     */
 static MiniCard w_temp, w_minmax, w_hum;               /* resting weather  */
 static Card      card_h, card_m;
 static lv_obj_t *lbl_ampm;
@@ -375,12 +393,6 @@ static void card_sync(lv_obj_t *group, MiniCard **cards, int n,
     }
 }
 
-static void strip_sync(void)
-{
-    MiniCard *c[5] = { &m_hh, &m_mm, &m_temp, &m_minmax, &m_hum };
-    card_sync(strip_grp, c, 5, MINI_H, MINI_PAD_X);
-}
-
 static void weather_sync(void)
 {
     MiniCard *c[3] = { &w_temp, &w_minmax, &w_hum };
@@ -487,49 +499,36 @@ void ui_init(uint16_t screen_w, uint16_t screen_h)
 
     weather_sync();
 
-    /* Line-mode strip: clock and weather as one row of five small cards. */
+    /* Corner clock for line mode — the landing place for the zoom. */
     strip_grp = lv_obj_create(root);
     decor(strip_grp);
-    lv_obj_set_size(strip_grp, screen_w, MINI_H);
-    lv_obj_set_pos(strip_grp, 0, MINI_Y);
-    lv_obj_set_flex_flow(strip_grp, LV_FLEX_FLOW_ROW);
-    lv_obj_set_flex_align(strip_grp, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER,
-                          LV_FLEX_ALIGN_CENTER);
-    lv_obj_set_style_pad_column(strip_grp, 8, LV_PART_MAIN);
+    lv_obj_set_size(strip_grp, MINI_W * 2 + MINI_GAP, MINI_H);
+    lv_obj_set_pos(strip_grp, MINI_X, MINI_Y);
     lv_obj_set_style_opa(strip_grp, LV_OPA_TRANSP, LV_PART_MAIN);
 
-    mini_card(strip_grp, m_hh, &fliqlo_small, MINI_H, MINI_RADIUS, COL_DIGIT, "00");
+    mini_card(strip_grp, m_hh, &fliqlo_corner, MINI_H, MINI_RADIUS, COL_DIGIT, "00");
+    mini_card(strip_grp, m_mm, &fliqlo_corner, MINI_H, MINI_RADIUS, COL_DIGIT, "00");
+    lv_obj_set_size(m_hh.root, MINI_W, MINI_H);
+    lv_obj_set_pos(m_hh.root, 0, 0);
+    lv_obj_set_size(m_mm.root, MINI_W, MINI_H);
+    lv_obj_set_pos(m_mm.root, MINI_W + MINI_GAP, 0);
+    lv_obj_set_size(m_hh.seam, MINI_W, MINI_SEAM);
+    lv_obj_set_size(m_mm.seam, MINI_W, MINI_SEAM);
+    lv_obj_align(m_hh.seam, LV_ALIGN_CENTER, 0, 0);
+    lv_obj_align(m_mm.seam, LV_ALIGN_CENTER, 0, 0);
 
-    {   /* the colon, scaled with everything else */
-        lv_obj_t *col = lv_obj_create(strip_grp);
-        decor(col);
-        lv_obj_set_size(col, 10, MINI_H);
-        for (int i = 0; i < 2; i++) {
-            lv_obj_t *d = lv_obj_create(col);
-            decor(d);
-            lv_obj_set_size(d, 6, 6);
-            lv_obj_set_style_radius(d, 3, LV_PART_MAIN);
-            lv_obj_set_style_bg_color(d, COL_COLON, LV_PART_MAIN);
-            lv_obj_set_style_bg_opa(d, LV_OPA_COVER, LV_PART_MAIN);
-            lv_obj_align(d, LV_ALIGN_CENTER, 0, i ? 9 : -9);
-        }
+    /* Canvas the big clock is rendered into so it can actually be SCALED.
+     * lv_canvas derives from lv_img, so lv_img_set_zoom works on it — LVGL 8
+     * cannot transform text, but it can transform an image of text. */
+    zoom_buf = (lv_color_t *)ps_malloc(LV_CANVAS_BUF_SIZE_TRUE_COLOR(ZOOM_W, ZOOM_H));
+    if (zoom_buf) {
+        zoom_canvas = lv_canvas_create(root);
+        decor(zoom_canvas);
+        lv_canvas_set_buffer(zoom_canvas, zoom_buf, ZOOM_W, ZOOM_H, LV_IMG_CF_TRUE_COLOR);
+        lv_img_set_antialias(zoom_canvas, true);
+        lv_img_set_pivot(zoom_canvas, 0, 0);      /* shrink toward its top-left */
+        lv_obj_add_flag(zoom_canvas, LV_OBJ_FLAG_HIDDEN);
     }
-
-    mini_card(strip_grp, m_mm, &fliqlo_small, MINI_H, MINI_RADIUS, COL_DIGIT, "00");
-
-    {   /* breathing room between the clock and the weather group */
-        lv_obj_t *sp = lv_obj_create(strip_grp);
-        decor(sp);
-        lv_obj_set_size(sp, 18, MINI_H);
-    }
-
-    mini_card(strip_grp, m_temp,   &fliqlo_small, MINI_H, MINI_RADIUS,
-              lv_color_hex(0xDADADA), "--" WEATHER_UNIT_SUFFIX);
-    mini_card(strip_grp, m_minmax, &fliqlo_small, MINI_H, MINI_RADIUS,
-              COL_SECONDARY, "--/--");
-    mini_card(strip_grp, m_hum,    &fliqlo_small, MINI_H, MINI_RADIUS,
-              lv_color_hex(0x6E6E6E), "--%");
-    strip_sync();
 
     /* Tap overlay — reuses the smaller weather size, no new type size. */
     lbl_info = lv_label_create(root);
@@ -573,7 +572,6 @@ void ui_set_time(int hour, int minute, bool animate)
 
     lv_label_set_text(m_hh.label, hh);
     lv_label_set_text(m_mm.label, mm);
-    strip_sync();
 
     if (animate) {
         /* Driven by "rendered digits differ from target", never by
@@ -607,10 +605,6 @@ void ui_set_weather(float current, float lo, float hi, float humidity,
         lv_label_set_text(w_hum.label,    t3);
         weather_sync();
 
-        lv_label_set_text(m_temp.label,   t1);
-        lv_label_set_text(m_minmax.label, t2);
-        lv_label_set_text(m_hum.label,    t3);
-        strip_sync();
     }
     if (stale) lv_obj_clear_flag(dot_stale, LV_OBJ_FLAG_HIDDEN);
     else       lv_obj_add_flag(dot_stale, LV_OBJ_FLAG_HIDDEN);
@@ -618,13 +612,9 @@ void ui_set_weather(float current, float lo, float hi, float humidity,
 
 void ui_show_humidity(bool visible)
 {
-    lv_obj_t *o[2] = { w_hum.root, m_hum.root };
-    for (int i = 0; i < 2; i++) {
-        if (visible) lv_obj_clear_flag(o[i], LV_OBJ_FLAG_HIDDEN);
-        else         lv_obj_add_flag(o[i], LV_OBJ_FLAG_HIDDEN);
-    }
+    if (visible) lv_obj_clear_flag(w_hum.root, LV_OBJ_FLAG_HIDDEN);
+    else         lv_obj_add_flag(w_hum.root, LV_OBJ_FLAG_HIDDEN);
     weather_sync();
-    strip_sync();
 }
 
 void ui_show_weather_block(bool visible)
@@ -678,9 +668,25 @@ static bool        wave_out;
 
 /* ------------------------------------------------------- animation glue -- */
 
-static void a_opa(void *o, int32_t v) { lv_obj_set_style_opa((lv_obj_t *)o, (lv_opa_t)v, LV_PART_MAIN); }
+static void a_opa (void *o, int32_t v) { lv_obj_set_style_opa((lv_obj_t *)o, (lv_opa_t)v, LV_PART_MAIN); }
+static void a_zoom(void *o, int32_t v) { lv_img_set_zoom((lv_obj_t *)o, (uint16_t)v); }
 static void a_x  (void *o, int32_t v) { lv_obj_set_x((lv_obj_t *)o, v); }
 static void a_y  (void *o, int32_t v) { lv_obj_set_y((lv_obj_t *)o, v); }
+
+static void animate_done(lv_obj_t *obj, lv_anim_exec_xcb_t cb, int32_t from, int32_t to,
+                         uint32_t ms, uint32_t delay, lv_anim_ready_cb_t ready)
+{
+    lv_anim_t a;
+    lv_anim_init(&a);
+    lv_anim_set_var(&a, obj);
+    lv_anim_set_exec_cb(&a, cb);
+    lv_anim_set_values(&a, from, to);
+    lv_anim_set_time(&a, ms);
+    lv_anim_set_delay(&a, delay);
+    lv_anim_set_path_cb(&a, lv_anim_path_ease_in_out);
+    lv_anim_set_ready_cb(&a, ready);
+    lv_anim_start(&a);
+}
 
 static void animate(lv_obj_t *obj, lv_anim_exec_xcb_t cb,
                     int32_t from, int32_t to, uint32_t ms, uint32_t delay)
@@ -847,25 +853,113 @@ static void wave_tick(lv_timer_t *)
     if (wave) lv_obj_invalidate(wave);
 }
 
-/* ------------------------------------------------- clock steps aside --- */
+/* ------------------------------------------- the clock scales away ------ */
+/*
+ * The clock does not cross-fade into a smaller clock — it is genuinely SCALED
+ * and flown into the corner, and the weather slides to the opposite corner.
+ *
+ * LVGL 8 cannot transform text, so the big clock is redrawn into an lv_canvas
+ * (which derives from lv_img) and that image is zoomed. At the end of the
+ * flight the canvas hands over to the real corner cards, which are sized to
+ * exactly the same scale factor — so the handover is invisible rather than a
+ * pop, and from then on the digits are real glyphs again rather than a
+ * downscaled bitmap.
+ */
+#define TRANSIT_MS 460
+
+static void zoom_render(void)
+{
+    if (!zoom_canvas) return;
+    lv_canvas_fill_bg(zoom_canvas, COL_BG, LV_OPA_COVER);
+
+    lv_draw_rect_dsc_t r;
+    lv_draw_rect_dsc_init(&r);
+    r.bg_color = COL_CARD;
+    r.bg_opa   = LV_OPA_COVER;
+    r.radius   = CARD_RADIUS;
+    lv_canvas_draw_rect(zoom_canvas, 0, 0, CARD_W, CARD_H, &r);
+    lv_canvas_draw_rect(zoom_canvas, CARD_W + CARD_GAP, 0, CARD_W, CARD_H, &r);
+
+    lv_draw_label_dsc_t l;
+    lv_draw_label_dsc_init(&l);
+    l.font  = &fliqlo_digits;
+    l.color = COL_DIGIT;
+    l.align = LV_TEXT_ALIGN_CENTER;
+    lv_canvas_draw_text(zoom_canvas, 0, DIGIT_TOP, CARD_W, &l, card_h.text);
+    lv_canvas_draw_text(zoom_canvas, CARD_W + CARD_GAP, DIGIT_TOP, CARD_W, &l, card_m.text);
+
+    /* Seam over the glyphs, as on the real cards. */
+    lv_draw_rect_dsc_init(&r);
+    r.bg_color = COL_BG;
+    r.bg_opa   = LV_OPA_COVER;
+    lv_canvas_draw_rect(zoom_canvas, 0, CARD_H / 2 - SEAM_H / 2, CARD_W, SEAM_H, &r);
+    lv_canvas_draw_rect(zoom_canvas, CARD_W + CARD_GAP, CARD_H / 2 - SEAM_H / 2,
+                        CARD_W, SEAM_H, &r);
+}
+
+/* Right-align the weather row against the far edge, measured rather than
+ * assumed — the row's width changes with the values in it. */
+static int weather_shift(void)
+{
+    lv_obj_update_layout(weather_grp);
+    lv_coord_t right = lv_obj_get_x(w_hum.root) + lv_obj_get_width(w_hum.root);
+    if (lv_obj_has_flag(w_hum.root, LV_OBJ_FLAG_HIDDEN))
+        right = lv_obj_get_x(w_minmax.root) + lv_obj_get_width(w_minmax.root);
+    return (int)(scr_w - 14 - right);
+}
+
+static void arrive_small(lv_anim_t *)
+{
+    lv_obj_add_flag(zoom_canvas, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_set_style_opa(strip_grp, LV_OPA_COVER, LV_PART_MAIN);
+}
+
+static void arrive_big(lv_anim_t *)
+{
+    lv_obj_add_flag(zoom_canvas, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_clear_flag(clock_grp, LV_OBJ_FLAG_HIDDEN);
+}
 
 static void layout_emotion(bool on)
 {
+    const int shift = weather_shift();
+
+    if (!zoom_canvas) {          /* no PSRAM for the canvas — degrade to a fade */
+        animate(clock_grp, a_opa, on ? LV_OPA_COVER : LV_OPA_TRANSP,
+                on ? LV_OPA_TRANSP : LV_OPA_COVER, TRANSIT_MS, 0);
+        lv_obj_set_style_opa(strip_grp, on ? LV_OPA_COVER : LV_OPA_TRANSP, LV_PART_MAIN);
+        animate(weather_grp, a_x, on ? 0 : shift, on ? shift : 0, TRANSIT_MS, 0);
+        animate(weather_grp, a_y, on ? WX_Y : MINI_Y, on ? MINI_Y : WX_Y, TRANSIT_MS, 0);
+        return;
+    }
+
+    zoom_render();
+    lv_obj_clear_flag(zoom_canvas, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_move_foreground(zoom_canvas);
+
     if (on) {
-        /* Big layout collapses upward; the strip descends into its place. */
-        animate(clock_grp,   a_opa, LV_OPA_COVER, LV_OPA_TRANSP, 340, 0);
-        animate(clock_grp,   a_y,   0, -34, 340, 0);
-        animate(weather_grp, a_opa, LV_OPA_COVER, LV_OPA_TRANSP, 340, 0);
-        animate(weather_grp, a_y,   WEATHER_REST_Y, WEATHER_REST_Y + 26, 340, 0);
-        animate(strip_grp,   a_opa, LV_OPA_TRANSP, LV_OPA_COVER, 380, 180);
-        animate(strip_grp,   a_y,   MINI_Y - 20, MINI_Y, 380, 180);
+        lv_obj_set_pos(zoom_canvas, clock_x, clock_y);
+        lv_img_set_zoom(zoom_canvas, 256);
+        lv_obj_add_flag(clock_grp, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_set_style_opa(strip_grp, LV_OPA_TRANSP, LV_PART_MAIN);
+
+        animate_done(zoom_canvas, a_zoom, 256, ZOOM_END, TRANSIT_MS, 0, arrive_small);
+        animate(zoom_canvas, a_x, clock_x, MINI_X, TRANSIT_MS, 0);
+        animate(zoom_canvas, a_y, clock_y, MINI_Y, TRANSIT_MS, 0);
+
+        animate(weather_grp, a_x, 0,    shift,  TRANSIT_MS, 0);
+        animate(weather_grp, a_y, WX_Y, MINI_Y, TRANSIT_MS, 0);
     } else {
-        animate(strip_grp,   a_opa, LV_OPA_COVER, LV_OPA_TRANSP, 240, 0);
-        animate(strip_grp,   a_y,   MINI_Y, MINI_Y - 20, 240, 0);
-        animate(clock_grp,   a_opa, LV_OPA_TRANSP, LV_OPA_COVER, 380, 140);
-        animate(clock_grp,   a_y,   -34, 0, 380, 140);
-        animate(weather_grp, a_opa, LV_OPA_TRANSP, LV_OPA_COVER, 380, 140);
-        animate(weather_grp, a_y,   WEATHER_REST_Y + 26, WEATHER_REST_Y, 380, 140);
+        lv_obj_set_pos(zoom_canvas, MINI_X, MINI_Y);
+        lv_img_set_zoom(zoom_canvas, ZOOM_END);
+        lv_obj_set_style_opa(strip_grp, LV_OPA_TRANSP, LV_PART_MAIN);
+
+        animate_done(zoom_canvas, a_zoom, ZOOM_END, 256, TRANSIT_MS, 0, arrive_big);
+        animate(zoom_canvas, a_x, MINI_X, clock_x, TRANSIT_MS, 0);
+        animate(zoom_canvas, a_y, MINI_Y, clock_y, TRANSIT_MS, 0);
+
+        animate(weather_grp, a_x, shift,  0,    TRANSIT_MS, 0);
+        animate(weather_grp, a_y, MINI_Y, WX_Y, TRANSIT_MS, 0);
     }
 }
 

@@ -11,6 +11,26 @@ Semantic versioning; the scheme and the release procedure live in [[CLAUDE]].
 The version is reported by the boot log, `GET /health` and Settings ▸ Info,
 each with a compiler build stamp so a stale flash is detectable.
 
+## v1.3.0 — 2026-08-16
+
+**The clock now genuinely scales.** Entering line mode no longer cross-fades
+between two clocks — the real clock is scaled down and flown to the top-left
+corner while the weather slides to the top-right.
+
+LVGL 8 cannot transform text, so the clock is rendered into an `lv_canvas`
+(which derives from `lv_img`) and *that* is zoomed: 265 KB in PSRAM. At the end
+of the flight it hands over to real 50 px cards whose geometry is the big
+clock's multiplied by the same 0.2381 factor — card 64×55, radius 6, gap 9,
+digit padding 4.1 px both ways — so the handover is invisible and the digits go
+back to being real glyphs rather than a downscaled bitmap.
+
+Weather "just moves", as asked: same 44 px cards, right-aligned against the far
+edge by a **measured** shift, since the row's width changes with its values.
+
+Falls back to the previous cross-fade if PSRAM cannot provide the canvas.
+
+RAM 18.2 % (59 716 B) · Flash 26.4 % (1 730 129 B) · PSRAM −268 KB.
+
 ## v1.2.0 — 2026-08-16
 
 **Save and Close are separate, with a guard.** One "Save & close" button gave no
