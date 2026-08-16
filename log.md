@@ -528,3 +528,15 @@ MCP is the one mechanism that closes it, because Claude Desktop runs MCP servers
 Tested the whole handshake over stdio before registering it — `initialize`, `tools/list`, a real `tools/call` that lit the panel, and `flipclock_status` reading back `active: True`. Registered under `mcpServers` with the existing config backed up first and all other keys preserved.
 
 **The pattern worth remembering:** three rounds were spent fixing progressively better versions of the wrong problem, because I inferred what "outside this conversation" meant instead of establishing it. The evidence that settled it — no shell in Chat, RFC1918 address, empty `mcpServers` — took one command to gather and should have been the first thing I did.
+
+## [2026-08-16] process | Duration defaults — correcting an over-correction
+
+Owner: why does the line stay on so long after the work is finished?
+
+Because two turns earlier they had said the display showed nothing, and I fixed that by removing `hush` and raising durations to 90–180 s. That solved the first complaint and created this one. Classic over-correction: I moved the dial rather than fixing the mechanism.
+
+The mechanism was wrong in both directions. **A duration is a guess about the future, made at the start.** Work that takes 8 s under a 150 s request leaves the line up for 142 s saying nothing; work that overruns a 20 s request goes dark mid-task.
+
+The right model was already there and I had stopped using it: because **every work command is prefixed**, each command *refreshes* the timer. So the duration only has to outlive the **gap between commands**, not the whole task — and what the owner actually sees idle is the tail after the last push. Default is now **30 s** in the shell command, the MCP tool, and all three sets of docs, with a longer value passed explicitly for a single long-running command like a build.
+
+Both failure modes came from treating the duration as "how long should this be visible" instead of "how long until the next refresh".

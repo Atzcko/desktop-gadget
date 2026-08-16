@@ -166,9 +166,15 @@ The clock can express what we are doing. Two transports, **identical JSON**.
 > failed twice in practice, both times noticed by the owner rather than caught
 > here. Attaching it to the work makes it part of the thing being done.
 >
-> `say` is fire-and-forget: backgrounded, 2 s cap, output discarded, always
-> exits 0. It cannot delay or break the command it prefixes. Default duration
-> 60 s, which covers a build; pass a third argument for longer work.
+> `say` is fire-and-forget, capped at 2 s, and always exits 0 — it cannot delay
+> or break the command it prefixes.
+>
+> **Default duration is 30 s, and that is deliberate.** Every prefixed command
+> refreshes the timer, so the duration only has to outlive the *gap between
+> commands*, not the whole task. What the owner sees idle is the tail after the
+> LAST push — so a long duration parks the line on screen long after the work
+> finished. Pass a bigger number only for one genuinely long command
+> (`tools/say building "firmware" 90 && pio run`).
 >
 > **Conversational turns count too.** A question answered in prose runs no
 > commands, so there is nothing to prefix — which makes it the likeliest moment
