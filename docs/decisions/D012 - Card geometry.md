@@ -20,7 +20,7 @@ All numbers below fall out of the one font metric from [[D011 - Generate the dig
 | `CARD_H` | 232 | digits are 153 px → fill ~66 % of card height, Fliqlo's proportion |
 | `CARD_GAP` | 36 | colon zone |
 | `CARD_RADIUS` | 26 | large, per the brief's "large rounded cards" |
-| `SEAM_H` | 2 | thin centre seam, **big cards only** — see below |
+| `SEAM_H` | 3 | centre seam, **big cards only** — see below |
 | `COLON_DOT` | 14 | dots at 1/3 and 2/3 card height, straddling the seam |
 
 Clock row total width = `268 × 2 + 36 = 572`, leaving **14 px margin** each side of the 600 px panel — comfortably more than the ±2 px the Stage 5 burn-in walk needs.
@@ -32,7 +32,7 @@ Clock row total width = `268 × 2 + 36 = 572`, leaving **14 px margin** each sid
 > [!tip] The seam is scale-dependent, not all-or-nothing
 > It draws *over* the numerals — in Fliqlo the split line crosses the glyphs because it is the gap between two physical flaps, so `make_card()` creates it after the label.
 >
-> It reads correctly at **232 px**, where 2 px is a hairline. It does **not** survive being scaled: on the 55 px corner clock and 58 px weather cards there are too few pixels for a line to land on, and it reads as choppy. Hence: **big cards keep it, small cards have none** (v1.4.1 removed it everywhere, v1.4.2 restored it where it works).
+> It reads correctly at **232 px**, where 3 px is a hairline. It does **not** survive being scaled: on the 55 px corner clock and 58 px weather cards there are too few pixels for a line to land on, and it reads as choppy. Hence: **big cards keep it, small cards have none** (v1.4.1 removed it everywhere, v1.4.2 restored it where it works).
 >
 > The fold animation never depended on it — it hinges at `CARD_H/2` regardless.
 

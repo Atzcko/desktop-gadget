@@ -44,7 +44,7 @@ LV_FONT_DECLARE(fliqlo_mid);
 #define CARD_H          232
 #define CARD_GAP        36
 #define CARD_RADIUS     26
-#define SEAM_H           2      /* big cards only — thin */
+#define SEAM_H           3      /* big cards only */
 #define COLON_DOT       14
 #define LABEL_H         154      /* fliqlo_digits line_height */
 #define DIGIT_TOP       ((CARD_H - LABEL_H) / 2)

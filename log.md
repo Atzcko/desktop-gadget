@@ -395,3 +395,7 @@ So: big clock keeps it at **2 px** (thinner than the original 3), small cards ha
 The zoom canvas carries the seam, since it renders the big clock — it scales with everything else and is sub-pixel by the time the seamless corner cards take over, so the handover stays invisible. Restored the two `lv_obj_move_foreground(c.seam)` calls so the seam stays above the moving flaps during a fold.
 
 Vault corrected again: [[D012 - Card geometry]] now records the scale-dependent rule rather than either absolute, and the Stage 1 note matches. Two corrections in two releases is worth noting — the underlying lesson is that a design element evaluated at one size cannot be assumed to hold at another.
+
+## [2026-08-16] release | v1.4.3 — seam 3 px
+
+Owner: make it 3 px. Reverted the v1.4.2 thinning; the scale-dependent rule is unchanged — big clock has a seam, small cards do not.

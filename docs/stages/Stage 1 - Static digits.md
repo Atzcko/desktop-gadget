@@ -30,7 +30,7 @@ Derived from `amoled.width()` / `amoled.height()`, never hardcoded — see [[D00
 | Background | `#000000` — AMOLED pixels genuinely off, not near-black |
 | Card fill | dark charcoal, ~`#171717` |
 | Card corners | large radius |
-| Seam | a 2 px pure-black line across each card's vertical centre — **big cards only**, see [[D012 - Card geometry]] |
+| Seam | a 3 px pure-black line across each card's vertical centre — **big cards only**, see [[D012 - Card geometry]] |
 | Digits | white, the largest font in the build |
 | Colon | between the two cards, dimmer than the digits |
 

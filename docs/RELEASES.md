@@ -11,6 +11,10 @@ Semantic versioning; the scheme and the release procedure live in [[CLAUDE]].
 The version is reported by the boot log, `GET /health` and Settings ▸ Info,
 each with a compiler build stamp so a stale flash is detectable.
 
+## v1.4.3 — 2026-08-16
+
+Seam back to **3 px** on the big clock. Small cards still have none.
+
 ## v1.4.2 — 2026-08-16
 
 **Seam back on the big clock only, and thinner: 3 px → 2 px.**
