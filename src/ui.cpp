@@ -296,7 +296,10 @@ static void make_card(Card &c, int x, int y)
      * default clock is exactly as the brief specifies — nothing extra. */
     c.accent = lv_obj_create(c.root);
     decor(c.accent);
-    lv_obj_set_size(c.accent, CARD_W, SEAM_H);
+    /* 10 px, not 3: at rest it is fully transparent so the clock is exactly
+     * as the brief specifies, but when an emotion lights it up it has to be
+     * visible across a room, not a hairline. */
+    lv_obj_set_size(c.accent, CARD_W, 10);
     lv_obj_set_style_bg_color(c.accent, COL_ACCENT, LV_PART_MAIN);
     lv_obj_set_style_bg_opa(c.accent, LV_OPA_TRANSP, LV_PART_MAIN);
     lv_obj_align(c.accent, LV_ALIGN_CENTER, 0, 0);
@@ -509,11 +512,30 @@ void ui_show_info(const char *date_line, const char *sync_line)
 /* ====================================================================== */
 /*  Emotion overlay                                                       */
 /* ====================================================================== */
+/*
+ * First version was far too timid. For four of the six states the entire
+ * signal was a 3 px accent line on the card seam — invisible next to 150 px
+ * white digits at high brightness. The owner reported, correctly, that the
+ * clock just kept showing the time.
+ *
+ * The fix is not "make the accent brighter", it is to make the device
+ * clearly change MODE:
+ *
+ *   - the clock digits fade back to 25% so they stop dominating
+ *   - both cards gain a thick accent border in the state colour
+ *   - the seam accent bar lights up at 10 px and pulses
+ *   - a pair of eyes appears for EVERY state, with per-state motion
+ *   - the caption renders at 28 px instead of 20 px
+ *
+ * The clock is still there and still correct — it just stops being the
+ * thing your eye lands on. Everything reverts exactly on duration_s.
+ */
 
-#define COL_OK      lv_color_hex(0x2E9E5B)
-#define COL_ERR     lv_color_hex(0xC0392B)
-#define COL_WARM    lv_color_hex(0xD9A03C)
-#define COL_EYE     lv_color_hex(0xEDEDED)
+#define COL_OK      lv_color_hex(0x2FBF71)
+#define COL_ERR     lv_color_hex(0xE0483B)
+#define COL_WARM    lv_color_hex(0xE8A93C)
+#define COL_THINK   lv_color_hex(0x4A90E2)
+#define COL_EYE     lv_color_hex(0xF2F2F2)
 
 static lv_timer_t *emo_timer;
 static lv_obj_t   *eye_l, *eye_r, *lbl_emotion;
@@ -525,13 +547,11 @@ static void anim_opa_cb(void *obj, int32_t v)
     lv_obj_set_style_bg_opa((lv_obj_t *)obj, (lv_opa_t)v, LV_PART_MAIN);
 }
 
-static void anim_y_cb(void *obj, int32_t v)
-{
-    lv_obj_set_y((lv_obj_t *)obj, v);
-}
+static void anim_y_cb(void *obj, int32_t v) { lv_obj_set_y((lv_obj_t *)obj, v); }
+static void anim_x_cb(void *obj, int32_t v) { lv_obj_set_x((lv_obj_t *)obj, v); }
 
 /* A fold that returns to where it started — the digits do not change, so
- * this reads as the card "twitching" rather than the clock ticking. */
+ * this reads as the card twitching rather than the clock ticking. */
 static void ripple_card(Card &c)
 {
     lv_obj_t *flap = make_flap(c, c.text, true, CARD_H / 2);
@@ -556,11 +576,12 @@ static void pulse_seam(lv_color_t colour, uint32_t period_ms, uint16_t repeat)
     Card *cards[2] = { &card_h, &card_m };
     for (int i = 0; i < 2; i++) {
         lv_obj_set_style_bg_color(cards[i]->accent, colour, LV_PART_MAIN);
+        lv_obj_move_foreground(cards[i]->accent);
         lv_anim_t a;
         lv_anim_init(&a);
         lv_anim_set_var(&a, cards[i]->accent);
         lv_anim_set_exec_cb(&a, anim_opa_cb);
-        lv_anim_set_values(&a, LV_OPA_TRANSP, LV_OPA_COVER);
+        lv_anim_set_values(&a, LV_OPA_20, LV_OPA_COVER);
         lv_anim_set_time(&a, period_ms / 2);
         lv_anim_set_playback_time(&a, period_ms / 2);
         lv_anim_set_repeat_count(&a, repeat);
@@ -569,58 +590,92 @@ static void pulse_seam(lv_color_t colour, uint32_t period_ms, uint16_t repeat)
     }
 }
 
-/* Minimal eyes: filled circles when awake, flat bars when asleep. No faces,
- * no curves — it stays in the same visual language as the cards. */
-static void make_eyes(bool sleepy)
+/* Push the clock into the background so the expression is what you see. */
+static void recede_clock(lv_color_t colour, bool on)
 {
+    Card *cards[2] = { &card_h, &card_m };
+    for (int i = 0; i < 2; i++) {
+        lv_obj_set_style_text_opa(cards[i]->label,
+                                  on ? LV_OPA_30 : LV_OPA_COVER, LV_PART_MAIN);
+        lv_obj_set_style_border_width(cards[i]->root, on ? 4 : 0, LV_PART_MAIN);
+        if (on) {
+            lv_obj_set_style_border_color(cards[i]->root, colour, LV_PART_MAIN);
+            lv_obj_set_style_border_opa(cards[i]->root, LV_OPA_COVER, LV_PART_MAIN);
+        }
+    }
+}
+
+/* Eyes for every state now, not just celebrate/sleepy — they are the thing
+ * that reads instantly as "the device is expressing something". */
+static void make_eyes(uint8_t state)
+{
+    bool closed = (state == 6);                    /* sleepy */
+    int  w = closed ? 76 : 58;
+    int  h = closed ? 12 : 58;
+
     Card *cards[2] = { &card_h, &card_m };
     lv_obj_t **slot[2] = { &eye_l, &eye_r };
 
     for (int i = 0; i < 2; i++) {
         lv_obj_t *e = lv_obj_create(root);
         decor(e);
-        if (sleepy) {
-            lv_obj_set_size(e, 72, 10);
-            lv_obj_set_style_radius(e, 5, LV_PART_MAIN);
-        } else {
-            lv_obj_set_size(e, 56, 56);
-            lv_obj_set_style_radius(e, 28, LV_PART_MAIN);
-        }
+        lv_obj_set_size(e, w, h);
+        lv_obj_set_style_radius(e, closed ? h / 2 : w / 2, LV_PART_MAIN);
         lv_obj_set_style_bg_color(e, COL_EYE, LV_PART_MAIN);
         lv_obj_set_style_bg_opa(e, LV_OPA_COVER, LV_PART_MAIN);
 
-        int cx = lv_obj_get_x(cards[i]->root) + CARD_W / 2;
-        int cy = clock_y + CARD_H / 2 - 18;
-        lv_obj_set_pos(e, cx - lv_obj_get_width(e) / 2, cy);
+        int cx = lv_obj_get_x(cards[i]->root) + CARD_W / 2 - w / 2;
+        int cy = clock_y + CARD_H / 2 - h / 2 - 6;
+        lv_obj_set_pos(e, cx, cy);
         *slot[i] = e;
 
         lv_anim_t a;
         lv_anim_init(&a);
         lv_anim_set_var(&a, e);
-        if (sleepy) {
-            /* Slow breathing — the device looks idle, not broken. */
-            lv_anim_set_exec_cb(&a, anim_opa_cb);
-            lv_anim_set_values(&a, 60, LV_OPA_COVER);
-            lv_anim_set_time(&a, 1400);
-            lv_anim_set_playback_time(&a, 1400);
-        } else {
-            lv_anim_set_exec_cb(&a, anim_y_cb);
-            lv_anim_set_values(&a, cy, cy - 16);
-            lv_anim_set_time(&a, 260);
-            lv_anim_set_playback_time(&a, 260);
-        }
         lv_anim_set_repeat_count(&a, LV_ANIM_REPEAT_INFINITE);
         lv_anim_set_path_cb(&a, lv_anim_path_ease_in_out);
+
+        switch (state) {
+        case 1:                                     /* thinking: glance about */
+            lv_anim_set_exec_cb(&a, anim_x_cb);
+            lv_anim_set_values(&a, cx - 14, cx + 14);
+            lv_anim_set_time(&a, 900);
+            lv_anim_set_playback_time(&a, 900);
+            break;
+        case 2:                                     /* working: blink          */
+            lv_anim_set_exec_cb(&a, anim_opa_cb);
+            lv_anim_set_values(&a, 70, LV_OPA_COVER);
+            lv_anim_set_time(&a, 450);
+            lv_anim_set_playback_time(&a, 450);
+            break;
+        case 4:                                     /* error: shake            */
+            lv_anim_set_exec_cb(&a, anim_x_cb);
+            lv_anim_set_values(&a, cx - 9, cx + 9);
+            lv_anim_set_time(&a, 90);
+            lv_anim_set_playback_time(&a, 90);
+            break;
+        case 6:                                     /* sleepy: slow breathing  */
+            lv_anim_set_exec_cb(&a, anim_opa_cb);
+            lv_anim_set_values(&a, 50, LV_OPA_COVER);
+            lv_anim_set_time(&a, 1500);
+            lv_anim_set_playback_time(&a, 1500);
+            break;
+        default:                                    /* success / celebrate     */
+            lv_anim_set_exec_cb(&a, anim_y_cb);
+            lv_anim_set_values(&a, cy, cy - 20);
+            lv_anim_set_time(&a, state == 5 ? 240 : 380);
+            lv_anim_set_playback_time(&a, state == 5 ? 240 : 380);
+            break;
+        }
         lv_anim_start(&a);
     }
 }
 
 static void emo_timer_cb(lv_timer_t *)
 {
-    if (emo_state == EMO_THINKING) {
-        /* Alternate cards — the ripple travels across the display. */
+    if (emo_state == 1) {
         ripple_card(ripple_phase++ % 2 ? card_m : card_h);
-    } else if (emo_state == EMO_CELEBRATE) {
+    } else if (emo_state == 5) {
         ripple_card(card_h);
         ripple_card(card_m);
     }
@@ -633,6 +688,7 @@ void ui_emotion_clear(void)
         lv_anim_del(cards[i]->accent, nullptr);
         lv_obj_set_style_bg_opa(cards[i]->accent, LV_OPA_TRANSP, LV_PART_MAIN);
     }
+    recede_clock(COL_BG, false);
     if (emo_timer)   { lv_timer_del(emo_timer);   emo_timer = nullptr; }
     if (eye_l)       { lv_anim_del(eye_l, nullptr); lv_obj_del(eye_l); eye_l = nullptr; }
     if (eye_r)       { lv_anim_del(eye_r, nullptr); lv_obj_del(eye_r); eye_r = nullptr; }
@@ -646,40 +702,40 @@ void ui_emotion_show(uint8_t state, const char *message)
     emo_state    = state;
     ripple_phase = 0;
 
+    lv_color_t colour;
     switch (state) {
-    case 1: /* thinking  */
-        pulse_seam(COL_ACCENT, 1600, LV_ANIM_REPEAT_INFINITE);
-        emo_timer = lv_timer_create(emo_timer_cb, 700, nullptr);
-        break;
-    case 2: /* working   */
-        pulse_seam(COL_ACCENT, 900, LV_ANIM_REPEAT_INFINITE);
-        break;
-    case 3: /* success   */
-        pulse_seam(COL_OK, 700, 2);
-        ripple_card(card_h);
-        ripple_card(card_m);
-        break;
-    case 4: /* error     */
-        pulse_seam(COL_ERR, 260, 4);
-        break;
-    case 5: /* celebrate */
-        pulse_seam(COL_WARM, 500, LV_ANIM_REPEAT_INFINITE);
-        make_eyes(false);
-        emo_timer = lv_timer_create(emo_timer_cb, 420, nullptr);
-        break;
-    case 6: /* sleepy    */
-        make_eyes(true);
-        break;
-    default:
-        break;
+    case 3:  colour = COL_OK;    break;   /* success   */
+    case 4:  colour = COL_ERR;   break;   /* error     */
+    case 5:  colour = COL_WARM;  break;   /* celebrate */
+    case 6:  colour = COL_WARM;  break;   /* sleepy    */
+    default: colour = COL_THINK; break;   /* thinking / working */
+    }
+
+    recede_clock(colour, true);
+    make_eyes(state);
+
+    switch (state) {
+    case 1: pulse_seam(colour, 1500, LV_ANIM_REPEAT_INFINITE);
+            emo_timer = lv_timer_create(emo_timer_cb, 750, nullptr); break;
+    case 2: pulse_seam(colour, 800,  LV_ANIM_REPEAT_INFINITE); break;
+    case 3: pulse_seam(colour, 600,  4);
+            ripple_card(card_h); ripple_card(card_m);           break;
+    case 4: pulse_seam(colour, 240,  8);                        break;
+    case 5: pulse_seam(colour, 420,  LV_ANIM_REPEAT_INFINITE);
+            emo_timer = lv_timer_create(emo_timer_cb, 460, nullptr); break;
+    case 6: pulse_seam(colour, 2600, LV_ANIM_REPEAT_INFINITE);  break;
+    default: break;
     }
 
     if (message && message[0]) {
         lbl_emotion = lv_label_create(root);
-        /* Reuses the smaller weather size — no new type size is introduced. */
-        lv_obj_set_style_text_font(lbl_emotion, &lv_font_montserrat_20, LV_PART_MAIN);
-        lv_obj_set_style_text_color(lbl_emotion, COL_SECONDARY, LV_PART_MAIN);
+        lv_obj_set_style_text_font(lbl_emotion, &lv_font_montserrat_28, LV_PART_MAIN);
+        lv_obj_set_style_text_color(lbl_emotion, colour, LV_PART_MAIN);
         lv_label_set_text(lbl_emotion, message);
-        lv_obj_align(lbl_emotion, LV_ALIGN_BOTTOM_MID, 0, -38);
+        lv_obj_align(lbl_emotion, LV_ALIGN_BOTTOM_MID, 0, -30);
     }
+
+    Serial.printf("[ui] emotion %u rendered: eyes=%s seam=on digits=dimmed msg=%s\n",
+                  state, (eye_l && eye_r) ? "yes" : "NO",
+                  lbl_emotion ? "yes" : "none");
 }

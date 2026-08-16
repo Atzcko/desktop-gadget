@@ -55,6 +55,7 @@ This vault is the project's memory: every decision, why it was made, and what ha
 | [[D020 - Humidity recedes by contrast, not size]] | Type-size budget spent; use luminance |
 | [[D021 - BLE HID, for discoverability not typing]] | Only a HID profile gets you into macOS Bluetooth settings |
 | [[D022 - Custom HID identity, not a keyboard]] | The report descriptor, not the appearance, defines the device |
+| [[D023 - Emotions must change the mode, not decorate it]] | Minimal means few elements, not low contrast |
 
 ## Reference
 

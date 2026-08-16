@@ -209,3 +209,23 @@ Ran the brief's four acceptance criteria. Full detail in [[Acceptance results]].
 **4. Wi-Fi resilience: PASS, from field evidence** rather than a staged test — the wrong-PSK episode earlier in the project was a genuine multi-minute outage. The clock kept rendering, weather held its last values and raised the stale marker, backoff capped at 30 s, and recovery needed no intervention.
 
 **2. Minute and midnight rollover: still needs the owner's eyes.** It cannot be automated without adding a debug endpoint to production firmware. Code review confirms the property that matters: the flip is driven by "rendered digits differ from target, per card", never by arithmetic on the previous value — which is exactly what makes 23:59 → 00:00 fold correctly instead of treating `00` as a decrement.
+
+## [2026-08-16] fix | Emotions were invisible — a design failure, not a bug
+
+Owner: "when you do that it keeps displaying time and I can't see emotions."
+
+Added a serial diagnostic before touching any rendering code, which settled the question immediately:
+
+```
+[ui] emotion 5 rendered: eyes=yes seam=on digits=dimmed msg=yes
+```
+
+The overlay was always being built. This was never a rendering bug — it was a **design failure**. For four of the six states (`thinking`, `working`, `success`, `error`) the entire visual signal was a **3 px accent line** on the card seam, competing with 150 px white digits at brightness 251. Invisible, obviously, in hindsight.
+
+The brief asked for minimalist animations and I read that as *quiet*. Wrong reading: **minimal means few elements, not low contrast**. An expression nobody notices has failed completely.
+
+Rebuilt so the device visibly changes **mode** rather than gaining decoration: clock digits drop to 30 % opacity, both cards gain a 4 px border in the state colour, the seam accent goes 3 px → 10 px and pulses, **every** state now shows eyes (previously only celebrate and sleepy), and the caption goes 20 px → 28 px in the state colour. Eyes carry per-state motion — glancing for thinking, blinking for working, bouncing for success/celebrate, shaking for error, breathing bars for sleepy — because motion reads at a glance far better than shape.
+
+The resting clock is untouched: the accent bar is fully transparent and the border zero-width at rest, so the default Fliqlo face is still exactly what the brief specifies. ([[D023 - Emotions must change the mode, not decorate it]])
+
+Second time in this project a *design* failure presented as a *code* failure — the other was the invisible 5-second hold before a progress bar was added. Both times the mechanism was perfect and the human could not tell. The cheap `Serial.printf` that distinguishes "broken" from "invisible" paid for itself in one flash cycle.
