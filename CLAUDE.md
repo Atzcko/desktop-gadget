@@ -61,13 +61,13 @@ export PATH="$HOME/.platformio-venv/bin:$PATH" && cd ~/.local/src/LilyGo-AMOLED-
 
 ## Using the device
 
-**Hold a finger anywhere on the screen for 5 seconds** to open Settings. A thin accent bar fills along the bottom edge from ~1.2 s so you can see the hold registering.
+**Hold a finger anywhere on the screen for 3 seconds** to open Settings. A thin accent bar fills along the bottom edge from ~1.2 s so you can see the hold registering.
 
 | Gesture | Action |
 |---|---|
 | Tap | date + weather sync age, 5 s |
-| Long press 1.2–5 s | cycle brightness |
-| Hold 5 s | Settings |
+| Long press 1.2–3 s | cycle brightness |
+| Hold 3 s | Settings |
 
 Settings tabs: **Wi-Fi** (scan / join), **Time** (zone, 24 h), **Place** (city search), **Screen** (brightness, night hours, toggles), **Info** (diagnostics, reset).
 

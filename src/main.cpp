@@ -1,7 +1,7 @@
 /**
  * Desktop gadget — LilyGO T4-S3 Fliqlo flip clock
  *
- *   clock + weather + on-device settings (hold the screen for 5 seconds)
+ *   clock + weather + on-device settings (hold the screen for 3 seconds)
  */
 #include <Arduino.h>
 #include <LilyGo_AMOLED.h>

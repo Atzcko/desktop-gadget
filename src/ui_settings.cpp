@@ -1,5 +1,5 @@
 /**
- * ui_settings.cpp — on-device settings, opened by a 5-second hold.
+ * ui_settings.cpp — on-device settings, opened by a 3-second hold.
  *
  * Built on its own LVGL screen so the clock screen is never disturbed and
  * comes back exactly as it was. Everything is written to NVS on close.

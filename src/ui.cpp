@@ -46,7 +46,7 @@ LV_FONT_DECLARE(fliqlo_digits);
 /* Gesture thresholds */
 #define TAP_MAX_MS      400
 #define BRIGHT_MIN_MS   1200
-#define SETTINGS_MS     5000
+#define SETTINGS_MS     3000     /* hold-to-open-Settings */
 
 struct Card {
     lv_obj_t *root;
@@ -74,7 +74,7 @@ static int      clock_x, clock_y;
  * (LV_OBJ_FLAG_EVENT_BUBBLE is absent from the constructor's flag set). A
  * purely decorative child would therefore hit-test first and swallow the
  * press before it ever reached the root gesture handler, leaving the
- * 5-second hold working only in the thin margins around the cards.
+ * hold-to-Settings gesture working only in the thin margins around the cards.
  *
  * Strip the flag from anything that is only there to be looked at.
  */
@@ -83,6 +83,11 @@ static void decor(lv_obj_t *o)
     lv_obj_remove_style_all(o);
     lv_obj_clear_flag(o, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_clear_flag(o, LV_OBJ_FLAG_SCROLLABLE);
+    /* SCROLL_CHAIN is also set by the constructor whenever the object has a
+     * parent. Leaving it on means a drag that this object does not handle is
+     * forwarded UP the parent chain until something scrollable accepts it —
+     * which is how the whole clock became draggable. */
+    lv_obj_clear_flag(o, LV_OBJ_FLAG_SCROLL_CHAIN);
 }
 
 /* ------------------------------------------------------------ the fold -- */
@@ -225,7 +230,7 @@ static void on_press(lv_event_t *e)
         uint32_t dt = millis() - press_start;
         if (dt >= BRIGHT_MIN_MS && !settings_fired) {
             /* Show the user that holding longer does something. Without
-             * this, a 5 s hold is an invisible affordance nobody finds. */
+             * this, a 3 s hold is an invisible affordance nobody finds. */
             lv_obj_clear_flag(hold_bar, LV_OBJ_FLAG_HIDDEN);
             int span = SETTINGS_MS - BRIGHT_MIN_MS;
             int w    = (int)(240L * (long)(dt - BRIGHT_MIN_MS) / span);
@@ -299,6 +304,17 @@ void ui_init(uint16_t screen_w, uint16_t screen_h)
     scr_clock = lv_scr_act();
     lv_obj_set_style_bg_color(scr_clock, COL_BG, LV_PART_MAIN);
     lv_obj_set_style_bg_opa(scr_clock, LV_OPA_COVER, LV_PART_MAIN);
+
+    /*
+     * The clock is a fixed layout — it must never move under a finger.
+     * lv_scr_act() is an ordinary lv_obj and therefore SCROLLABLE by
+     * default, so a drag anywhere scrolled the entire screen. Nothing here
+     * is ever meant to scroll; the only thing that legitimately moves the
+     * layout is the burn-in walk, which sets a position directly.
+     */
+    lv_obj_clear_flag(scr_clock, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_scrollbar_mode(scr_clock, LV_SCROLLBAR_MODE_OFF);
+    lv_obj_set_style_pad_all(scr_clock, 0, LV_PART_MAIN);
 
     root = lv_obj_create(scr_clock);
     decor(root);

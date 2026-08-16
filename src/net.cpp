@@ -230,7 +230,7 @@ void net_begin(void)
         Serial.printf("[net] connecting to \"%s\"\n", s.wifi_ssid);
         WiFi.begin(s.wifi_ssid, s.wifi_pass);
     } else {
-        Serial.println("[net] no SSID configured — hold the screen 5 s to set one");
+        Serial.println("[net] no SSID configured — hold the screen 3 s to set one");
     }
 
     xTaskCreatePinnedToCore(weather_task, "weather", 6144, nullptr, 1, nullptr, 0);

@@ -45,5 +45,28 @@ static void decor(lv_obj_t *o)
 
 Applied at all 9 decorative call sites in `ui.cpp`; the layout root alone re-adds `CLICKABLE`.
 
+## The sibling bug — found on hardware, 2026-08-16
+
+The owner reported that the clock **could be dragged around with a finger**. Same root cause, different flag. From the same constructor:
+
+```c
+if(parent) obj->flags |= LV_OBJ_FLAG_SCROLL_CHAIN;
+obj->flags |= LV_OBJ_FLAG_SCROLLABLE;
+```
+
+`decor()` cleared `SCROLLABLE` but not `SCROLL_CHAIN`, and — the real miss — **`lv_scr_act()` was never touched at all**. The screen is an ordinary `lv_obj`, so it is scrollable by default. A drag on the clock was not handled by the root, got forwarded up the chain, and the *screen* scrolled, taking the entire layout with it.
+
+**Fix, both halves:**
+
+```cpp
+lv_obj_clear_flag(o, LV_OBJ_FLAG_SCROLL_CHAIN);          /* in decor() */
+
+lv_obj_clear_flag(scr_clock, LV_OBJ_FLAG_SCROLLABLE);    /* in ui_init() */
+lv_obj_set_scrollbar_mode(scr_clock, LV_SCROLLBAR_MODE_OFF);
+```
+
+> [!warning] Do not forget the screen object
+> It is easy to think of `lv_scr_act()` as a backdrop rather than an object. It is an object, with every default flag, and it is the last stop on the scroll chain. Nothing in this firmware is ever meant to scroll on the clock screen — the only thing that legitimately moves the layout is the burn-in walk, which sets a position directly rather than scrolling.
+
 > [!tip] The rule going forward
 > In this codebase, **`decor()` is the default** for any `lv_obj_create()` that exists to be looked at. Reach for a bare `lv_obj_create` + `lv_obj_remove_style_all` only when the object is genuinely meant to receive input. The Stage 4 emotion overlays must follow the same rule or they will break the gesture the moment they appear.

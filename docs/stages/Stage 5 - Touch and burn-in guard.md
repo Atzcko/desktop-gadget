@@ -43,7 +43,7 @@ Brought forward and implemented alongside the Settings screen, since both needed
 
 - Burn-in walk: ±1 px per step, clamped to ±2 px, every `BURNIN_STEP_SECONDS` (default 180). Applied by moving the single layout root, so no child needs to know it exists. Toggleable in Settings.
 - Tap shows date + weather sync age for 5 s, in the smaller weather type size.
-- Long press (1.2–5 s) cycles brightness; the hold bar doubles as its indicator.
+- Long press (1.2–3 s) cycles brightness; the hold bar doubles as its indicator.
 - A real bug was caught here before flashing — see [[D014 - Touch hit-testing]].
 
 ## Acceptance

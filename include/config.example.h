@@ -19,7 +19,7 @@
 
 /*
  * Leave these EMPTY. Wi-Fi is provisioned on-device: hold a finger on the
- * screen for 5 seconds -> Settings -> Wi-Fi, pick your network and type the
+ * screen for 3 seconds -> Settings -> Wi-Fi, pick your network and type the
  * password there. It is stored in NVS, survives reboots, and never has to
  * live in a file or be shared with anyone.
  *

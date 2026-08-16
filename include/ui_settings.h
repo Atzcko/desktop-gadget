@@ -1,7 +1,7 @@
 /**
  * ui_settings.h — the on-device settings screen.
  *
- * Opened by holding a finger on the clock for 5 seconds. Everything it
+ * Opened by holding a finger on the clock for 3 seconds. Everything it
  * changes is written to NVS, so it survives reboots and re-flashes.
  */
 #pragma once

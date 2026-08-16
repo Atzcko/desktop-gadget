@@ -9,22 +9,25 @@ tags:
   - settings
 ---
 
-# Settings screen — hold 5 seconds
+# Settings screen — hold 3 seconds
 
 Added at the owner's request, outside the original stage plan. See [[D013 - Settings live in NVS, config.h is only defaults]].
 
 ## Gesture map
 
-The brief originally specified "long press → cycle brightness. Nothing else." That still holds; the 5-second hold is layered **above** it rather than replacing it, so nothing from the original spec was lost.
+The brief originally specified "long press → cycle brightness. Nothing else." That still holds; the hold-to-Settings gesture is layered **above** it rather than replacing it, so nothing from the original spec was lost.
 
 | Gesture | Duration | Action |
 |---|---|---|
 | Tap | < 400 ms | date + weather sync age for 5 s |
-| Long press | 1.2 s – 5 s | cycle brightness `{25, 60, 90, 140, 200}` |
-| **Hold** | **≥ 5 s** | **open Settings** |
+| Long press | 1.2 s – 3 s | cycle brightness `{25, 60, 90, 140, 200}` |
+| **Hold** | **≥ 3 s** | **open Settings** |
 
-> [!tip] A 5-second hold is an invisible affordance
-> Nobody discovers a gesture with no feedback — they let go at three seconds and conclude it is broken. So a thin accent bar appears at the bottom of the screen at 1.2 s and fills to full width at 5 s. It doubles as the brightness-cycle indicator, and it is hidden the instant the finger lifts.
+> [!tip] A silent hold is an invisible affordance
+> Nobody discovers a gesture with no feedback — they let go early and conclude it is broken. So a thin accent bar appears at the bottom of the screen at 1.2 s and fills to full width at the trigger point. It doubles as the brightness-cycle indicator, and it is hidden the instant the finger lifts.
+
+> [!note] Shortened to 3 s on 2026-08-16
+> Originally 5 s. The owner found it too long in use. `SETTINGS_MS` in `ui.cpp` is the single constant; the hold bar derives its fill span from it, so changing one number keeps the indicator honest.
 
 ## Tabs
 
@@ -46,7 +49,7 @@ The brief originally specified "long press → cycle brightness. Nothing else." 
 ## Acceptance
 
 - [x] Builds and boots clean
-- [ ] Hold anywhere for 5 s opens Settings — **including on top of a card**, see [[D014 - Touch hit-testing]]
+- [ ] Hold anywhere for 3 s opens Settings — **including on top of a card**, see [[D014 - Touch hit-testing]]
 - [ ] Hold progress bar appears at ~1.2 s
 - [ ] Wi-Fi scan lists networks; connecting works; survives reboot
 - [ ] Timezone roller changes the clock

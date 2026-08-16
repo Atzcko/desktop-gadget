@@ -17,14 +17,14 @@ This vault is the project's memory: every decision, why it was made, and what ha
 ## Current state
 
 > [!success] Clock + weather + Settings flashed — needs Wi-Fi set on the device
-> Locale is **Abu Dhabi** (`<+04>-4`, no DST). NTP, the split-flap fold, the weather task and a full on-device Settings screen are on the device. **Hold a finger on the screen for 5 seconds** to open Settings and join Wi-Fi — until then there is no NTP and no weather. See [[Settings screen]].
+> Locale is **Abu Dhabi** (`<+04>-4`, no DST). NTP, the split-flap fold, the weather task and a full on-device Settings screen are on the device. **Hold a finger on the screen for 3 seconds** to open Settings and join Wi-Fi — until then there is no NTP and no weather. See [[Settings screen]].
 
 | Stage | What | Status |
 |---|---|---|
 | [[Stage 0 - Stock example]] | Stock library example runs | ✅ built + flashed, board confirmed |
 | [[Stage 1 - Static digits]] | Fliqlo layout, hardcoded time | ✅ built + flashed, needs visual check |
 | [[Stage 2 - NTP and flip animation]] | Real time + split-flap fold | ✅ flashed, needs visual check |
-| [[Settings screen]] | 5-second hold → full settings | ✅ flashed, needs visual check |
+| [[Settings screen]] | 3-second hold → full settings | ✅ flashed, needs visual check |
 | [[Stage 3 - Weather]] | Open-Meteo on its own task | ✅ flashed, needs Wi-Fi |
 | [[Stage 5 - Touch and burn-in guard]] | Touch gestures + pixel walk | ✅ flashed, needs visual check |
 | [[Stage 4 - Emotion API]] | HTTP + **BLE** + `CLAUDE.md` | ✅ flashed, BLE unverified |
