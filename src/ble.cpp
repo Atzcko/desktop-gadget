@@ -4,6 +4,7 @@
 
 #include <Arduino.h>
 #include <NimBLEDevice.h>
+#include <NimBLEHIDDevice.h>
 #include <WiFi.h>
 
 /*
@@ -18,8 +19,62 @@
 #define NUS_RX      "6E400002-B5A3-F393-E0A9-E50E24DCCA9E"
 #define NUS_TX      "6E400003-B5A3-F393-E0A9-E50E24DCCA9E"
 
+/*
+ * Standard BLE keyboard report descriptor.
+ *
+ * Its purpose here is DISCOVERABILITY, not typing. macOS System Settings >
+ * Bluetooth only lists devices implementing a profile it knows how to pair
+ * with — classic BT, or BLE HID/audio. A custom GATT peripheral, however
+ * well it advertises, is invisible there by design. Presenting a HID
+ * keyboard service is what puts "Flip Clock" in that list and makes
+ * Connect work.
+ *
+ * No key reports are ever sent. The descriptor is the ticket in; the
+ * emotion API still travels over the NUS service alongside it.
+ */
+static const uint8_t HID_REPORT_MAP[] = {
+    0x05, 0x01,  /* Usage Page (Generic Desktop)      */
+    0x09, 0x06,  /* Usage (Keyboard)                  */
+    0xA1, 0x01,  /* Collection (Application)          */
+    0x85, 0x01,  /*   Report ID (1)                   */
+    0x05, 0x07,  /*   Usage Page (Key Codes)          */
+    0x19, 0xE0,  /*   Usage Minimum (224)             */
+    0x29, 0xE7,  /*   Usage Maximum (231)             */
+    0x15, 0x00,  /*   Logical Minimum (0)             */
+    0x25, 0x01,  /*   Logical Maximum (1)             */
+    0x75, 0x01,  /*   Report Size (1)                 */
+    0x95, 0x08,  /*   Report Count (8)                */
+    0x81, 0x02,  /*   Input (Data,Var,Abs) modifiers  */
+    0x95, 0x01,  /*   Report Count (1)                */
+    0x75, 0x08,  /*   Report Size (8)                 */
+    0x81, 0x01,  /*   Input (Const) reserved          */
+    0x95, 0x05,  /*   Report Count (5)                */
+    0x75, 0x01,  /*   Report Size (1)                 */
+    0x05, 0x08,  /*   Usage Page (LEDs)               */
+    0x19, 0x01,  /*   Usage Minimum (1)               */
+    0x29, 0x05,  /*   Usage Maximum (5)               */
+    0x91, 0x02,  /*   Output (Data,Var,Abs) LEDs      */
+    0x95, 0x01,  /*   Report Count (1)                */
+    0x75, 0x03,  /*   Report Size (3)                 */
+    0x91, 0x01,  /*   Output (Const) padding          */
+    0x95, 0x06,  /*   Report Count (6)                */
+    0x75, 0x08,  /*   Report Size (8)                 */
+    0x15, 0x00,  /*   Logical Minimum (0)             */
+    0x25, 0x65,  /*   Logical Maximum (101)           */
+    0x05, 0x07,  /*   Usage Page (Key Codes)          */
+    0x19, 0x00,  /*   Usage Minimum (0)               */
+    0x29, 0x65,  /*   Usage Maximum (101)             */
+    0x81, 0x00,  /*   Input (Data,Array) keys         */
+    0xC0         /* End Collection                    */
+};
+
+#define APPEARANCE_KEYBOARD  0x03C1
+#define APPEARANCE_CLOCK     0x0100
+#define UUID_HID_SERVICE     ((uint16_t)0x1812)
+
 static NimBLEServer         *server;
 static NimBLECharacteristic *tx_char;
+static NimBLEHIDDevice      *hid;
 static bool running;
 static bool connected;
 
@@ -90,8 +145,27 @@ void ble_begin(void)
      * Power draw is irrelevant — this device is USB-fed. */
     NimBLEDevice::setPower(ESP_PWR_LVL_P9);
 
+    if (s.ble_hid) {
+        /* HID characteristics must be encrypted, so pairing is mandatory.
+         * Just Works (no passkey): the clock has a touchscreen but no way to
+         * show a 6-digit code mid-pairing without hijacking the display, and
+         * MITM protection buys nothing for a device that sends no keystrokes. */
+        NimBLEDevice::setSecurityAuth(/*bond=*/true, /*mitm=*/false, /*sc=*/true);
+        NimBLEDevice::setSecurityIOCap(BLE_HS_IO_NO_INPUT_OUTPUT);
+    }
+
     server = NimBLEDevice::createServer();
     server->setCallbacks(&server_cb);
+
+    if (s.ble_hid) {
+        hid = new NimBLEHIDDevice(server);
+        hid->manufacturer()->setValue("LilyGO");
+        hid->pnp(0x02, 0xE502, 0xA111, 0x0210);
+        hid->hidInfo(0x00, 0x01);
+        hid->reportMap((uint8_t *)HID_REPORT_MAP, sizeof(HID_REPORT_MAP));
+        hid->inputReport(1);
+        hid->startServices();
+    }
 
     NimBLEService *svc = server->createService(NUS_SERVICE);
 
@@ -118,9 +192,24 @@ void ble_begin(void)
     NimBLEAdvertisementData advData;
     advData.setFlags(BLE_HS_ADV_F_DISC_GEN | BLE_HS_ADV_F_BREDR_UNSUP);
     advData.setName(s.ble_name);
-    advData.setAppearance(0x0100);          /* Generic Clock */
+    /*
+     * The appearance and the 16-bit HID service UUID are what macOS reads to
+     * decide this is a pairable input device. Without both, it stays out of
+     * System Settings > Bluetooth no matter how strong the signal.
+     *
+     * Budget check, 31-byte limit: flags 3 + appearance 4 + 16-bit service
+     * list 4 + name (2 + len). "Flip Clock" -> 23 bytes. Fits.
+     */
+    if (s.ble_hid) {
+        advData.setAppearance(APPEARANCE_KEYBOARD);
+        advData.setCompleteServices(NimBLEUUID(UUID_HID_SERVICE));
+    } else {
+        advData.setAppearance(APPEARANCE_CLOCK);
+    }
     adv->setAdvertisementData(advData);
 
+    /* The 128-bit NUS UUID is 18 bytes on its own — it only fits in the
+     * scan response once HID has claimed the primary packet. */
     NimBLEAdvertisementData scanData;
     scanData.setCompleteServices(NimBLEUUID(NUS_SERVICE));
     adv->setScanResponseData(scanData);
@@ -138,7 +227,9 @@ void ble_begin(void)
      * boot), it must start yielding the radio right now. */
     if (WiFi.getMode() != WIFI_MODE_NULL) WiFi.setSleep(true);
 
-    Serial.printf("[ble] advertising as \"%s\"\n", s.ble_name);
+    Serial.printf("[ble] advertising as \"%s\"%s\n", s.ble_name,
+                  s.ble_hid ? " (HID keyboard — pairable from Bluetooth settings)"
+                            : " (GATT only — not listed in macOS Bluetooth)");
 }
 
 void ble_stop(void)
@@ -148,6 +239,7 @@ void ble_stop(void)
     NimBLEDevice::deinit(true);
     server   = nullptr;
     tx_char  = nullptr;
+    hid      = nullptr;
     running  = false;
     connected = false;
     if (WiFi.getMode() != WIFI_MODE_NULL) WiFi.setSleep(false);
@@ -161,6 +253,12 @@ void ble_apply_name(const char *name)
      * only ever triggered by a human editing the name in Settings. */
     ble_stop();
     ble_begin();
+}
+
+void ble_clear_bonds(void)
+{
+    NimBLEDevice::deleteAllBonds();
+    Serial.println("[ble] cleared all bonds — remove the device on the host too");
 }
 
 bool ble_is_running(void)   { return running; }

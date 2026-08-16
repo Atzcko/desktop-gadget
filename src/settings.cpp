@@ -84,6 +84,7 @@ static void apply_defaults(void)
     s.show_humidity    = true;
     s.burnin_guard     = true;
     s.ble_enabled      = true;
+    s.ble_hid          = true;
     copy_str(s.ble_name, sizeof(s.ble_name), DEFAULT_BLE_NAME);
 }
 
@@ -130,6 +131,7 @@ void settings_load(void)
     if (have("hum"))    s.show_humidity    = prefs.getBool("hum");
     if (have("burn"))   s.burnin_guard     = prefs.getBool("burn");
     if (have("ble"))    s.ble_enabled      = prefs.getBool("ble");
+    if (have("bhid"))   s.ble_hid          = prefs.getBool("bhid");
 
     prefs.end();
 
@@ -163,6 +165,7 @@ void settings_save(void)
     prefs.putBool("hum",      s.show_humidity);
     prefs.putBool("burn",     s.burnin_guard);
     prefs.putBool("ble",      s.ble_enabled);
+    prefs.putBool("bhid",     s.ble_hid);
     prefs.putString("blen",   s.ble_name);
 
     prefs.end();

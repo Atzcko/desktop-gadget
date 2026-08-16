@@ -12,3 +12,7 @@ void ble_stop(void);
 void ble_apply_name(const char *name); /* restarts advertising */
 bool ble_is_running(void);
 bool ble_is_connected(void);
+
+/* Forget every bonded host. Use when macOS pairing gets into a bad state:
+ * the Mac remembers a bond the device has forgotten, or vice versa. */
+void ble_clear_bonds(void);

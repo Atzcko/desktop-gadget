@@ -53,6 +53,7 @@ This vault is the project's memory: every decision, why it was made, and what ha
 | [[D018 - Emotion API - one engine, two transports]] | Shared engine, NUS over BLE, same JSON |
 | [[D019 - Text entry gets its own screen]] | `LV_EVENT_FOCUSED` is an edge, not a level |
 | [[D020 - Humidity recedes by contrast, not size]] | Type-size budget spent; use luminance |
+| [[D021 - BLE HID, for discoverability not typing]] | Only a HID profile gets you into macOS Bluetooth settings |
 
 ## Reference
 
@@ -64,7 +65,7 @@ This vault is the project's memory: every decision, why it was made, and what ha
 ## Scope boundaries
 
 > [!warning] Explicitly out of scope for v1
-> - **BLE HID** (keyboard/mouse emulation) — still a later phase. A BLE **GATT peripheral** for the emotion API now exists, see [[D017 - BLE and Wi-Fi coexistence]].
+> - **BLE HID input** (actually sending keystrokes/media keys) — still a later phase. The device now *presents* a HID keyboard service so macOS will pair with it, but sends no reports: [[D021 - BLE HID, for discoverability not typing]].
 > - **Battery / deep sleep** — USB-powered always-on.
 > - **SD card** — slot unused, init skipped.
 > - **Any cloud beyond Open-Meteo and NTP.** All rendering is local.

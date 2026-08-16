@@ -45,7 +45,7 @@ static lv_obj_t *sl_day, *sl_night, *lbl_day, *lbl_night;
 static lv_obj_t *roller_ns, *roller_ne, *sw_wx, *sw_hum, *sw_burn;
 
 /* BLE tab */
-static lv_obj_t *sw_ble, *ta_ble_name, *lbl_ble_state;
+static lv_obj_t *sw_ble, *sw_hid, *ta_ble_name, *lbl_ble_state;
 
 /* Info tab */
 static lv_obj_t *lbl_info_body;
@@ -284,6 +284,14 @@ static void wifi_connect_cb(lv_event_t *e)
 
 /* ------------------------------------------------------------------ Place -- */
 
+static void clear_bonds_cb(lv_event_t *)
+{
+    ble_clear_bonds();
+    lv_label_set_text(lbl_ble_state,
+                      "Pairings cleared. Also remove it on the Mac:\n"
+                      "System Settings > Bluetooth > (i) > Forget.");
+}
+
 static void geo_pick(lv_event_t *e)
 {
     int idx = (int)(intptr_t)lv_event_get_user_data(e);
@@ -393,6 +401,8 @@ static void close_cb(lv_event_t *e)
     char old_name[sizeof(s.ble_name)];
     strncpy(old_name, s.ble_name, sizeof(old_name));
 
+    bool hid_was = s.ble_hid;
+    s.ble_hid     = lv_obj_has_state(sw_hid, LV_STATE_CHECKED);
     s.ble_enabled = lv_obj_has_state(sw_ble, LV_STATE_CHECKED);
     strncpy(s.ble_name, lv_textarea_get_text(ta_ble_name), sizeof(s.ble_name) - 1);
     s.ble_name[sizeof(s.ble_name) - 1] = '\0';
@@ -403,7 +413,8 @@ static void close_cb(lv_event_t *e)
 
     if (!s.ble_enabled && ble_was_on)                     ble_stop();
     else if (s.ble_enabled && !ble_was_on)                ble_begin();
-    else if (s.ble_enabled && strcmp(old_name, s.ble_name) != 0) ble_apply_name(s.ble_name);
+    else if (s.ble_enabled && (strcmp(old_name, s.ble_name) != 0 || hid_was != s.ble_hid))
+        ble_apply_name(s.ble_name);   /* bounces the stack; picks up both */
 
     ui_show_weather_block(s.show_weather);
     ui_show_humidity(s.show_humidity);
@@ -644,10 +655,28 @@ void ui_settings_open(void)
         lbl_ble_state = body_label(t_ble, buf);
     }
 
+    {
+        lv_obj_t *row = lv_obj_create(t_ble);
+        lv_obj_remove_style_all(row);
+        lv_obj_set_size(row, 560, 40);
+        lv_obj_set_flex_flow(row, LV_FLEX_FLOW_ROW);
+        lv_obj_set_flex_align(row, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER,
+                              LV_FLEX_ALIGN_CENTER);
+        lv_obj_set_style_pad_column(row, 16, LV_PART_MAIN);
+        body_label(row, "Pairable (appear in Bluetooth settings)");
+        sw_hid = lv_switch_create(row);
+        if (s.ble_hid) lv_obj_add_state(sw_hid, LV_STATE_CHECKED);
+    }
+
     section(t_ble,
-            "This is a GATT peripheral, not a pairable HID device.\n"
-            "It will not appear in macOS Bluetooth settings; it is\n"
-            "found by a BLE scan, e.g. tools/flipclock.py.");
+            "Pairable ON: advertises as a HID keyboard, so it shows up in\n"
+            "macOS System Settings > Bluetooth and can be connected. It\n"
+            "never sends keystrokes. macOS may open Keyboard Setup\n"
+            "Assistant on first pair -- just close it.\n"
+            "OFF: GATT only. Invisible to Bluetooth settings; still\n"
+            "reachable from tools/flipclock.py and any BLE scanner.");
+
+    make_button(t_ble, LV_SYMBOL_TRASH "  Clear pairings", clear_bonds_cb, nullptr);
 
     /* ---- Info ---- */
     lv_obj_set_flex_flow(t_info, LV_FLEX_FLOW_COLUMN);

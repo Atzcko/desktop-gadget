@@ -163,6 +163,15 @@ Nordic UART Service, so any generic BLE tool works:
 
 Device name is set in **Settings ▸ BLE** (default `FlipClock`).
 
+**Pairing from macOS Bluetooth settings.** With `Settings ▸ BLE ▸ Pairable` on
+(the default), the device also advertises a **HID keyboard** service, which is
+the only thing that puts it in System Settings ▸ Bluetooth — see
+[[D021 - BLE HID, for discoverability not typing]]. It never sends keystrokes.
+macOS may open Keyboard Setup Assistant on first pair; close it.
+
+If pairing wedges, clear it on **both** ends: *Settings ▸ BLE ▸ Clear pairings*
+on the device, and *Forget This Device* on the Mac.
+
 > [!warning] BLE needs `pip install bleak`, and macOS Bluetooth permission
 > The first BLE run prompts for Bluetooth access. A process without it is
 > **killed with SIGABRT**, not given an error — if `flipclock.py --scan`
