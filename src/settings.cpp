@@ -182,6 +182,22 @@ void settings_reset(void)
 
 Settings &settings_get(void) { return s; }
 
+void settings_dump(const char *tag)
+{
+    Serial.printf("[settings] %s\n", tag);
+    Serial.printf("           ssid=\"%s\" pass=%s\n",
+                  s.wifi_ssid, s.wifi_pass[0] ? "(set)" : "(empty)");
+    Serial.printf("           city=\"%s\" %.4f,%.4f  tz=\"%s\" 24h=%d\n",
+                  s.city, s.latitude, s.longitude, s.tz_posix, s.use_24h);
+    Serial.printf("           bright day=%u night=%u  night %02u:00-%02u:00\n",
+                  s.brightness_day, s.brightness_night,
+                  s.night_start_hour, s.night_end_hour);
+    Serial.printf("           weather=%d humidity=%d burnin=%d\n",
+                  s.show_weather, s.show_humidity, s.burnin_guard);
+    Serial.printf("           ble=%d hid=%d name=\"%s\"\n",
+                  s.ble_enabled, s.ble_hid, s.ble_name);
+}
+
 int settings_timezone_index(void)
 {
     for (int i = 0; i < TIMEZONE_COUNT; i++) {

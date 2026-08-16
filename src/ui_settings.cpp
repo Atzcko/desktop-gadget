@@ -187,10 +187,20 @@ static void editor_open(lv_obj_t *target, const char *title, bool is_password)
     lv_obj_set_size(b_done, 150, 46);
     lv_obj_set_pos(b_done, 424, 100);
 
-    /* 450 - 162 = 288 px of keyboard, with the field parked safely above. */
+    /*
+     * 288 px of keyboard filling the bottom, with the field parked above.
+     *
+     * MUST be positioned with lv_obj_align, NOT lv_obj_set_pos. The keyboard
+     * constructor calls lv_obj_align(obj, LV_ALIGN_BOTTOM_MID, 0, 0), and in
+     * LVGL 8 alignment is a STYLE property that persists — so a subsequent
+     * lv_obj_set_pos(kb, 0, 162) is not an absolute position, it is an
+     * OFFSET from the bottom alignment, shoving the keyboard 162 px below
+     * the screen. Symptom: only the top two rows visible, jammed against the
+     * bottom edge, with z/x/c/v and the space bar gone.
+     */
     lv_obj_t *kb = lv_keyboard_create(editor);
     lv_obj_set_size(kb, 600, 288);
-    lv_obj_set_pos(kb, 0, 162);
+    lv_obj_align(kb, LV_ALIGN_BOTTOM_MID, 0, 0);
     lv_keyboard_set_textarea(kb, editor_ta);
     lv_obj_add_event_cb(kb, editor_kb_event, LV_EVENT_ALL, nullptr);
 }
@@ -395,6 +405,26 @@ static void close_cb(lv_event_t *e)
     s.night_start_hour = lv_roller_get_selected(roller_ns);
     s.night_end_hour   = lv_roller_get_selected(roller_ne);
 
+    /*
+     * Wi-Fi used to be committed ONLY by the Connect button. Picking a
+     * network, typing the password and then tapping "Save & close" — the
+     * obvious thing to do — silently discarded both. Commit them here too.
+     */
+    bool wifi_changed = false;
+    if (picked_ssid[0]) {
+        const char *pw = lv_textarea_get_text(ta_pass);
+        if (strcmp(s.wifi_ssid, picked_ssid) != 0) {
+            strncpy(s.wifi_ssid, picked_ssid, sizeof(s.wifi_ssid) - 1);
+            s.wifi_ssid[sizeof(s.wifi_ssid) - 1] = '\0';
+            wifi_changed = true;
+        }
+        if (pw && pw[0] && strcmp(s.wifi_pass, pw) != 0) {
+            strncpy(s.wifi_pass, pw, sizeof(s.wifi_pass) - 1);
+            s.wifi_pass[sizeof(s.wifi_pass) - 1] = '\0';
+            wifi_changed = true;
+        }
+    }
+
     /* Detect a BLE change before saving so we know whether to bounce the
      * stack — restarting NimBLE unnecessarily drops a connected client. */
     bool ble_was_on = s.ble_enabled;
@@ -409,7 +439,9 @@ static void close_cb(lv_event_t *e)
     if (!s.ble_name[0]) strncpy(s.ble_name, DEFAULT_BLE_NAME, sizeof(s.ble_name) - 1);
 
     settings_save();
+    settings_dump("saved on close");
     net_apply_timezone(s.tz_posix);
+    if (wifi_changed) net_apply_wifi(s.wifi_ssid, s.wifi_pass);
 
     if (!s.ble_enabled && ble_was_on)                     ble_stop();
     else if (s.ble_enabled && !ble_was_on)                ble_begin();

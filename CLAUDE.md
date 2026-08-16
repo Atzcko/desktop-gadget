@@ -56,6 +56,7 @@ export PATH="$HOME/.platformio-venv/bin:$PATH" && cd ~/.local/src/LilyGo-AMOLED-
 - **No deep sleep, no battery logic.** USB-powered, always on.
 - **`config.h` holds first-boot DEFAULTS ONLY.** Live configuration lives in NVS. Read `settings_get()`, never a `DEFAULT_*` macro, outside `settings_reset()`. ([[D013 - Settings live in NVS, config.h is only defaults]])
 - **Wi-Fi credentials are never in a file.** They are typed on the device. Do not ask the owner for their Wi-Fi password. ([[D016 - Wi-Fi is provisioned on-device]])
+- **Position self-aligning widgets with `lv_obj_align()`, never `lv_obj_set_pos()`.** In LVGL 8 alignment is a persistent style property, so `set_pos` on an aligned object is an *offset from the alignment point*, not a position. ([[D019 - Text entry gets its own screen]])
 - **Any new `lv_obj_create()` that is decorative must call `decor()`.** Every LVGL object is CLICKABLE by default and events do not bubble; a decorative object that keeps the flag will silently break the hold gesture. ([[D014 - Touch hit-testing]])
 - **Never call LVGL from a non-LVGL task.** The weather task and the async web server handlers post to a queue; only the LVGL loop touches LVGL objects.
 

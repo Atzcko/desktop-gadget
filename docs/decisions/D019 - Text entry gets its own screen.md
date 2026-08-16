@@ -53,3 +53,36 @@ Why this over the obvious fixes (shrink the tab, scroll the field into view):
 **Passwords default to visible in the editor.** The entire point is to see what you are typing on a device you are holding; a "Hide" checkbox is there for anyone who wants it. The field on the settings tab itself stays masked, with its own "Show password" toggle — see [[D016 - Wi-Fi is provisioned on-device]].
 
 This replaced the shared keyboard entirely; `kb`, `kb_event` and `ta_event` are gone.
+
+## Follow-up bug — `lv_obj_set_pos` on an aligned object
+
+The first version of the editor positioned the keyboard with:
+
+```cpp
+lv_obj_set_size(kb, 600, 288);
+lv_obj_set_pos(kb, 0, 162);      /* WRONG */
+```
+
+On hardware only the **top two rows** appeared, crushed against the bottom edge — `z x c v b n m` and the space bar were simply gone.
+
+Cause, from `lv_keyboard_constructor` in the pinned LVGL:
+
+```c
+lv_obj_align(obj, LV_ALIGN_BOTTOM_MID, 0, 0);
+```
+
+> [!warning] In LVGL 8, alignment is a style property, and it wins
+> Once an object has a non-default align, `lv_obj_set_pos()` no longer means
+> "put it here". It sets an **offset from the alignment point**. So
+> `set_pos(0, 162)` on a BOTTOM_MID-aligned keyboard pushed it 162 px *below*
+> the bottom of the screen.
+>
+> The earlier shared keyboard used `lv_obj_align(kb, LV_ALIGN_BOTTOM_MID, 0, 0)`
+> and was fine. The regression came from rewriting it with `set_pos`.
+
+**Fix:** keep using `lv_obj_align()` for anything the widget aligns itself, or
+explicitly reset with `lv_obj_set_align(obj, LV_ALIGN_DEFAULT)` first.
+
+**The general rule for this codebase:** if a widget class positions itself in
+its constructor, position it with `lv_obj_align()`. Reach for `lv_obj_set_pos()`
+only on plain containers you created and never aligned.

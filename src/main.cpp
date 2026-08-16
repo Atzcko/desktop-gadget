@@ -124,7 +124,7 @@ void setup()
     Serial.printf("Touch   : %s\n", amoled.hasTouch() ? "online" : "OFFLINE");
     Serial.printf("City    : %s (%.4f, %.4f)\n", s.city, s.latitude, s.longitude);
     Serial.printf("TZ      : %s\n", s.tz_posix);
-    Serial.printf("SSID    : %s\n", s.wifi_ssid[0] ? s.wifi_ssid : "(unset)");
+    settings_dump("restored from NVS");
 
     beginLvglHelper(amoled);
 

@@ -56,6 +56,10 @@ void      settings_reset(void);
 
 Settings &settings_get(void);
 
+/* Print the live settings to serial. Called after every save and on boot so
+ * "did it actually persist?" is answerable from the log rather than guessed. */
+void settings_dump(const char *tag);
+
 /* ---------------------------------------------------------- timezones -- */
 /* A curated table rather than full tzdata: the IANA database is ~450 KB and
  * the device only needs the handful of zones a human would scroll to. */
