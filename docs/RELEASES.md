@@ -11,6 +11,31 @@ Semantic versioning; the scheme and the release procedure live in [[CLAUDE]].
 The version is reported by the boot log, `GET /health` and Settings ▸ Info,
 each with a compiler build stamp so a stale flash is detectable.
 
+## v1.2.0 — 2026-08-16
+
+**Save and Close are separate, with a guard.** One "Save & close" button gave no
+way to back out — and that mattered more than it looks, because the brightness
+sliders preview **live**: a user who dragged one and then left had already
+changed the device with nothing to undo it.
+
+- **Save** commits and stays open, confirming with a green "Saved" for ~2 s.
+- **Close** with unsaved edits raises *"Close without saving?"* —
+  **Discard** / **Keep editing**.
+- **Discard** restores the snapshot taken when the screen opened and undoes the
+  live effects (brightness, timezone, weather visibility). NVS is untouched, so
+  nothing needs rewriting.
+- **Save lights up blue** whenever there is something unsaved, so the dialog is
+  never a surprise.
+
+Sliders no longer write into `settings_get()`; they preview only, and the
+committed value is read from the widget on Save. Without that change Discard
+would have had nothing to restore.
+
+The explicit apply-now actions — Connect, city pick, Apply & sync NTP, Reset —
+take a fresh snapshot, so deliberate applies never read as unsaved work.
+
+RAM 18.2 % (59 732 B) · Flash 26.3 % (1 725 333 B).
+
 ## v1.1.0 — 2026-08-16
 
 **Every value now wears the same card.** The resting weather block changed from

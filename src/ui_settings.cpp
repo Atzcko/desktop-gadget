@@ -51,6 +51,11 @@ static lv_obj_t *sw_ble, *sw_hid, *sw_kbd, *ta_ble_name, *lbl_ble_state;
 /* Info tab */
 static lv_obj_t *lbl_info_body;
 
+/* Save/close state — defined further down, used by the poll timer above it. */
+static lv_obj_t *btn_save;
+static bool      dirty(void);
+static void      snapshot_take(void);
+
 /* ------------------------------------------------------------- helpers -- */
 
 static lv_obj_t *section(lv_obj_t *parent, const char *text)
@@ -263,6 +268,12 @@ static void show_pass_cb(lv_event_t *e)
  */
 static void wifi_poll_cb(lv_timer_t *)
 {
+    /* Save lights up when there is something to save — the affordance for the
+     * dialog, so it is never a surprise. */
+    if (btn_save) {
+        lv_obj_set_style_bg_color(btn_save,
+            dirty() ? lv_color_hex(0x2C5AA0) : lv_color_hex(0x2A2A2A), LV_PART_MAIN);
+    }
     if (!lbl_wifi_state) return;
     NetStatus st = net_status();
     char buf[112];
@@ -289,6 +300,7 @@ static void wifi_connect_cb(lv_event_t *e)
     s.wifi_ssid[sizeof(s.wifi_ssid) - 1] = '\0';
     s.wifi_pass[sizeof(s.wifi_pass) - 1] = '\0';
     settings_save();
+    snapshot_take();
     net_apply_wifi(s.wifi_ssid, s.wifi_pass);
     lv_label_set_text(lbl_wifi_state, "Connecting...");
 }
@@ -314,6 +326,7 @@ static void geo_pick(lv_event_t *e)
     s.latitude  = geo[idx].latitude;
     s.longitude = geo[idx].longitude;
     settings_save();
+    snapshot_take();
     net_request_weather_now();
 
     char buf[96];
@@ -355,6 +368,7 @@ static void sync_now_cb(lv_event_t *e)
         s.tz_posix[sizeof(s.tz_posix) - 1] = '\0';
     }
     settings_save();
+    snapshot_take();
     net_apply_timezone(s.tz_posix);
     app_refresh_clock(false);
 }
@@ -368,13 +382,14 @@ static void slider_cb(lv_event_t *e)
     char buf[8];
     snprintf(buf, sizeof(buf), "%d", v);
 
-    Settings &s = settings_get();
+    /* PREVIEW ONLY. Writing straight into settings_get() here would make the
+     * change unrecoverable — Discard restores the snapshot, and a slider that
+     * had already overwritten it would leave nothing to restore. The committed
+     * value is read from the widget in apply_widgets(). */
     if (sl == sl_day) {
-        s.brightness_day = v;
         lv_label_set_text(lbl_day, buf);
-        app_apply_brightness(v);          /* live preview */
+        app_apply_brightness(v);
     } else {
-        s.brightness_night = v;
         lv_label_set_text(lbl_night, buf);
     }
 }
@@ -382,13 +397,71 @@ static void slider_cb(lv_event_t *e)
 static void reset_cb(lv_event_t *e)
 {
     settings_reset();
+    snapshot_take();
     app_apply_brightness(settings_get().brightness_day);
     lv_label_set_text(lbl_info_body, "Defaults restored. Close to apply.");
 }
 
-/* ------------------------------------------------------------------ close -- */
+/* ----------------------------------------------------- save / close ----- */
+/*
+ * Two buttons, and a guard.
+ *
+ * Save & close as one control meant there was no way to back out, and that is
+ * worse here than it looks: the brightness sliders preview LIVE, so a user who
+ * dragged one and then left had already changed the device with no way to undo
+ * it. Splitting the actions requires knowing whether anything is unsaved, which
+ * requires a snapshot to compare against.
+ */
+static Settings    snapshot;
+static lv_obj_t   *lbl_status;
+static lv_timer_t *status_timer;
 
-static void close_cb(lv_event_t *e)
+static void snapshot_take(void) { snapshot = settings_get(); }
+
+/* Compare every widget against the snapshot rather than against live settings —
+ * live settings are mutated by the explicit "apply now" actions (Connect, city
+ * pick, sync NTP), and those take a fresh snapshot so they never read as
+ * unsaved work. */
+static bool dirty(void)
+{
+    int idx = lv_roller_get_selected(roller_tz);
+    if (idx >= 0 && idx < TIMEZONE_COUNT &&
+        strcmp(TIMEZONES[idx].posix, snapshot.tz_posix) != 0)                 return true;
+    if ((bool)lv_obj_has_state(sw_24h,  LV_STATE_CHECKED) != snapshot.use_24h)        return true;
+    if ((bool)lv_obj_has_state(sw_wx,   LV_STATE_CHECKED) != snapshot.show_weather)   return true;
+    if ((bool)lv_obj_has_state(sw_hum,  LV_STATE_CHECKED) != snapshot.show_humidity)  return true;
+    if ((bool)lv_obj_has_state(sw_burn, LV_STATE_CHECKED) != snapshot.burnin_guard)   return true;
+    if ((bool)lv_obj_has_state(sw_ble,  LV_STATE_CHECKED) != snapshot.ble_enabled)    return true;
+    if ((bool)lv_obj_has_state(sw_hid,  LV_STATE_CHECKED) != snapshot.ble_hid)        return true;
+    if ((bool)lv_obj_has_state(sw_kbd,  LV_STATE_CHECKED) != snapshot.ble_as_keyboard) return true;
+    if (lv_slider_get_value(sl_day)       != snapshot.brightness_day)         return true;
+    if (lv_slider_get_value(sl_night)     != snapshot.brightness_night)       return true;
+    if (lv_roller_get_selected(roller_ns) != snapshot.night_start_hour)       return true;
+    if (lv_roller_get_selected(roller_ne) != snapshot.night_end_hour)         return true;
+    if (strcmp(lv_textarea_get_text(ta_ble_name), snapshot.ble_name) != 0)    return true;
+    if (picked_ssid[0] && strcmp(picked_ssid, snapshot.wifi_ssid) != 0)       return true;
+    const char *pw = lv_textarea_get_text(ta_pass);
+    if (pw && pw[0] && strcmp(pw, snapshot.wifi_pass) != 0)                   return true;
+    return false;
+}
+
+static void status_clear_cb(lv_timer_t *tm)
+{
+    if (lbl_status) lv_label_set_text(lbl_status, "");
+    status_timer = nullptr;
+    lv_timer_del(tm);
+}
+
+static void status_show(const char *msg)
+{
+    if (!lbl_status) return;
+    lv_label_set_text(lbl_status, msg);
+    if (status_timer) { lv_timer_del(status_timer); status_timer = nullptr; }
+    status_timer = lv_timer_create(status_clear_cb, 2200, nullptr);
+    lv_timer_set_repeat_count(status_timer, 1);
+}
+
+static void apply_widgets(void)
 {
     Settings &s = settings_get();
 
@@ -406,11 +479,6 @@ static void close_cb(lv_event_t *e)
     s.night_start_hour = lv_roller_get_selected(roller_ns);
     s.night_end_hour   = lv_roller_get_selected(roller_ne);
 
-    /*
-     * Wi-Fi used to be committed ONLY by the Connect button. Picking a
-     * network, typing the password and then tapping "Save & close" — the
-     * obvious thing to do — silently discarded both. Commit them here too.
-     */
     bool wifi_changed = false;
     if (picked_ssid[0]) {
         const char *pw = lv_textarea_get_text(ta_pass);
@@ -426,46 +494,94 @@ static void close_cb(lv_event_t *e)
         }
     }
 
-    /* Detect a BLE change before saving so we know whether to bounce the
-     * stack — restarting NimBLE unnecessarily drops a connected client. */
+    /* Detect BLE changes before saving so we know whether to bounce the stack —
+     * restarting NimBLE unnecessarily drops a connected client. */
     bool ble_was_on = s.ble_enabled;
+    bool hid_was    = s.ble_hid;
+    bool kbd_was    = s.ble_as_keyboard;
     char old_name[sizeof(s.ble_name)];
     strncpy(old_name, s.ble_name, sizeof(old_name));
 
-    bool hid_was = s.ble_hid;
-    bool kbd_was = s.ble_as_keyboard;
-    s.ble_hid        = lv_obj_has_state(sw_hid, LV_STATE_CHECKED);
+    s.ble_hid         = lv_obj_has_state(sw_hid, LV_STATE_CHECKED);
     s.ble_as_keyboard = lv_obj_has_state(sw_kbd, LV_STATE_CHECKED);
-    s.ble_enabled = lv_obj_has_state(sw_ble, LV_STATE_CHECKED);
+    s.ble_enabled     = lv_obj_has_state(sw_ble, LV_STATE_CHECKED);
     strncpy(s.ble_name, lv_textarea_get_text(ta_ble_name), sizeof(s.ble_name) - 1);
     s.ble_name[sizeof(s.ble_name) - 1] = '\0';
     if (!s.ble_name[0]) strncpy(s.ble_name, DEFAULT_BLE_NAME, sizeof(s.ble_name) - 1);
 
     settings_save();
-    settings_dump("saved on close");
+    settings_dump("saved");
     net_apply_timezone(s.tz_posix);
     if (wifi_changed) net_apply_wifi(s.wifi_ssid, s.wifi_pass);
 
-    if (!s.ble_enabled && ble_was_on)                     ble_stop();
-    else if (s.ble_enabled && !ble_was_on)                ble_begin();
+    if (!s.ble_enabled && ble_was_on)      ble_stop();
+    else if (s.ble_enabled && !ble_was_on) ble_begin();
     else if (s.ble_enabled && (strcmp(old_name, s.ble_name) != 0 ||
                                hid_was != s.ble_hid || kbd_was != s.ble_as_keyboard))
-        ble_apply_name(s.ble_name);   /* bounces the stack; picks up both */
+        ble_apply_name(s.ble_name);
 
     ui_show_weather_block(s.show_weather);
     ui_show_humidity(s.show_humidity);
     app_refresh_clock(false);
     app_apply_brightness(s.brightness_day);
 
+    snapshot_take();
+}
+
+/* Put back everything the screen changed live but never committed. NVS already
+ * holds the snapshot, so nothing needs writing — only the live effects undone. */
+static void revert_live(void)
+{
+    settings_get() = snapshot;
+    net_apply_timezone(snapshot.tz_posix);
+    ui_show_weather_block(snapshot.show_weather);
+    ui_show_humidity(snapshot.show_humidity);
+    app_refresh_clock(false);
+    app_apply_brightness(snapshot.brightness_day);
+}
+
+static void teardown(void)
+{
     editor_close(false);
-    if (wifi_poll) { lv_timer_del(wifi_poll); wifi_poll = nullptr; }
+    if (wifi_poll)    { lv_timer_del(wifi_poll);    wifi_poll = nullptr; }
+    if (status_timer) { lv_timer_del(status_timer); status_timer = nullptr; }
     lbl_wifi_state = nullptr;
+    lbl_status     = nullptr;
+    btn_save       = nullptr;
 
     lv_obj_t *dead = scr_set;
     scr_set = nullptr;
     is_open = false;
     lv_scr_load(ui_screen());
     lv_obj_del(dead);
+}
+
+static void save_cb(lv_event_t *)
+{
+    apply_widgets();
+    status_show(LV_SYMBOL_OK "  Saved");
+}
+
+static void confirm_cb(lv_event_t *e)
+{
+    lv_obj_t *mb = lv_event_get_current_target(e);
+    uint16_t id  = lv_msgbox_get_active_btn(mb);
+    /* Async: lv_obj_del from inside the object's own event is a foot-gun. */
+    lv_msgbox_close_async(mb);
+    if (id == 0) { revert_live(); teardown(); }
+}
+
+static void close_cb(lv_event_t *)
+{
+    if (!dirty()) { teardown(); return; }
+
+    static const char *btns[] = { "Discard", "Keep editing", "" };
+    lv_obj_t *mb = lv_msgbox_create(nullptr, "Unsaved changes",
+                                    "Close without saving?", btns, false);
+    lv_obj_set_style_text_font(mb, &lv_font_montserrat_20, LV_PART_MAIN);
+    lv_obj_set_style_bg_color(mb, lv_color_hex(0x1C1C1C), LV_PART_MAIN);
+    lv_obj_add_event_cb(mb, confirm_cb, LV_EVENT_VALUE_CHANGED, nullptr);
+    lv_obj_center(mb);
 }
 
 /* ------------------------------------------------------------------- open -- */
@@ -478,6 +594,7 @@ void ui_settings_open(void)
     is_open = true;
 
     Settings &s = settings_get();
+    snapshot_take();
 
     scr_set = lv_obj_create(nullptr);
     lv_obj_set_style_bg_color(scr_set, lv_color_hex(0x0A0A0A), LV_PART_MAIN);
@@ -783,9 +900,19 @@ void ui_settings_open(void)
     lv_obj_set_style_bg_opa(bar, LV_OPA_COVER, LV_PART_MAIN);
     lv_obj_clear_flag(bar, LV_OBJ_FLAG_SCROLLABLE);
 
-    lv_obj_t *done = make_button(bar, LV_SYMBOL_OK "  Save & close", close_cb, nullptr);
-    lv_obj_set_width(done, 240);
-    lv_obj_align(done, LV_ALIGN_CENTER, 0, 0);
+    lbl_status = lv_label_create(bar);
+    lv_obj_set_style_text_font(lbl_status, &lv_font_montserrat_18, LV_PART_MAIN);
+    lv_obj_set_style_text_color(lbl_status, lv_color_hex(0x2FBF71), LV_PART_MAIN);
+    lv_label_set_text(lbl_status, "");
+    lv_obj_align(lbl_status, LV_ALIGN_LEFT_MID, 24, 0);
+
+    btn_save = make_button(bar, LV_SYMBOL_SAVE "  Save", save_cb, nullptr);
+    lv_obj_set_size(btn_save, 180, 44);
+    lv_obj_align(btn_save, LV_ALIGN_LEFT_MID, 210, 0);
+
+    lv_obj_t *btn_close = make_button(bar, LV_SYMBOL_CLOSE "  Close", close_cb, nullptr);
+    lv_obj_set_size(btn_close, 180, 44);
+    lv_obj_align(btn_close, LV_ALIGN_LEFT_MID, 400, 0);
 
     lv_scr_load(scr_set);
 }

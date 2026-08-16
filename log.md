@@ -326,3 +326,19 @@ Needed a third face. `fliqlo_mid` at 44 px joins `fliqlo_small` at 38 px, becaus
 Pleasing side effect: **flash usage fell 92 KB** even after adding two faces. Removing the last reference to `lv_font_montserrat_48` let the linker discard it, and a 48 px full-Latin face costs far more than two 13-glyph numeric subsets.
 
 Followed the release procedure recorded yesterday: bumped `version.h` to 1.1.0, logged it in `docs/RELEASES.md`, committed, tagged, flashed, confirmed on the device via `/health`.
+
+## [2026-08-16] release | v1.2.0 — Save and Close split, with an unsaved-changes guard
+
+Owner asked for Save and Close as separate buttons, with a confirmation when closing with unsaved changes.
+
+The request matters more than it first appears. **The brightness sliders preview live** — so under the old single "Save & close" button, a user who dragged a slider and then left had already changed the device, permanently, with no way to undo it. There was no "cancel" at all.
+
+Splitting the actions required knowing whether anything was unsaved, which required a **snapshot** taken when the screen opens, and comparing every widget against it rather than against live settings.
+
+That exposed a prerequisite: `slider_cb` was writing straight into `settings_get()`. Discard restores the snapshot, and a slider that had already overwritten the live struct leaves nothing to restore. Sliders now **preview only**; the committed value is read from the widget in `apply_widgets()`.
+
+The explicit apply-now actions — Connect, city pick, Apply & sync NTP, Reset to defaults — each take a fresh snapshot, so a deliberate apply never reads as unsaved work and the dialog does not fire spuriously.
+
+Behaviour now: **Save** commits and stays open with a green "Saved" for ~2 s; **Close** with edits pending raises *"Close without saving?"* → Discard / Keep editing; Discard restores the snapshot and undoes the live effects without touching NVS, since NVS already holds those values. The Save button turns blue whenever there is something unsaved, so the dialog is an expected consequence rather than a surprise.
+
+Detail worth keeping: the confirmation uses `lv_msgbox_close_async()`. Deleting an object from inside its own event callback is a foot-gun in LVGL.
