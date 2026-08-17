@@ -31,7 +31,8 @@ static void settings_icon(lv_event_t *e)
 }
 
 extern const App app_settings = {
-    "Settings", settings_icon, ui_settings_create, ui_settings_destroy, nullptr
+    "Settings", settings_icon, ui_settings_create, ui_settings_destroy,
+    nullptr, ui_settings_back
 };
 
 /*

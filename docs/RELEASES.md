@@ -11,6 +11,34 @@ Semantic versioning; the scheme and the release procedure live in [[CLAUDE]].
 The version is reported by the boot log, `GET /health` and Settings ▸ Info,
 each with a compiler build stamp so a stale flash is detectable.
 
+## v1.13.0 — 2026-08-17
+
+**Swipe in from the left edge to go home**, from any app and from the drawer.
+
+It is polled from the LVGL loop rather than handled as a screen event, because
+LVGL 8 does not bubble events and every clickable child — the timer's cards, the
+settings tab bar, its lists and rollers — would have eaten the press. Polling
+puts it above the widget tree, which is where a system gesture belongs: apps get
+it for free and none of them can break it.
+([[D029 - Back is a system gesture, not a widget event]])
+
+- **Armed by where it starts** (44 px of the left edge), **judged on release**
+  (110 px rightward, 90 px of vertical wander allowed) — the same shape as the
+  clock's swipe-up, so the two gestures feel like one system.
+- **The app gets first refusal.** `App` gains an optional `back()`. Settings
+  uses it to close its text editor instead of leaving, which is why a stray edge
+  swipe can no longer discard a hand-typed Wi-Fi password. The field is additive;
+  five-field initializers still compile.
+- **The timer roller stands down for it.** A drag that turns mostly sideways is
+  abandoned *and the value is put back* — the minutes card overlaps the edge
+  zone, and `set_seconds` outlives the screen, so without this you could come
+  back to a timer set to a number you never chose.
+
+The per-app **Clock** buttons stay. The gesture is invisible; the button is the
+discoverable path.
+
+RAM 18.3 % (59 916 B) · Flash 26.5 % (1 739 597 B).
+
 ## v1.12.0 — 2026-08-17
 
 **Settings became an app, and the timer got rollers that flip.**

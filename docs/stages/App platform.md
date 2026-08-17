@@ -54,3 +54,9 @@ the point.
 - [ ] Dragging the minutes card changes only minutes; the seconds card only seconds
 - [ ] Digits fold on every change; a fast drag does not tear
 - [ ] Dragging back to the start restores the number you started with
+- [ ] Swipe in from the left edge goes home — from the drawer, the timer, Settings
+- [ ] It works when the swipe **starts on top of** a timer card or a settings tab
+- [ ] Swiping home from a timer card leaves the timer value unchanged
+- [ ] With the Wi-Fi keyboard open, the edge swipe closes the editor and keeps
+      the typed text, rather than leaving Settings
+- [ ] A swipe from the middle of the screen does nothing

@@ -684,3 +684,51 @@ calls it — five errors, all ordering, plus a duplicate `dragging` and a dangli
 have. When a change moves declarations, patching is the slower option.
 
 RAM 18.3 % · Flash 26.5 %.
+
+## 2026-08-17 — The way back (v1.13.0)
+
+Asked for the phone gesture: swipe in from the left edge to go home.
+
+The obvious build is an event handler on the app's screen, the way the clock
+handles its own gestures. It does not work, and the reason is worth writing
+down: **LVGL 8 does not bubble events**. Any clickable child eats the press
+first — the timer's minutes card (which is a roller and must stay clickable),
+the settings tab bar, its lists, its rollers, every button on both. The gesture
+would have worked on empty background and failed on precisely the widgets you
+are most likely to be touching. Setting `EVENT_BUBBLE` on every object an app
+ever creates is [[D014 - Touch hit-testing]] again with a new way to forget.
+
+So it is **polled from `app_host_tick()`**, above the widget tree. That is where
+a system gesture belongs; apps get it for free and none of them can break it.
+Same shape as the clock's swipe-up — armed by where it starts, judged on
+release — because two gestures that behave differently read as two systems.
+[[D029 - Back is a system gesture, not a widget event]].
+
+Two things that would have been silent bugs:
+
+- **Judge the last point seen while pressed**, not the point read after release.
+  The latter trusts the touch driver to leave valid coordinates behind, and a
+  driver that zeroes them would make the gesture impossible to perform with
+  nothing in the log to say why.
+- **The timer's card overlaps the edge zone** (x = 14…282), and `set_seconds` is
+  a static that outlives the screen — so swiping home across a card would have
+  left the timer set to a number nobody chose, discovered next time you opened
+  it. The roller now abandons a drag that turns sideways and puts the value
+  back, which is a better roller regardless.
+
+`App` gained one optional field, `back()`, called before routing home. It exists
+for a specific thing: Settings builds its text editor as a **child of its own
+screen**, so `lv_scr_act()` cannot tell the host that typing is in progress, and
+a stray edge swipe would have discarded a hand-typed Wi-Fi password. It closes
+the editor and keeps the text — closing commits nothing to NVS, so keeping costs
+nothing and losing costs a password.
+
+**Vault housekeeping, found while auditing.** `.pio/` contains 48 markdown files
+against 44 real notes, and `.obsidian/` had no ignore filter — so more than half
+of this vault's graph, search results and wikilink autocomplete was vendored
+library READMEs. Added `.obsidian/app.json` with `userIgnoreFilters`. Folded
+that and the rest of this project's vault conventions back into the
+`obsidian-markdown` skill as two new references, `VAULT-IN-A-REPO.md` and
+`DECISION-RECORDS.md`.
+
+RAM 18.3 % · Flash 26.5 %.

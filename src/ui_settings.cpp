@@ -130,6 +130,21 @@ static void editor_close(bool commit)
     editor = nullptr; editor_ta = nullptr; edit_target = nullptr;
 }
 
+/*
+ * Back, when the host offers it. Closes the editor rather than leaving Settings.
+ *
+ * It COMMITS the text, which is not what "back" conventionally means. Closing
+ * the overlay writes nothing to NVS — the real commit is Join or Save — so
+ * keeping the text costs nothing and losing it costs a hand-typed password.
+ * Cancel is still one tap away, and it is labelled.
+ */
+bool ui_settings_back(void)
+{
+    if (!editor) return false;
+    editor_close(true);
+    return true;
+}
+
 static void editor_kb_event(lv_event_t *e)
 {
     lv_event_code_t c = lv_event_get_code(e);

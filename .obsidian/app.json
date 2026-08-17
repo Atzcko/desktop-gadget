@@ -1,0 +1,9 @@
+{
+  "userIgnoreFilters": [
+    ".pio/",
+    ".git/"
+  ],
+  "alwaysUpdateLinks": true,
+  "newLinkFormat": "shortest",
+  "useMarkdownLinks": false
+}

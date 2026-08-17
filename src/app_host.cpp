@@ -184,7 +184,75 @@ void app_host_open_drawer(void)
     lv_scr_load(drawer);
 }
 
+/* ------------------------------------------------- the way back, as a -- */
+/*
+ * Swipe in from the LEFT EDGE to go home.
+ *
+ * This cannot be an event handler on the screen. LVGL 8 does not bubble events,
+ * so any clickable child — a timer card, a tab bar, a list, a roller — eats the
+ * press before the screen sees it, and "back" would work everywhere except the
+ * places you actually need it. Setting EVENT_BUBBLE on every widget an app ever
+ * creates is not a contract anyone can keep.
+ *
+ * So it is POLLED from the LVGL loop, above the widget tree — which is where a
+ * system gesture belongs. Apps get it for free and cannot break it, which is
+ * rule 3 of the contract solved by construction instead of by discipline.
+ *
+ * It mirrors the clock's swipe-up: armed by where it STARTS, judged on release.
+ */
+#define EDGE_ZONE      44     /* px from the left edge the swipe must start */
+#define EDGE_MIN_DX   110     /* px of rightward travel to count            */
+#define EDGE_MAX_DY    90     /* px of vertical wander still allowed        */
+
+static bool       edge_down, edge_armed;
+static lv_point_t edge_p0, edge_last;
+
+static lv_indev_t *pointer_indev(void)
+{
+    for (lv_indev_t *i = lv_indev_get_next(nullptr); i; i = lv_indev_get_next(i))
+        if (lv_indev_get_type(i) == LV_INDEV_TYPE_POINTER) return i;
+    return nullptr;
+}
+
+static void back_gesture_tick(void)
+{
+    lv_indev_t *indev = pointer_indev();
+    if (!indev) return;
+
+    /* proc.state because LVGL 8 has no lv_indev_get_state(). The struct is
+     * public and this is the one field read from it. */
+    const bool down = (indev->proc.state == LV_INDEV_STATE_PRESSED);
+
+    lv_point_t p;
+    lv_indev_get_point(indev, &p);
+
+    if (down) {
+        if (!edge_down) {
+            edge_p0    = p;
+            /* Only while something is open. On the clock, home is where you
+             * already are. */
+            edge_armed = app_host_is_open() && p.x <= EDGE_ZONE;
+        }
+        /* Track the last point seen WHILE PRESSED and judge on that. Reading
+         * the point after release trusts the touch driver to leave valid
+         * coordinates behind, and not all of them do. */
+        edge_last = p;
+    } else if (edge_down && edge_armed) {
+        edge_armed = false;
+        if ((edge_last.x - edge_p0.x) >= EDGE_MIN_DX &&
+            abs(edge_last.y - edge_p0.y) <= EDGE_MAX_DY) {
+            /* The app gets first refusal, so one with a modal open closes that
+             * instead of losing everything in it. */
+            if (!(running && running->back && running->back())) app_host_home();
+            edge_down = false;
+            return;                      /* the screen may be gone; stop here */
+        }
+    }
+    edge_down = down;
+}
+
 void app_host_tick(void)
 {
+    back_gesture_tick();
     if (running && running->tick) running->tick();
 }

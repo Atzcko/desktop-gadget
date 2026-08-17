@@ -15,3 +15,7 @@ bool      ui_settings_is_open(void);
  * loading it and deleting it. */
 lv_obj_t *ui_settings_create(void);
 void      ui_settings_destroy(void);
+
+/* The back gesture, offered to Settings first. Closes the text editor overlay
+ * if one is open and reports that it consumed the gesture. */
+bool      ui_settings_back(void);

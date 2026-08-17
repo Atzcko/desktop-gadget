@@ -84,6 +84,7 @@ bridge is the only way. See [[CLAUDE]].
 | [[D026 - Apps are a platform, not a special case]] | Settings was already an app; name the pattern rather than invent one |
 | [[D027 - The gesture budget]] | One finger, four gestures — displacement disqualifies a press |
 | [[D028 - Set a number by dragging the number]] | One control per number; the card IS the roller |
+| [[D029 - Back is a system gesture, not a widget event]] | Polled above the widget tree, because LVGL 8 does not bubble |
 
 ## Releases
 

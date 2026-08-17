@@ -31,8 +31,9 @@ LV_FONT_DECLARE(fliqlo_digits);
 #define CARD_TOP    30
 #define DIGIT_TOP   ((CARD_H - 154) / 2)
 
-#define FOLD_MS     110
-#define PX_PER_STEP 13
+#define FOLD_MS      110
+#define PX_PER_STEP   13
+#define DRAG_H_SLOP   26     /* px sideways before this stops being a roller */
 
 struct Digits { lv_obj_t *card, *label; char text[4]; bool busy; };
 
@@ -44,8 +45,8 @@ static int      left_seconds = 5 * 60;
 static bool     running, finished;
 static uint32_t last_tick_ms;
 
-static lv_coord_t drag_y0;
-static int        drag_v0;
+static lv_coord_t drag_x0, drag_y0;
+static int        drag_total0;
 static bool       dragging;
 
 static void decor(lv_obj_t *o)
@@ -198,13 +199,26 @@ static void roller_cb(lv_event_t *e)
     lv_indev_get_point(indev, &p);
 
     if (code == LV_EVENT_PRESSED) {
-        drag_y0  = p.y;
-        drag_v0  = is_min ? left_seconds / 60 : left_seconds % 60;
-        dragging = true;
+        drag_x0     = p.x;
+        drag_y0     = p.y;
+        drag_total0 = left_seconds;
+        dragging    = true;
     } else if (code == LV_EVENT_PRESSING && dragging) {
-        int steps = (drag_y0 - p.y) / PX_PER_STEP;          /* up = more */
-        if (is_min) set_from(drag_v0 + steps, left_seconds % 60);
-        else        set_from(left_seconds / 60, drag_v0 + steps);
+        const int dx = p.x - drag_x0, dy = p.y - drag_y0;
+
+        /* A mostly-sideways drag is the host's back gesture passing through a
+         * card, not a roller. Abandon it AND put the number back — swiping
+         * home from on top of a card must not leave behind a value nobody
+         * chose, and set_seconds outlives the screen. */
+        if (abs(dx) > abs(dy) && abs(dx) > DRAG_H_SLOP) {
+            dragging = false;
+            set_from(drag_total0 / 60, drag_total0 % 60);
+            return;
+        }
+
+        const int steps = (drag_y0 - p.y) / PX_PER_STEP;    /* up = more */
+        if (is_min) set_from(drag_total0 / 60 + steps, drag_total0 % 60);
+        else        set_from(drag_total0 / 60, drag_total0 % 60 + steps);
     } else if (code == LV_EVENT_RELEASED || code == LV_EVENT_PRESS_LOST) {
         dragging = false;
     }
@@ -366,4 +380,5 @@ static void timer_tick(void)
  * scope has INTERNAL linkage by default, so without it the registry cannot see
  * this symbol and the link fails with "undefined reference to app_timer".
  */
-extern const App app_timer = { "Timer", timer_icon, timer_create, timer_destroy, timer_tick };
+extern const App app_timer = { "Timer", timer_icon, timer_create, timer_destroy,
+                               timer_tick, nullptr };

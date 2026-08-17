@@ -22,6 +22,19 @@ struct App {
     lv_obj_t *(*create)(void);          /* build and return the screen         */
     void      (*destroy)(void);         /* free everything create() allocated  */
     void      (*tick)(void);            /* optional; from the LVGL loop        */
+
+    /*
+     * Optional. The host calls this FIRST when the back gesture fires (swipe
+     * in from the left edge). Return true if you handled it — an app with a
+     * modal or a sub-screen closes that instead of the whole app. Return
+     * false, or leave it null, and the host routes home.
+     *
+     * It exists because Settings opens a full-screen text editor as a CHILD of
+     * its own screen, so lv_scr_act() cannot tell the host that typing is in
+     * progress. Without this hook a stray edge swipe throws away a hand-typed
+     * Wi-Fi password, which is the most expensive input on the device.
+     */
+    bool      (*back)(void);
 };
 
 extern const App *const APPS[];
