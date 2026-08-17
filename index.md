@@ -16,18 +16,43 @@ This vault is the project's memory: every decision, why it was made, and what ha
 
 ## Current state
 
-> [!success] Online and feature-complete
-> Wi-Fi joined, NTP synced, weather live for **Abu Dhabi** (32.0 °C, 30.5–40.7). `flipclock.local` resolves and both `GET /health` and `POST /emotion` are verified end-to-end, including clean 400s on bad input. BLE advertises as **"Flip Clock"**. Only the BLE transport remains unverified — see [[Stage 4 - Emotion API]].
+> [!success] v1.10.1 — running, online, and in daily use
+> Abu Dhabi. Clock, weather with sun/moon icons, a 32-state line display driven
+> over HTTP / BLE / MCP, on-device settings in NVS, 180° flip, brightness that
+> follows sunrise. Eleven tagged releases; every one confirmed on hardware
+> before tagging.
 
-| Stage | What | Status |
-|---|---|---|
-| [[Stage 0 - Stock example]] | Stock library example runs | ✅ built + flashed, board confirmed |
-| [[Stage 1 - Static digits]] | Fliqlo layout, hardcoded time | ✅ built + flashed, needs visual check |
-| [[Stage 2 - NTP and flip animation]] | Real time + split-flap fold | ✅ flashed, needs visual check |
-| [[Settings screen]] | 3-second hold → full settings | ✅ flashed, needs visual check |
-| [[Stage 3 - Weather]] | Open-Meteo on its own task | ✅ flashed, needs Wi-Fi |
-| [[Stage 5 - Touch and burn-in guard]] | Touch gestures + pixel walk | ✅ flashed, needs visual check |
-| [[Stage 4 - Emotion API]] | HTTP + **BLE** + `CLAUDE.md` | ✅ flashed, BLE unverified |
+**Next:** an app platform — swipe up from the bottom for a drawer, with a timer
+as the first app. Designed in [[D026 - Apps are a platform, not a special case]]
+before any code, per the owner's instruction.
+
+| Screen | Reached by |
+|---|---|
+| Clock *(home)* | resting state |
+| Line / activity | `POST /emotion`, BLE NUS, or the MCP tool |
+| Settings | hold 3 s |
+| Text editor | tapping any field in Settings |
+| App drawer *(planned)* | swipe up from the bottom edge |
+
+## Driving the display
+
+From a shell, anywhere on this machine:
+
+```bash
+flipclock say building "ui.cpp"     # prefix the work command
+flipclock hush                      # last action of a turn
+```
+
+From the Chat app, the `flipclock_say` MCP tool — it exists because the clock is
+on a private LAN address that Anthropic's servers cannot reach, so a local
+bridge is the only way. See [[CLAUDE]].
+
+## Reference
+
+- [[Module map]] — what each file owns, and what it may not do
+- [[T4-S3]] — pins, panel constants, rotation table
+- [[LilyGo AMOLED library]] — the API surface we depend on
+- [[RELEASES]] — every version, what changed, and why
 
 ## Decisions
 
@@ -58,6 +83,8 @@ This vault is the project's memory: every decision, why it was made, and what ha
 | [[D023 - Emotions must change the mode, not decorate it]] | Minimal means few elements, not low contrast |
 | [[D024 - Emotions as a circumplex, rendered as one line]] | 26 emotions, one renderer: valence→hue, arousal→agitation |
 | [[D025 - Scaling text LVGL cannot scale]] | Canvas derives from img, so a picture of text can be zoomed |
+| [[D026 - Apps are a platform, not a special case]] | Settings was already an app; name the pattern rather than invent one |
+| [[D027 - The gesture budget]] | One finger, four gestures — displacement disqualifies a press |
 
 ## Releases
 

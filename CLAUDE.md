@@ -85,6 +85,20 @@ export PATH="$HOME/.platformio-venv/bin:$PATH" && cd ~/.local/src/LilyGo-AMOLED-
 > `scripts/version_stamp.py`, so it cannot: a changed flag forces a rebuild.
 > `+dirty` means uncommitted changes are in the image.
 
+## Adding an app
+
+Apps are a platform, not special cases — see [[D026 - Apps are a platform, not a special case]].
+Put it in `src/apps/`, implement the `App` contract from `app_api.h`, register
+it, and the drawer picks it up. Four rules, each one learned the hard way:
+
+1. **Create on entry, destroy on exit** — no app keeps a screen alive in the background.
+2. **Never touch the clock's objects** — the host mediates.
+3. **`decor()` every decorative object** — or it breaks the host's gestures ([[D014 - Touch hit-testing]]).
+4. **Only draw from the LVGL task** ([[D018 - Emotion API - one engine, two transports]]).
+
+The **clock is not an app.** It is the resting state of the object; the drawer is
+a layer above it. See [[Module map]] for what every file owns.
+
 ## Hard constraints
 
 - **LVGL 8.4.0, pinned.** Not 9.x. `LV_Helper.cpp` is `#if LVGL_VERSION_MAJOR == 8`; upgrading breaks the link, not just the API. ([[D002 - Pin LVGL to 8.4.0]])

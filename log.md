@@ -606,3 +606,19 @@ Weather and NTP both start from the same `GOT_IP` event, on adjacent lines. Weat
 All three call sites — the tap overlay, `/health`, and Settings ▸ Info — were each doing their own `time(nullptr) - last_sync`. They now share a single `net_weather_age_s()`, because three copies of the same arithmetic is three chances to fix it in one place and leave it broken in the others.
 
 Verified across a boot: `-1` (never) → `7 s` → `20 s`.
+
+## [2026-08-17] docs | Vault brought current before the app platform
+
+Owner asked for a timer reached from an app drawer, and — explicitly — for the project to be documented **before** any of it was built. That was the right call: the substance of the request is *"restructure the code so you can add apps to it"*, and a timer bolted onto `ui.cpp` would have satisfied the letter of it and none of the point.
+
+Three things were out of date or missing:
+
+- **No module map.** Twelve source files with no statement of what each owns. Written now, and framed around what each file may *not* do — the threading rule, the two load-bearing boot orderings — because those are the constraints that actually get violated.
+- **`ui.cpp` is 1333 lines** carrying five separate concerns: the clock, the gesture machine, the emotion renderer, the corner clock, the zoom canvas. That is the pressure the app platform relieves, and it is now recorded as the motivation rather than left as an unexplained refactor.
+- **The index's status callout was hours stale**, still describing BLE as unverified.
+
+Two decisions written before the code, which is the point of documenting first:
+
+**[[D026 - Apps are a platform, not a special case]].** The pattern already exists — `ui_settings.cpp` is an app in everything but name: own screen, opened by a gesture, tears down and returns home. The restructure *names and generalises* something already working rather than inventing an abstraction, which is a far safer move. Also records what is deliberately **not** an app: the clock, because it is the resting state of the object and demoting it to a tile would contradict every other decision in this project.
+
+**[[D027 - The gesture budget]].** The owner's constraint was "don't break others", and the hazard is specific: a swipe *begins as a press*, so a naive fourth gesture makes an upward drag also register as a tap — or worse, as a long press that silently changes brightness on the way to opening the drawer. Three rules keep them disjoint, the important one being that **displacement disqualifies a press** regardless of duration. Also notes that four gestures is close to the limit for a screen with no affordances, and that apps have no budget problem because they can afford real buttons with labels.
