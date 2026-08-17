@@ -35,7 +35,8 @@ struct Settings {
     bool    show_weather;
     bool    show_humidity;
     bool    burnin_guard;
-    bool    rotate_180;     /* upside-down landscape (setRotation(2)) */
+    bool    rotate_180;         /* upside-down landscape (setRotation(2)) */
+    bool    night_follows_sun;  /* dim by sunrise/sunset, not by the clock */
 
     /* Bluetooth LE */
     bool    ble_enabled;

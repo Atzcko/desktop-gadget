@@ -43,7 +43,7 @@ static lv_obj_t *roller_tz, *sw_24h;
 
 /* Screen tab */
 static lv_obj_t *sl_day, *sl_night, *lbl_day, *lbl_night;
-static lv_obj_t *roller_ns, *roller_ne, *sw_wx, *sw_hum, *sw_burn, *sw_rot;
+static lv_obj_t *roller_ns, *roller_ne, *sw_wx, *sw_hum, *sw_burn, *sw_rot, *sw_sun;
 
 /* BLE tab */
 static lv_obj_t *sw_ble, *sw_hid, *sw_kbd, *ta_ble_name, *lbl_ble_state;
@@ -432,6 +432,7 @@ static bool dirty(void)
     if ((bool)lv_obj_has_state(sw_hum,  LV_STATE_CHECKED) != snapshot.show_humidity)  return true;
     if ((bool)lv_obj_has_state(sw_burn, LV_STATE_CHECKED) != snapshot.burnin_guard)   return true;
     if ((bool)lv_obj_has_state(sw_rot,  LV_STATE_CHECKED) != snapshot.rotate_180)     return true;
+    if ((bool)lv_obj_has_state(sw_sun,  LV_STATE_CHECKED) != snapshot.night_follows_sun) return true;
     if ((bool)lv_obj_has_state(sw_ble,  LV_STATE_CHECKED) != snapshot.ble_enabled)    return true;
     if ((bool)lv_obj_has_state(sw_hid,  LV_STATE_CHECKED) != snapshot.ble_hid)        return true;
     if ((bool)lv_obj_has_state(sw_kbd,  LV_STATE_CHECKED) != snapshot.ble_as_keyboard) return true;
@@ -476,6 +477,7 @@ static void apply_widgets(void)
     s.show_humidity    = lv_obj_has_state(sw_hum,  LV_STATE_CHECKED);
     s.burnin_guard     = lv_obj_has_state(sw_burn, LV_STATE_CHECKED);
     s.rotate_180       = lv_obj_has_state(sw_rot,  LV_STATE_CHECKED);
+    s.night_follows_sun = lv_obj_has_state(sw_sun, LV_STATE_CHECKED);
     s.brightness_day   = lv_slider_get_value(sl_day);
     s.brightness_night = lv_slider_get_value(sl_night);
     s.night_start_hour = lv_roller_get_selected(roller_ns);
@@ -749,6 +751,9 @@ void ui_settings_open(void)
         lv_obj_set_flex_align(r3, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER,
                               LV_FLEX_ALIGN_CENTER);
         lv_obj_set_style_pad_column(r3, 12, LV_PART_MAIN);
+        body_label(r3, "Dim by sunrise");
+        sw_sun = lv_switch_create(r3);
+        if (s.night_follows_sun) lv_obj_add_state(sw_sun, LV_STATE_CHECKED);
         body_label(r3, "Night from");
         roller_ns = lv_roller_create(r3);
         lv_roller_set_options(roller_ns, hopts, LV_ROLLER_MODE_NORMAL);

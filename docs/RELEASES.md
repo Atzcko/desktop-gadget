@@ -11,6 +11,27 @@ Semantic versioning; the scheme and the release procedure live in [[CLAUDE]].
 The version is reported by the boot log, `GET /health` and Settings ▸ Info,
 each with a compiler build stamp so a stale flash is detectable.
 
+## v1.10.0 — 2026-08-17
+
+**Brightness can follow the sun instead of the clock.**
+`Settings ▸ Screen ▸ Dim by sunrise` — **on** uses sunrise/sunset from the
+internet, **off** uses the fixed night window. Default on.
+
+The fixed window was wrong every morning between sunrise and the window's end.
+Caught exactly that way: at **06:10** with sunrise at **05:58**, the sun was up
+and the panel was still at night brightness, because the configured window ran
+to 07:00. The schedule was doing what it was told; it was simply wrong about
+the world.
+
+Open-Meteo already supplies `is_day` for the weather icon, derived from
+sunrise/sunset at the exact coordinates — so this costs nothing, tracks the
+seasons, and follows the city if it changes. The hour window remains the
+**fallback** whenever weather has never arrived, so a device with no network
+still dims sensibly.
+
+`GET /health` now reports `brightness: {day, night, follows_sun}`, so what is
+actually persisted can be checked without opening Settings.
+
 ## v1.9.0 — 2026-08-16
 
 **The panel can be flipped 180°.** `Settings ▸ Screen ▸ Flip 180`, applied live

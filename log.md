@@ -584,3 +584,13 @@ Rotation **2** is the other landscape — identical 600×450, and `setRotation()
 **Boot-looped on the first flash:** `Guru Meditation Error … LoadProhibited`, `EXCVADDR 0x00000008`. `app_apply_rotation()` repaints through `lv_scr_act()`, and the boot call runs **before** `beginLvglHelper()` — so LVGL was uninitialised and `lv_scr_act()` returned NULL. The repaint is now guarded on `lv_disp_get_default()`; only the Settings toggle needs it, because nothing has been drawn at boot.
 
 Worth noting how cheap that diagnosis was compared with the ones earlier today: the register dump named the fault type and the exact null offset, so it took one read rather than any instrumenting.
+
+## [2026-08-17] release | v1.10.0 — brightness follows the sun, or the clock
+
+Owner reported two things: settings reverting to defaults after a power cycle, and the screen sitting at night brightness in daylight.
+
+**The second was real and precisely diagnosable.** Local time 06:10, sunrise 05:58, `is_day: 1` — but the configured night window runs 21:00–07:00. The schedule was doing exactly what it was told and was simply wrong about the world. A fixed window is wrong every morning between sunrise and the window's end, and drifts across the year.
+
+Fixed by preferring `is_day`, which Open-Meteo already supplies for the weather icon, computed from sunrise/sunset at our coordinates. It costs nothing extra, tracks the seasons, and follows the city if that changes. The hour window stays as the fallback when weather has never arrived, so a device with no network still dims sensibly — and the owner asked for the choice to be explicit, so it is a switch: `Settings ▸ Screen ▸ Dim by sunrise`, default on.
+
+**The first did not reproduce.** After a hardware reset the device restored `day=255 night=65` from NVS — plainly not the defaults of 90/25. Persistence is working. The likely explanation is the Save/Close split added in v1.2.0: the brightness sliders preview **live**, so a change is visibly applied, and pressing **Close** then discards it. That is a trap of my own making — a control whose effect you can see is one you assume is committed. `/health` now reports the persisted brightness so this can be checked without opening Settings, and the question is back with the owner rather than guessed at.

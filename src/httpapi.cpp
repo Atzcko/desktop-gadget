@@ -61,6 +61,7 @@ static void handle_health(AsyncWebServerRequest *req)
              "\"humidity_pct\":%.0f,"
              "\"weather_code\":%d,"
              "\"is_day\":%s,"
+             "\"brightness\":{\"day\":%u,\"night\":%u,\"follows_sun\":%s},"
              "\"city\":\"%s\","
              "\"emotion\":{\"active\":%s,\"state\":\"%s\",\"remaining_s\":%u},"
              "\"ble\":{\"running\":%s,\"connected\":%s,\"name\":\"%s\"},"
@@ -80,6 +81,8 @@ static void handle_health(AsyncWebServerRequest *req)
              w.humidity,
              w.code,
              w.is_day ? "true" : "false",
+             s.brightness_day, s.brightness_night,
+             s.night_follows_sun ? "true" : "false",
              s.city,
              emotion_active() ? "true" : "false",
              emotion_name(emotion_current_state()),

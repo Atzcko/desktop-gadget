@@ -88,9 +88,29 @@ void app_show_info_overlay(void)
 
 /* ------------------------------------------------------------- schedules -- */
 
+/*
+ * Prefer the SUN over the clock.
+ *
+ * A fixed 21:00-07:00 window is wrong twice a year and wrong every morning
+ * between sunrise and the window's end: at 06:10 with sunrise at 05:58 the sun
+ * is up, the panel is bright daylight-lit, and a schedule-driven device is
+ * still sitting at night brightness.
+ *
+ * Open-Meteo already gives us is_day for the weather icon, computed from
+ * sunrise/sunset at our exact coordinates — so this is free, it tracks the
+ * seasons, and it follows the city if that changes. The hour window remains as
+ * the fallback for when weather has never arrived, and can be forced from
+ * Settings for anyone who wants fixed hours.
+ */
 static bool is_night(int hour)
 {
     Settings &s = settings_get();
+
+    if (s.night_follows_sun) {
+        WeatherData w = net_weather();
+        if (w.valid) return !w.is_day;
+    }
+
     if (s.night_start_hour == s.night_end_hour) return false;
     if (s.night_start_hour < s.night_end_hour) {
         return hour >= s.night_start_hour && hour < s.night_end_hour;
