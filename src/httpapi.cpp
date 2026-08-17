@@ -42,7 +42,8 @@ static void handle_health(AsyncWebServerRequest *req)
     WeatherData w  = net_weather();
     Settings   &s  = settings_get();
 
-    long age = (w.valid && st.time_valid) ? (long)(time(nullptr) - w.last_sync) : -1;
+    uint32_t a = net_weather_age_s();
+    long age = (a == UINT32_MAX) ? -1 : (long)a;
 
     char body[640];
     snprintf(body, sizeof(body),

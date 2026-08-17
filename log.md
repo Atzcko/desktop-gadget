@@ -594,3 +594,15 @@ Owner reported two things: settings reverting to defaults after a power cycle, a
 Fixed by preferring `is_day`, which Open-Meteo already supplies for the weather icon, computed from sunrise/sunset at our coordinates. It costs nothing extra, tracks the seasons, and follows the city if that changes. The hour window stays as the fallback when weather has never arrived, so a device with no network still dims sensibly — and the owner asked for the choice to be explicit, so it is a switch: `Settings ▸ Screen ▸ Dim by sunrise`, default on.
 
 **The first did not reproduce.** After a hardware reset the device restored `day=255 night=65` from NVS — plainly not the defaults of 90/25. Persistence is working. The likely explanation is the Save/Close split added in v1.2.0: the brightness sliders preview **live**, so a change is visibly applied, and pressing **Close** then discards it. That is a trap of my own making — a control whose effect you can see is one you assume is committed. `/health` now reports the persisted brightness so this can be checked without opening Settings, and the question is back with the owner rather than guessed at.
+
+## [2026-08-17] fix | v1.10.1 — "weather 496370 h ago"
+
+Owner tapped the screen and got a weather age of 496370 hours. That is 56.6 years: the age of the Unix epoch, and arithmetically just `now / 3600` — which pins `last_sync` at exactly 0.
+
+Weather and NTP both start from the same `GOT_IP` event, on adjacent lines. Weather usually wins the race, so the fetch was stamped with a near-zero epoch; when NTP subsequently stepped the clock to 2026, the subtraction measured the distance back to 1970 instead of the age of the reading.
+
+**Wall-clock time is the wrong instrument for measuring an interval on a device whose clock can jump.** Age now comes from `millis()`, which cannot be stepped, and `uint32` subtraction wraps correctly at the ~49.7-day rollover so it survives that too.
+
+All three call sites — the tap overlay, `/health`, and Settings ▸ Info — were each doing their own `time(nullptr) - last_sync`. They now share a single `net_weather_age_s()`, because three copies of the same arithmetic is three chances to fix it in one place and leave it broken in the others.
+
+Verified across a boot: `-1` (never) → `7 s` → `20 s`.

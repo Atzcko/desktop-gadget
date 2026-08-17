@@ -73,16 +73,11 @@ void app_show_info_overlay(void)
         strftime(date_line, sizeof(date_line), "%A %d %B %Y", &tm_now);
     }
 
-    WeatherData w  = net_weather();
-    NetStatus   st = net_status();
-    if (w.valid && st.time_valid) {
-        long age = (long)(time(nullptr) - w.last_sync);
-        if (age < 90)        snprintf(sync_line, sizeof(sync_line), "weather just now");
-        else if (age < 5400) snprintf(sync_line, sizeof(sync_line), "weather %ld min ago", age / 60);
-        else                 snprintf(sync_line, sizeof(sync_line), "weather %ld h ago", age / 3600);
-    } else {
-        snprintf(sync_line, sizeof(sync_line), "weather never synced");
-    }
+    uint32_t age = net_weather_age_s();
+    if (age == UINT32_MAX)   snprintf(sync_line, sizeof(sync_line), "weather never synced");
+    else if (age < 90)       snprintf(sync_line, sizeof(sync_line), "weather just now");
+    else if (age < 5400)     snprintf(sync_line, sizeof(sync_line), "weather %u min ago", age / 60);
+    else                     snprintf(sync_line, sizeof(sync_line), "weather %u h ago", age / 3600);
     ui_show_info(date_line, sync_line);
 }
 

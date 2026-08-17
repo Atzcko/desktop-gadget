@@ -11,6 +11,24 @@ Semantic versioning; the scheme and the release procedure live in [[CLAUDE]].
 The version is reported by the boot log, `GET /health` and Settings ▸ Info,
 each with a compiler build stamp so a stale flash is detectable.
 
+## v1.10.1 — 2026-08-17
+
+**Fix: "weather 496370 h ago".** That figure is 56.6 years — the age of the Unix
+epoch, and exactly `now / 3600`.
+
+Weather and NTP both start on `GOT_IP` and race. Weather usually wins, so the
+fetch was stamped with a near-zero epoch; when NTP then stepped the clock to
+2026, `now - last_sync` measured the distance back to 1970 rather than the age
+of the reading.
+
+Age is now measured with **`millis()`**, which cannot be stepped, and `uint32`
+subtraction wraps correctly at the ~49.7-day rollover so it stays right across
+that too. All three call sites — the tap overlay, `GET /health`, and
+Settings ▸ Info — go through one `net_weather_age_s()` accessor, so the bug
+cannot be reintroduced in one place while being fixed in another.
+
+Verified across a boot: `-1` (never) → `7 s` → `20 s`.
+
 ## v1.10.0 — 2026-08-17
 
 **Brightness can follow the sun instead of the clock.**

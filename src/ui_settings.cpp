@@ -870,12 +870,10 @@ void ui_settings_open(void)
         WeatherData w  = net_weather();
         char buf[520];
         char sync[40];
-        if (w.valid && st.time_valid) {
-            long age = (long)(time(nullptr) - w.last_sync);
-            snprintf(sync, sizeof(sync), "%ld min ago", age / 60);
-        } else {
-            snprintf(sync, sizeof(sync), "never");
-        }
+        uint32_t age = net_weather_age_s();
+        if (age == UINT32_MAX)  snprintf(sync, sizeof(sync), "never");
+        else if (age < 90)      snprintf(sync, sizeof(sync), "just now");
+        else                    snprintf(sync, sizeof(sync), "%u min ago", age / 60);
         snprintf(buf, sizeof(buf),
                  "Firmware  v%s\n"
                  "Host      %s.local\n"

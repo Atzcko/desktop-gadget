@@ -93,7 +93,7 @@ static bool fetch_weather(void)
     wx.is_day    = day;
     wx.valid     = true;
     wx.stale     = false;
-    wx.last_sync = time(nullptr);
+    wx.last_sync_ms = millis();
     xSemaphoreGive(wx_lock);
 
     Serial.printf("[net] weather %.1f (%.1f..%.1f) rh %.0f%% code %d %s\n",
@@ -291,6 +291,13 @@ NetStatus net_status(void)
 }
 
 uint8_t net_last_disconnect(void) { return last_disconnect; }
+
+uint32_t net_weather_age_s(void)
+{
+    WeatherData w = net_weather();
+    if (!w.valid) return UINT32_MAX;
+    return (millis() - w.last_sync_ms) / 1000u;
+}
 
 WeatherData net_weather(void)
 {
