@@ -22,9 +22,7 @@ This vault is the project's memory: every decision, why it was made, and what ha
 > follows sunrise. Eleven tagged releases; every one confirmed on hardware
 > before tagging.
 
-**Next:** an app platform — swipe up from the bottom for a drawer, with a timer
-as the first app. Designed in [[D026 - Apps are a platform, not a special case]]
-before any code, per the owner's instruction.
+**Apps** live in ; adding one is a file and a line — see [[D026 - Apps are a platform, not a special case]].
 
 | Screen | Reached by |
 |---|---|
@@ -32,7 +30,7 @@ before any code, per the owner's instruction.
 | Line / activity | `POST /emotion`, BLE NUS, or the MCP tool |
 | Settings | hold 3 s |
 | Text editor | tapping any field in Settings |
-| App drawer *(planned)* | swipe up from the bottom edge |
+| App drawer | swipe up from the bottom edge |
 
 ## Driving the display
 
@@ -88,7 +86,7 @@ bridge is the only way. See [[CLAUDE]].
 
 ## Releases
 
-- [[RELEASES]] — **v1.10.1**, 2026-08-17. Bump `include/version.h`, log it, tag it, flash it, confirm via `/health`.
+- [[RELEASES]] — **v1.11.0**, 2026-08-17. Bump `include/version.h`, log it, tag it, flash it, confirm via `/health`.
 
 ## Reference
 

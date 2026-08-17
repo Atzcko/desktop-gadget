@@ -622,3 +622,17 @@ Two decisions written before the code, which is the point of documenting first:
 **[[D026 - Apps are a platform, not a special case]].** The pattern already exists — `ui_settings.cpp` is an app in everything but name: own screen, opened by a gesture, tears down and returns home. The restructure *names and generalises* something already working rather than inventing an abstraction, which is a far safer move. Also records what is deliberately **not** an app: the clock, because it is the resting state of the object and demoting it to a tile would contradict every other decision in this project.
 
 **[[D027 - The gesture budget]].** The owner's constraint was "don't break others", and the hazard is specific: a swipe *begins as a press*, so a naive fourth gesture makes an upward drag also register as a tap — or worse, as a long press that silently changes brightness on the way to opening the drawer. Three rules keep them disjoint, the important one being that **displacement disqualifies a press** regardless of duration. Also notes that four gestures is close to the limit for a screen with no affordances, and that apps have no budget problem because they can afford real buttons with labels.
+
+## [2026-08-17] release | v1.11.0 — the app platform and a timer
+
+Built to the design written in the previous turn, which is the point of having written it: the contract, the drawer, the timer, and the gesture all landed without re-litigating anything.
+
+`app_api.h` is five fields. `app_host.cpp` owns the registry, the drawer, launching, and the route home — and nothing else; it never learns what an app draws, and no app learns anything about the clock. Adding an app is now **one file in `src/apps/` and one line in the registry**.
+
+The timer reuses the clock's cards and 210 px digits deliberately: a second visual language on one device would be one too many. Drag sensitivity is deliberately non-linear — whole minutes above ten, 15-second steps below — so a 45-second egg and a 40-minute bake are each a single gesture rather than one being an exercise in patience.
+
+**The gesture worked out exactly as D027 predicted it would need to.** Displacement disqualifies a press regardless of duration; without that an upward drag also fires a tap, or a long press that silently changes brightness on the way to the drawer. The swipe must start within 80 px of the bottom, and the hold indicator is suppressed the moment movement begins.
+
+One genuine C++ trap on the way: `const App app_timer = {...}` has **internal linkage**. A const object at namespace scope is TU-local by default in C++, so the registry's `extern` declaration found nothing and the link failed. `extern` on the *definition* is required. Worth remembering, because the error message names the symbol without hinting at linkage.
+
+Not yet verified: every touch path. The device cannot be driven from here, so swipe, tap, long-press, hold, and the timer controls are all with the owner.

@@ -11,6 +11,32 @@ Semantic versioning; the scheme and the release procedure live in [[CLAUDE]].
 The version is reported by the boot log, `GET /health` and Settings ▸ Info,
 each with a compiler build stamp so a stale flash is detectable.
 
+## v1.11.0 — 2026-08-17
+
+**An app platform, and a timer.** Swipe up from the bottom edge for a drawer.
+
+- `app_api.h` — a five-field `App` contract: name, icon, create, destroy, tick.
+- `app_host.cpp` — registry, drawer, launch, route home. Knows nothing about
+  what any app draws; no app knows anything about the clock.
+- `apps/app_timer.cpp` — drag up or down to set, play / pause / reset / back.
+  Same cards, same 210 px digits: a second visual language on one device would
+  be one too many. Coarse above ten minutes (whole minutes) and fine below
+  (15 s), so a 45-second egg and a 40-minute bake are both one gesture.
+- Adding an app is now **one file plus one line** in `app_registry.cpp`.
+
+**The gesture, and why it does not break the other three.** A swipe *begins as a
+press*, so displacement now disqualifies a press whatever its duration —
+otherwise an upward drag would also fire a tap, or a long press that silently
+changed the brightness on the way to the drawer. The swipe must also start
+within 80 px of the bottom edge, and the hold indicator is suppressed the moment
+movement starts. See [[D027 - The gesture budget]].
+
+*Found while linking:* `const App app_timer = {...}` had **internal linkage** —
+in C++ a const object at namespace scope is TU-local by default, so the registry
+could not see it. `extern` on the definition is required, not decoration.
+
+RAM 18.3 % (59 868 B) · Flash 26.5 % (1 737 913 B).
+
 ## v1.10.1 — 2026-08-17
 
 **Fix: "weather 496370 h ago".** That figure is 56.6 years — the age of the Unix

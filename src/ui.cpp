@@ -11,6 +11,7 @@
 #include "ui_settings.h"
 #include "app.h"
 #include "emotion.h"
+#include "app_host.h"
 
 #include <Arduino.h>
 #include <stdio.h>
@@ -52,8 +53,21 @@ LV_FONT_DECLARE(fliqlo_mid);
 
 #define FOLD_MS         180      /* per phase; two phases per flip */
 
-/* Gesture thresholds */
+/*
+ * Gesture thresholds — see D027, the gesture budget.
+ *
+ * The three press gestures are classified by TIME on release. The swipe is the
+ * fourth and the dangerous one: a swipe BEGINS as a press, so without MOVE_SLOP
+ * an upward drag would also register as a tap — or worse, as a long press that
+ * silently changes brightness on the way to opening the drawer.
+ *
+ * So: displacement disqualifies a press whatever its duration, and the swipe
+ * must START near the bottom edge, leaving the rest of the screen free.
+ */
 #define TAP_MAX_MS      400
+#define MOVE_SLOP        30     /* px: past this it was never a press      */
+#define SWIPE_ZONE       80     /* px from the bottom the swipe must start */
+#define SWIPE_MIN_DY     70     /* px of upward travel to count            */
 #define BRIGHT_MIN_MS   1200
 #define SETTINGS_MS     3000     /* hold-to-open-Settings */
 
@@ -262,9 +276,11 @@ static void flip_card(Card &c, const char *next)
 
 /* ------------------------------------------------------------- gesture -- */
 
-static uint32_t press_start;
-static bool     press_active;
-static bool     settings_fired;
+static uint32_t   press_start;
+static bool       press_active;
+static bool       settings_fired;
+static lv_point_t press_pt;
+static bool       press_moved;
 
 static void hide_info_cb(lv_timer_t *t)
 {
@@ -291,12 +307,30 @@ static void on_press(lv_event_t *e)
 {
     lv_event_code_t code = lv_event_get_code(e);
 
+    lv_indev_t *indev = lv_indev_get_act();
+
     if (code == LV_EVENT_PRESSED) {
         press_start    = millis();
         press_active   = true;
         settings_fired = false;
+        press_moved    = false;
+        if (indev) lv_indev_get_point(indev, &press_pt);
     } else if (code == LV_EVENT_PRESSING && press_active) {
         uint32_t dt = millis() - press_start;
+
+        /* Once the finger has travelled this is a swipe, and no press gesture
+         * may fire — including the hold indicator, which would otherwise
+         * advertise a hold the user is not performing. */
+        if (!press_moved && indev) {
+            lv_point_t p;
+            lv_indev_get_point(indev, &p);
+            if (abs(p.x - press_pt.x) > MOVE_SLOP || abs(p.y - press_pt.y) > MOVE_SLOP) {
+                press_moved = true;
+                lv_obj_add_flag(hold_bar, LV_OBJ_FLAG_HIDDEN);
+            }
+        }
+        if (press_moved) return;
+
         if (dt >= BRIGHT_MIN_MS && !settings_fired) {
             /* Show the user that holding longer does something. Without
              * this, a 3 s hold is an invisible affordance nobody finds. */
@@ -317,6 +351,16 @@ static void on_press(lv_event_t *e)
         uint32_t dt  = millis() - press_start;
         press_active = false;
         if (settings_fired) return;
+
+        if (press_moved) {
+            lv_point_t p = press_pt;
+            if (indev) lv_indev_get_point(indev, &p);
+            if (press_pt.y > (lv_coord_t)(scr_h - SWIPE_ZONE) &&
+                (press_pt.y - p.y) > SWIPE_MIN_DY) {
+                app_host_open_drawer();
+            }
+            return;                    /* a swipe is never a tap or a hold */
+        }
 
         if (dt < TAP_MAX_MS)          app_show_info_overlay();
         else if (dt >= BRIGHT_MIN_MS) cycle_brightness();

@@ -16,6 +16,7 @@
 #include "ui.h"
 #include "ui_settings.h"
 #include "app.h"
+#include "app_host.h"
 #include "emotion.h"
 #include "ble.h"
 #include "httpapi.h"
@@ -212,6 +213,7 @@ void loop()
 {
     lv_timer_handler();
     emotion_tick();
+    app_host_tick();
 
     /* The HTTP server and mDNS both need a live IP, so they start on the
      * first successful association rather than in setup(). */
@@ -227,7 +229,7 @@ void loop()
     if (now >= next_tick) {
         next_tick = now + 200;
 
-        if (!ui_settings_is_open()) {
+        if (!ui_settings_is_open() && !app_host_is_open()) {
             struct tm tm_now;
             if (getLocalTime(&tm_now, 0)) {
                 if (tm_now.tm_min != last_min || tm_now.tm_hour != last_hour) {
