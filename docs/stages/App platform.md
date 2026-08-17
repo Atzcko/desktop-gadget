@@ -1,7 +1,7 @@
 ---
 title: App platform
 type: stage
-status: planned
+status: awaiting-hardware-verification
 date_started: 2026-08-17
 tags:
   - stage
