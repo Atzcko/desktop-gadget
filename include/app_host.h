@@ -4,6 +4,9 @@
 #pragma once
 #include <stdbool.h>
 
+struct App;
+
+void app_host_launch(const App *app);   /* straight to an app, no drawer */
 void app_host_open_drawer(void);
 void app_host_home(void);        /* leave whatever is open, back to the clock */
 bool app_host_is_open(void);     /* drawer or an app is on screen             */

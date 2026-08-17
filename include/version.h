@@ -18,7 +18,7 @@
 #pragma once
 
 #define FW_VERSION_MAJOR  1
-#define FW_VERSION_MINOR  11
+#define FW_VERSION_MINOR  12
 #define FW_VERSION_PATCH  0
 
 #define FW_STR_(x)   #x

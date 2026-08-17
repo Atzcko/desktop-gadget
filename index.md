@@ -83,6 +83,7 @@ bridge is the only way. See [[CLAUDE]].
 | [[D025 - Scaling text LVGL cannot scale]] | Canvas derives from img, so a picture of text can be zoomed |
 | [[D026 - Apps are a platform, not a special case]] | Settings was already an app; name the pattern rather than invent one |
 | [[D027 - The gesture budget]] | One finger, four gestures — displacement disqualifies a press |
+| [[D028 - Set a number by dragging the number]] | One control per number; the card IS the roller |
 
 ## Releases
 

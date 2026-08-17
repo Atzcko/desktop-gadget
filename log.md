@@ -636,3 +636,51 @@ The timer reuses the clock's cards and 210 px digits deliberately: a second visu
 One genuine C++ trap on the way: `const App app_timer = {...}` has **internal linkage**. A const object at namespace scope is TU-local by default in C++, so the registry's `extern` declaration found nothing and the link failed. `extern` on the *definition* is required. Worth remembering, because the error message names the symbol without hinting at linkage.
 
 Not yet verified: every touch path. The device cannot be driven from here, so swipe, tap, long-press, hold, and the timer controls are all with the owner.
+
+## 2026-08-17 — Settings as an app, and rollers that flip (v1.12.0)
+
+Three changes from one message, and the third one only looked contradictory.
+
+**Settings joined the drawer.** `apps/app_settings.cpp` is a thin adapter over
+`ui_settings_create`/`ui_settings_destroy` — the settings screen itself is
+untouched. `ui_settings_open()` now routes through `app_host_launch()`, so the
+3-second hold and the drawer tile land in exactly the same place. That gesture
+stays: it is a year of muscle memory and there was nothing to gain by spending
+it.
+
+**Apps are reorderable.** Long-press a tile and it moves one place left,
+wrapping at the front. `app_order[8]` in NVS, so it survives a power cycle and
+a re-flash like everything else.
+
+**The timer's set gesture was wrong and is now right.** It had one drag target —
+the whole face — which could only ever change one number, and gave no hint
+which. The ask was "the layout like *Night from*, but for every number", keeping
+the current design, with the digits animating like a flip clock. Read once that
+sounds like three incompatible things; *Night from* is an `lv_roller` and a
+roller looks nothing like a flip card. But *Night from* is not a roller because
+rollers are good — it is a roller because it gives **one control per number**.
+That is the part being asked for. So each card became its own roller, and kept
+its face. [[D028 - Set a number by dragging the number]].
+
+Three details worth keeping:
+
+- The value is recomputed from **total displacement since touch-down**, not
+  accumulated per event. Accumulating drifts, and makes the gesture
+  irreversible — drag back to undo and you land somewhere else.
+- A card already mid-fold **takes the new value without queueing another
+  animation**. Dragging outruns a 220 ms fold easily and stacked folds tear.
+- The card keeps `LV_OBJ_FLAG_CLICKABLE`. It is the control, so it is the one
+  object on that screen that must not go through `decor()`.
+
+The fold is a second copy of the clock's, not a shared helper — extracting the
+original would mean refactoring the screen that has worked all day in order to
+add a feature elsewhere. Trigger written down: if a third caller appears,
+extract it then.
+
+**Cost of the patch-don't-rewrite instinct.** Splicing the rollers into
+`app_timer.cpp` put the new `Digits`/`flip_to` block *after* `render()`, which
+calls it — five errors, all ordering, plus a duplicate `dragging` and a dangling
+`face_cb`. Rewriting the file whole took less time than the second patch would
+have. When a change moves declarations, patching is the slower option.
+
+RAM 18.3 % · Flash 26.5 %.

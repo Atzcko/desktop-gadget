@@ -12,6 +12,7 @@
 #include "ui.h"
 #include "app.h"
 #include "ble.h"
+#include "app_host.h"
 
 #include <Arduino.h>
 #include <lvgl.h>
@@ -545,7 +546,9 @@ static void revert_live(void)
     app_apply_rotation(snapshot.rotate_180);
 }
 
-static void teardown(void)
+/* Settings is an app now, so it no longer routes itself home or deletes its own
+ * screen — the host does both. This is only reachable via the host. */
+void ui_settings_destroy(void)
 {
     editor_close(false);
     if (wifi_poll)    { lv_timer_del(wifi_poll);    wifi_poll = nullptr; }
@@ -553,13 +556,11 @@ static void teardown(void)
     lbl_wifi_state = nullptr;
     lbl_status     = nullptr;
     btn_save       = nullptr;
-
-    lv_obj_t *dead = scr_set;
-    scr_set = nullptr;
-    is_open = false;
-    lv_scr_load(ui_screen());
-    lv_obj_del(dead);
+    scr_set        = nullptr;
+    is_open        = false;
 }
+
+static void teardown(void) { app_host_home(); }
 
 static void save_cb(lv_event_t *)
 {
@@ -593,9 +594,8 @@ static void close_cb(lv_event_t *)
 
 bool ui_settings_is_open(void) { return is_open; }
 
-void ui_settings_open(void)
+lv_obj_t *ui_settings_create(void)
 {
-    if (is_open) return;
     is_open = true;
 
     Settings &s = settings_get();
@@ -927,5 +927,5 @@ void ui_settings_open(void)
     lv_obj_set_size(btn_close, 180, 44);
     lv_obj_align(btn_close, LV_ALIGN_LEFT_MID, 400, 0);
 
-    lv_scr_load(scr_set);
+    return scr_set;
 }

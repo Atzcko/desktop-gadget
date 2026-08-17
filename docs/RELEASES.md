@@ -11,6 +11,32 @@ Semantic versioning; the scheme and the release procedure live in [[CLAUDE]].
 The version is reported by the boot log, `GET /health` and Settings ▸ Info,
 each with a compiler build stamp so a stale flash is detectable.
 
+## v1.12.0 — 2026-08-17
+
+**Settings became an app, and the timer got rollers that flip.**
+
+- **Settings is an app now**, sitting next to Timer in the drawer. The 3-second
+  hold still opens it — that gesture is muscle memory and was not worth
+  spending. `app_settings.cpp` is a thin adapter over the existing screen, so
+  the settings UI itself did not change at all.
+- **Apps are reorderable.** Long-press a tile in the drawer and it moves one
+  place left, wrapping at the front. The order lives in NVS (`app_order`), so
+  it survives a power cycle and a re-flash like every other setting.
+- **The timer is set with one roller per number**, matching Settings ▸ Night
+  from. Drag the minutes card for minutes, the seconds card for seconds. This
+  replaces dragging the whole face, which could only ever change one quantity
+  and gave no clue which.
+- **Timer digits fold.** Every change plays the clock's two-phase split flap,
+  so the timer reads as the same object as the clock rather than a different
+  app that happens to show numbers. ([[D028 - Set a number by dragging the number]])
+
+The value is computed from total displacement since touch-down rather than
+accumulated per event, so it cannot drift, and dragging back to where you
+started restores the number you started with. A card already mid-fold takes the
+new value without queueing another animation — stacked folds read as tearing.
+
+RAM 18.3 % (59 900 B) · Flash 26.5 % (1 739 325 B).
+
 ## v1.11.0 — 2026-08-17
 
 **An app platform, and a timer.** Swipe up from the bottom edge for a drawer.
