@@ -732,3 +732,57 @@ that and the rest of this project's vault conventions back into the
 `DECISION-RECORDS.md`.
 
 RAM 18.3 % · Flash 26.5 %.
+
+## 2026-08-18 — Retire a gesture, fix a reboot, make the timer usable (v1.14.0)
+
+**The 3-second hold is gone.** It was built when Settings was the only other
+screen and there was no other way in; Settings is an app now and the drawer goes
+there. D027 said in as many words that every gesture makes the next one harder —
+the honest first one to spend is the one whose reason expired.
+[[D030 - Retire the 3-second hold]]. The press path got simpler as a side
+effect: nothing happens *during* a press any more, so `settings_fired`, the
+accent bar and the whole progress branch went with it.
+
+**The drawer reorder reboot.** Long-press a tile, device resets, every time. The
+handler deleted the drawer and rebuilt it — from inside an event callback on one
+of that screen's own grandchildren. Deleting the active screen leaves
+`lv_disp_t.act_scr` dangling and the first `lv_obj_create()` of the rebuild
+walks up to invalidate through it. Not a race; structural.
+
+Nothing needed deleting. The tiles are flex children and a flex container lays
+out in child order, so `lv_obj_move_to_index()` **is** the reorder. The layout is
+the model. [[D031 - The layout is the model]].
+
+Reading that code turned up a second bug sitting behind the first: **LVGL sends
+`LV_EVENT_CLICKED` on every release, including the end of a long press.** So the
+reorder was always going to be followed by launching the app it had just moved —
+it just never got that far, because the reset came first. `SHORT_CLICKED` is the
+one that fires only for short presses. The timer's cards had the same trap from
+the other direction and now use it.
+
+**The timer was "tricky", and the reason is arithmetic.** At 13 px a step on a
+450 px screen a full-height drag is 34 steps, so 45 seconds took two drags and
+an exact landing took a third — with a 220 ms fold running behind the finger, so
+the number you were aiming at was never the number on screen. Making the drag
+faster fixes the range and makes the aim worse. Opposite problems; one control
+cannot solve both.
+
+So: three gestures on the same card. Drag coarse at 18 px a step (*calmer*, now
+that it is not the only way), tap above or below the middle for exactly ±1, hold
+for ±1 at ~10/s — full range of seconds in about six seconds. Fold down to 70 ms
+a phase, because the clock folds once a minute and the fold is the point, while
+here it fires on every step. Seconds wrap, minutes clamp.
+[[D032 - Three gestures, one control]].
+
+Also: a split seam across each card so the timer reads as the same object as the
+clock; Start and Reset became full-width 122 px cards under the numbers they act
+on (no seam — that line means *this flips*, and through a word it is a
+strikethrough); no coloured frame around a running number, because a border
+around a number reads as an error box and the button already says Pause.
+
+**The Clock button is gone at the owner's request, so the left-edge swipe is now
+the only way out of the timer.** That is worth stating plainly: if the gesture
+does not work on hardware, the timer is a trap and the way out is a power cycle.
+A thin dim bar sits at the left edge so the gesture has an affordance at all.
+
+RAM 18.3 % · Flash 27.2 %.

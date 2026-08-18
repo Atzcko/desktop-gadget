@@ -54,22 +54,25 @@ LV_FONT_DECLARE(fliqlo_mid);
 #define FOLD_MS         180      /* per phase; two phases per flip */
 
 /*
- * Gesture thresholds — see D027, the gesture budget.
+ * Gesture thresholds — see D027, the gesture budget, and D030.
  *
- * The three press gestures are classified by TIME on release. The swipe is the
- * fourth and the dangerous one: a swipe BEGINS as a press, so without MOVE_SLOP
+ * The two press gestures are classified by TIME on release. The swipe is the
+ * third and the dangerous one: a swipe BEGINS as a press, so without MOVE_SLOP
  * an upward drag would also register as a tap — or worse, as a long press that
  * silently changes brightness on the way to opening the drawer.
  *
  * So: displacement disqualifies a press whatever its duration, and the swipe
  * must START near the bottom edge, leaving the rest of the screen free.
+ *
+ * The 3-second hold that opened Settings is GONE (D030), along with the accent
+ * bar that advertised it. Settings is an app now, and the drawer is how you
+ * reach apps; the hold only ever existed because the drawer did not.
  */
 #define TAP_MAX_MS      400
 #define MOVE_SLOP        30     /* px: past this it was never a press      */
 #define SWIPE_ZONE       80     /* px from the bottom the swipe must start */
 #define SWIPE_MIN_DY     70     /* px of upward travel to count            */
 #define BRIGHT_MIN_MS   1200
-#define SETTINGS_MS     3000     /* hold-to-open-Settings */
 
 /*
  * SEAM: big cards only, and thin.
@@ -145,7 +148,6 @@ static Card      card_h, card_m;
 static lv_obj_t *lbl_ampm;
 static lv_obj_t *dot_stale;
 static lv_obj_t *lbl_info;
-static lv_obj_t *hold_bar;
 static lv_timer_t *info_timer;
 
 static uint16_t scr_w, scr_h;
@@ -278,7 +280,6 @@ static void flip_card(Card &c, const char *next)
 
 static uint32_t   press_start;
 static bool       press_active;
-static bool       settings_fired;
 static lv_point_t press_pt;
 static bool       press_moved;
 
@@ -310,47 +311,24 @@ static void on_press(lv_event_t *e)
     lv_indev_t *indev = lv_indev_get_act();
 
     if (code == LV_EVENT_PRESSED) {
-        press_start    = millis();
-        press_active   = true;
-        settings_fired = false;
-        press_moved    = false;
+        press_start  = millis();
+        press_active = true;
+        press_moved  = false;
         if (indev) lv_indev_get_point(indev, &press_pt);
     } else if (code == LV_EVENT_PRESSING && press_active) {
-        uint32_t dt = millis() - press_start;
-
         /* Once the finger has travelled this is a swipe, and no press gesture
-         * may fire — including the hold indicator, which would otherwise
-         * advertise a hold the user is not performing. */
+         * may fire. Nothing else happens during a press now that the hold is
+         * gone — brightness is decided on release, by duration. */
         if (!press_moved && indev) {
             lv_point_t p;
             lv_indev_get_point(indev, &p);
-            if (abs(p.x - press_pt.x) > MOVE_SLOP || abs(p.y - press_pt.y) > MOVE_SLOP) {
+            if (abs(p.x - press_pt.x) > MOVE_SLOP || abs(p.y - press_pt.y) > MOVE_SLOP)
                 press_moved = true;
-                lv_obj_add_flag(hold_bar, LV_OBJ_FLAG_HIDDEN);
-            }
-        }
-        if (press_moved) return;
-
-        if (dt >= BRIGHT_MIN_MS && !settings_fired) {
-            /* Show the user that holding longer does something. Without
-             * this, a 3 s hold is an invisible affordance nobody finds. */
-            lv_obj_clear_flag(hold_bar, LV_OBJ_FLAG_HIDDEN);
-            int span = SETTINGS_MS - BRIGHT_MIN_MS;
-            int w    = (int)(240L * (long)(dt - BRIGHT_MIN_MS) / span);
-            lv_obj_set_width(hold_bar, w < 2 ? 2 : (w > 240 ? 240 : w));
-        }
-        if (dt >= SETTINGS_MS && !settings_fired) {
-            settings_fired = true;
-            press_active   = false;
-            lv_obj_add_flag(hold_bar, LV_OBJ_FLAG_HIDDEN);
-            ui_settings_open();
         }
     } else if (code == LV_EVENT_RELEASED || code == LV_EVENT_PRESS_LOST) {
-        lv_obj_add_flag(hold_bar, LV_OBJ_FLAG_HIDDEN);
         if (!press_active) { press_active = false; return; }
         uint32_t dt  = millis() - press_start;
         press_active = false;
-        if (settings_fired) return;
 
         if (press_moved) {
             lv_point_t p = press_pt;
@@ -758,15 +736,6 @@ void ui_init(uint16_t screen_w, uint16_t screen_h)
     lv_label_set_text(lbl_info, "");
     lv_obj_align(lbl_info, LV_ALIGN_BOTTOM_MID, 0, -14);
     lv_obj_add_flag(lbl_info, LV_OBJ_FLAG_HIDDEN);
-
-    hold_bar = lv_obj_create(root);
-    decor(hold_bar);
-    lv_obj_set_size(hold_bar, 2, 4);
-    lv_obj_set_style_bg_color(hold_bar, COL_ACCENT, LV_PART_MAIN);
-    lv_obj_set_style_bg_opa(hold_bar, LV_OPA_COVER, LV_PART_MAIN);
-    lv_obj_set_style_radius(hold_bar, 2, LV_PART_MAIN);
-    lv_obj_align(hold_bar, LV_ALIGN_BOTTOM_MID, 0, -6);
-    lv_obj_add_flag(hold_bar, LV_OBJ_FLAG_HIDDEN);
 }
 
 lv_obj_t *ui_screen(void) { return scr_clock; }

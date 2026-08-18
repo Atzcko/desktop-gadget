@@ -109,18 +109,21 @@ a layer above it. See [[Module map]] for what every file owns.
 - **`config.h` holds first-boot DEFAULTS ONLY.** Live configuration lives in NVS. Read `settings_get()`, never a `DEFAULT_*` macro, outside `settings_reset()`. ([[D013 - Settings live in NVS, config.h is only defaults]])
 - **Wi-Fi credentials are never in a file.** They are typed on the device. Do not ask the owner for their Wi-Fi password. ([[D016 - Wi-Fi is provisioned on-device]])
 - **Position self-aligning widgets with `lv_obj_align()`, never `lv_obj_set_pos()`.** In LVGL 8 alignment is a persistent style property, so `set_pos` on an aligned object is an *offset from the alignment point*, not a position. ([[D019 - Text entry gets its own screen]])
-- **Any new `lv_obj_create()` that is decorative must call `decor()`.** Every LVGL object is CLICKABLE by default and events do not bubble; a decorative object that keeps the flag will silently break the hold gesture. ([[D014 - Touch hit-testing]])
+- **Any new `lv_obj_create()` that is decorative must call `decor()`.** Every LVGL object is CLICKABLE by default and events do not bubble; a decorative object that keeps the flag will silently break the host's gestures. ([[D014 - Touch hit-testing]])
 - **Never call LVGL from a non-LVGL task.** The weather task and the async web server handlers post to a queue; only the LVGL loop touches LVGL objects.
 
 ## Using the device
 
-**Hold a finger anywhere on the screen for 3 seconds** to open Settings. A thin accent bar fills along the bottom edge from ~1.2 s so you can see the hold registering.
+**Swipe up from the bottom edge** for the app drawer — Timer and Settings live there. Long-press a tile to move it one place left; the order persists.
+
+**Swipe in from the left edge** to go home from any app or the drawer.
 
 | Gesture | Action |
 |---|---|
 | Tap | date + weather sync age, 5 s |
-| Long press 1.2–3 s | cycle brightness |
-| Hold 3 s | Settings |
+| Long press ≥ 1.2 s | cycle brightness |
+| Swipe up from the bottom edge | app drawer |
+| Swipe in from the left edge | home (inside an app or the drawer) |
 
 Settings tabs: **Wi-Fi** (scan / join), **Time** (zone, 24 h), **Place** (city search), **Screen** (brightness, night hours, toggles), **Info** (diagnostics, reset).
 

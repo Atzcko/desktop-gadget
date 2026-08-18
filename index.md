@@ -85,6 +85,9 @@ bridge is the only way. See [[CLAUDE]].
 | [[D027 - The gesture budget]] | One finger, four gestures — displacement disqualifies a press |
 | [[D028 - Set a number by dragging the number]] | One control per number; the card IS the roller |
 | [[D029 - Back is a system gesture, not a widget event]] | Polled above the widget tree, because LVGL 8 does not bubble |
+| [[D030 - Retire the 3-second hold]] | Settings is an app; the drawer already goes there |
+| [[D031 - The layout is the model]] | Reorder by moving a flex child, never by rebuilding a live screen |
+| [[D032 - Three gestures, one control]] | Drag coarse, tap exact, hold repeat — one card does all three |
 
 ## Releases
 

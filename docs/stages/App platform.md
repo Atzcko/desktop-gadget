@@ -60,3 +60,9 @@ the point.
 - [ ] With the Wi-Fi keyboard open, the edge swipe closes the editor and keeps
       the typed text, rather than leaving Settings
 - [ ] A swipe from the middle of the screen does nothing
+- [ ] **Holding a finger on the clock opens nothing** — the 3 s hold is retired
+- [ ] Long-pressing a drawer tile reorders it and **does not reset the device**
+- [ ] A reorder does not also launch the app it just moved
+- [ ] Timer: tap above / below a card's middle changes it by exactly 1
+- [ ] Timer: holding above / below repeats, and a drag never also counts as a tap
+- [ ] Timer: no coloured frame appears around the numbers when running

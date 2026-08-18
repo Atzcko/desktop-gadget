@@ -51,6 +51,13 @@ Three rules keep them disjoint:
 > alternative is usually a button inside an app, where there is room for a label
 > saying what it does.
 
+> [!note] One of the four has since been retired
+> The 3-second hold to open Settings is gone —
+> [[D030 - Retire the 3-second hold]]. The reasoning below stands; the hold is
+> simply the gesture whose reason expired first, once Settings became an app.
+> A system back gesture was added in its place, and it lives only inside apps —
+> [[D029 - Back is a system gesture, not a widget event]].
+
 ## Inside apps
 
 An app owns its own screen, so it owns its own gestures and has **no budget

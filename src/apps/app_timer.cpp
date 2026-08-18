@@ -1,10 +1,15 @@
 /**
  * app_timer.cpp — countdown timer, the first app.
  *
- * Set it by dragging each card: the minutes card is a roller for minutes, the
- * seconds card a roller for seconds. That is the "Night from" pattern — one
- * control per number — wearing the clock's design instead of a list widget, and
- * every change folds like a split flap.
+ * It wears the clock: same charcoal cards, same digit font, same split seam,
+ * same fold. Setting it uses three gestures on one control, which is what makes
+ * a two-number timer bearable on a screen with no keyboard —
+ *
+ *   drag a card      continuous, coarse
+ *   tap top / bottom exactly ±1
+ *   hold top /bottom ±1 repeating, ~10/s
+ *
+ * See D032.
  */
 #include "app_api.h"
 #include "app_host.h"
@@ -19,9 +24,9 @@ LV_FONT_DECLARE(fliqlo_digits);
 
 #define COL_BG      lv_color_hex(0x000000)
 #define COL_CARD    lv_color_hex(0x161616)
+#define COL_PRESS   lv_color_hex(0x262626)
 #define COL_DIGIT   lv_color_hex(0xFFFFFF)
 #define COL_DIM     lv_color_hex(0x8A8A8A)
-#define COL_RUN     lv_color_hex(0x2FBF71)
 #define COL_DONE    lv_color_hex(0xE0483B)
 
 #define CARD_W      268
@@ -29,13 +34,23 @@ LV_FONT_DECLARE(fliqlo_digits);
 #define CARD_GAP    36
 #define CARD_RADIUS 26
 #define CARD_TOP    30
+#define SEAM_H       3          /* same hairline as the clock's big cards */
 #define DIGIT_TOP   ((CARD_H - 154) / 2)
 
-#define FOLD_MS      110
-#define PX_PER_STEP   13
-#define DRAG_H_SLOP   26     /* px sideways before this stops being a roller */
+#define BTN_TOP     (CARD_TOP + CARD_H + 24)    /* 286 */
+#define BTN_H       122                          /* bottom edge at 408 of 450 */
 
-struct Digits { lv_obj_t *card, *label; char text[4]; bool busy; };
+/*
+ * 70 ms a phase, not the clock's 180. The clock folds once a minute and the
+ * fold is the point; here it fires on every step of a drag, and an animation
+ * slower than the finger is exactly what made setting the time feel vague.
+ */
+#define FOLD_MS       70
+#define PX_PER_STEP   18     /* calmer than it was: tap and hold do the fine work */
+#define TAP_SLOP      14     /* px before a press stops being a tap              */
+#define DRAG_H_SLOP   26     /* px sideways before this stops being a roller     */
+
+struct Digits { lv_obj_t *card, *label, *seam; char text[4]; bool busy; };
 
 static lv_obj_t *scr, *lbl_hint, *btn_play_lbl;
 static Digits    d_min, d_sec;
@@ -47,7 +62,7 @@ static uint32_t last_tick_ms;
 
 static lv_coord_t drag_x0, drag_y0;
 static int        drag_total0;
-static bool       dragging;
+static bool       dragging, drag_moved;
 
 static void decor(lv_obj_t *o)
 {
@@ -61,8 +76,8 @@ static void decor(lv_obj_t *o)
 /*
  * A local copy of the clock's two-phase split flap, deliberately not shared.
  * Extracting it from ui.cpp would mean refactoring the one screen that has
- * worked all day in order to add a feature elsewhere; a short duplicate is the
- * cheaper risk. If a third caller ever appears, extract it then.
+ * worked all along in order to add a feature elsewhere; a short duplicate is
+ * the cheaper risk. If a third caller ever appears, extract it then.
  */
 static void anim_h(void *o, int32_t v) { lv_obj_set_height((lv_obj_t *)o, v); }
 static void del_done(lv_anim_t *a)     { lv_obj_del((lv_obj_t *)a->user_data); }
@@ -142,6 +157,11 @@ static void flip_to(Digits &d, const char *next)
     lv_anim_set_time(&f, FOLD_MS * 2);
     lv_anim_set_user_data(&f, &d);  lv_anim_set_ready_cb(&f, clear_busy);
     lv_anim_start(&f);
+
+    /* The seam belongs on top of the digits, and the flaps were just created
+     * above it. Fliqlo's split line crosses the numerals; it is not behind
+     * them, and it is not behind the fold either. */
+    if (d.seam) lv_obj_move_foreground(d.seam);
 }
 
 /* --------------------------------------------------------------- render -- */
@@ -153,38 +173,53 @@ static void render(void)
     snprintf(buf, sizeof(buf), "%02d", left_seconds / 60); flip_to(d_min, buf);
     snprintf(buf, sizeof(buf), "%02d", left_seconds % 60); flip_to(d_sec, buf);
 
+    /* No border, in any state. A coloured frame around a number reads as an
+     * error box; the button already says Pause, and the digits are moving. */
     lv_color_t c = finished ? COL_DONE : COL_DIGIT;
     lv_obj_set_style_text_color(d_min.label, c, LV_PART_MAIN);
     lv_obj_set_style_text_color(d_sec.label, c, LV_PART_MAIN);
 
-    lv_coord_t bw = (running || finished) ? 4 : 0;
-    lv_color_t bc = finished ? COL_DONE : COL_RUN;
-    for (Digits *d : { &d_min, &d_sec }) {
-        lv_obj_set_style_border_width(d->card, bw, LV_PART_MAIN);
-        lv_obj_set_style_border_color(d->card, bc, LV_PART_MAIN);
-    }
-
     lv_label_set_text(btn_play_lbl, running ? LV_SYMBOL_PAUSE "  Pause"
                                             : LV_SYMBOL_PLAY  "  Start");
-    lv_label_set_text(lbl_hint, finished ? "done"
-                                         : (running ? "" : "drag each card to set"));
+
+    if (finished)     lv_label_set_text(lbl_hint, "done");
+    else if (running) lv_label_set_text(lbl_hint, "");
+    else              lv_label_set_text(lbl_hint, "drag  ·  tap  ·  hold  to set");
 }
 
-/* -------------------------------------------------------------- rollers -- */
+/* -------------------------------------------------------------- setting -- */
 /*
- * The value comes from total displacement since touch-down rather than being
- * accumulated per event, so it cannot drift and dragging back to where you
- * started restores the original number exactly.
+ * Seconds WRAP, minutes clamp. Wrapping makes 59 one tap from 0 in either
+ * direction, and it stays reversible during a drag because the value is
+ * recomputed from total displacement since touch-down rather than accumulated —
+ * so it cannot drift, and dragging back to where you started restores exactly
+ * the number you started with.
  */
 static void set_from(int minutes, int seconds)
 {
-    if (minutes < 0) minutes = 0;
+    seconds = ((seconds % 60) + 60) % 60;
+    if (minutes < 0)  minutes = 0;
     if (minutes > 99) minutes = 99;
-    if (seconds < 0) seconds = 0;
-    if (seconds > 59) seconds = 59;
     set_seconds  = minutes * 60 + seconds;
     left_seconds = set_seconds;
     render();
+}
+
+static void bump(bool is_min, int delta)
+{
+    if (is_min) set_from(left_seconds / 60 + delta, left_seconds % 60);
+    else        set_from(left_seconds / 60, left_seconds % 60 + delta);
+}
+
+/* Above the card's middle is up, below it is down. Nothing to aim at, and it
+ * works the same whichever card you are on. */
+static int tap_dir(bool is_min, lv_coord_t y)
+{
+    lv_obj_t *card = is_min ? d_min.card : d_sec.card;
+    if (!card) return 0;
+    lv_area_t a;
+    lv_obj_get_coords(card, &a);
+    return (y < (a.y1 + a.y2) / 2) ? +1 : -1;
 }
 
 static void roller_cb(lv_event_t *e)
@@ -198,12 +233,17 @@ static void roller_cb(lv_event_t *e)
     lv_point_t p;
     lv_indev_get_point(indev, &p);
 
-    if (code == LV_EVENT_PRESSED) {
+    switch (code) {
+    case LV_EVENT_PRESSED:
         drag_x0     = p.x;
         drag_y0     = p.y;
         drag_total0 = left_seconds;
         dragging    = true;
-    } else if (code == LV_EVENT_PRESSING && dragging) {
+        drag_moved  = false;
+        break;
+
+    case LV_EVENT_PRESSING: {
+        if (!dragging) break;
         const int dx = p.x - drag_x0, dy = p.y - drag_y0;
 
         /* A mostly-sideways drag is the host's back gesture passing through a
@@ -213,14 +253,35 @@ static void roller_cb(lv_event_t *e)
         if (abs(dx) > abs(dy) && abs(dx) > DRAG_H_SLOP) {
             dragging = false;
             set_from(drag_total0 / 60, drag_total0 % 60);
-            return;
+            break;
         }
+        if (!drag_moved && abs(dy) < TAP_SLOP) break;   /* still a tap */
+        drag_moved = true;
 
-        const int steps = (drag_y0 - p.y) / PX_PER_STEP;    /* up = more */
+        const int steps = (drag_y0 - p.y) / PX_PER_STEP;      /* up = more */
         if (is_min) set_from(drag_total0 / 60 + steps, drag_total0 % 60);
         else        set_from(drag_total0 / 60, drag_total0 % 60 + steps);
-    } else if (code == LV_EVENT_RELEASED || code == LV_EVENT_PRESS_LOST) {
+        break;
+    }
+
+    /* SHORT_CLICKED, not CLICKED: LVGL sends CLICKED on every release
+     * including the end of a hold, which would add a stray step to every
+     * hold-repeat. */
+    case LV_EVENT_SHORT_CLICKED:
+        if (!drag_moved) bump(is_min, tap_dir(is_min, p.y));
+        break;
+
+    case LV_EVENT_LONG_PRESSED_REPEAT:
+        if (!drag_moved) bump(is_min, tap_dir(is_min, p.y));
+        break;
+
+    case LV_EVENT_RELEASED:
+    case LV_EVENT_PRESS_LOST:
         dragging = false;
+        break;
+
+    default:
+        break;
     }
 }
 
@@ -228,9 +289,14 @@ static void roller_cb(lv_event_t *e)
 
 static void play_cb(lv_event_t *)
 {
-    if (finished)              { finished = false; left_seconds = set_seconds; }
-    else if (left_seconds == 0) return;
-    else                        running = !running;
+    if (finished) {
+        /* The button says Start. Clearing the alarm and making you press it a
+         * second time is not what it says. */
+        finished     = false;
+        left_seconds = set_seconds;
+        running      = true;
+    } else if (left_seconds == 0) return;
+    else                          running = !running;
     last_tick_ms = millis();
     render();
 }
@@ -242,20 +308,29 @@ static void reset_cb(lv_event_t *)
     render();
 }
 
-static void back_cb(lv_event_t *) { app_host_home(); }
-
 /* ---------------------------------------------------------------- build -- */
-
-static void make_btn(lv_obj_t *parent, const char *txt, lv_event_cb_t cb,
-                     int x, int w, lv_obj_t **out_lbl)
+/*
+ * The controls are cards too: same charcoal, same radius, same width, sitting
+ * directly under the numbers they act on. No seam — that line means "this
+ * flips", and drawing it through a word would read as a strikethrough.
+ */
+static void make_key(int x, const char *txt, lv_event_cb_t cb, lv_obj_t **out_lbl)
 {
-    lv_obj_t *b = lv_btn_create(parent);
-    lv_obj_set_size(b, w, 50);
-    lv_obj_align(b, LV_ALIGN_BOTTOM_LEFT, x, -18);
-    lv_obj_set_style_bg_color(b, lv_color_hex(0x2A2A2A), LV_PART_MAIN);
+    lv_obj_t *b = lv_obj_create(scr);
+    lv_obj_remove_style_all(b);
+    lv_obj_set_size(b, CARD_W, BTN_H);
+    lv_obj_set_pos(b, x, BTN_TOP);
+    lv_obj_set_style_bg_color(b, COL_CARD, LV_PART_MAIN);
+    lv_obj_set_style_bg_opa(b, LV_OPA_COVER, LV_PART_MAIN);
+    lv_obj_set_style_radius(b, CARD_RADIUS, LV_PART_MAIN);
+    lv_obj_set_style_bg_color(b, COL_PRESS, LV_PART_MAIN | LV_STATE_PRESSED);
+    lv_obj_add_flag(b, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_clear_flag(b, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_add_event_cb(b, cb, LV_EVENT_CLICKED, nullptr);
+
     lv_obj_t *l = lv_label_create(b);
-    lv_obj_set_style_text_font(l, &lv_font_montserrat_20, LV_PART_MAIN);
+    lv_obj_set_style_text_font(l, &lv_font_montserrat_32, LV_PART_MAIN);
+    lv_obj_set_style_text_color(l, COL_DIGIT, LV_PART_MAIN);
     lv_label_set_text(l, txt);
     lv_obj_center(l);
     if (out_lbl) *out_lbl = l;
@@ -273,7 +348,8 @@ static void build_card(lv_obj_t *parent, Digits &d, int x, bool is_min)
     lv_obj_set_style_clip_corner(d.card, true, LV_PART_MAIN);
     lv_obj_clear_flag(d.card, LV_OBJ_FLAG_SCROLLABLE);
 
-    /* The card itself is the roller, so it keeps CLICKABLE. */
+    /* The card itself is the roller, so it keeps CLICKABLE — the one object
+     * on this screen that must NOT go through decor(). */
     lv_obj_add_flag(d.card, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_add_event_cb(d.card, roller_cb, LV_EVENT_ALL, (void *)(intptr_t)is_min);
 
@@ -286,6 +362,14 @@ static void build_card(lv_obj_t *parent, Digits &d, int x, bool is_min)
     lv_obj_set_pos(d.label, 0, DIGIT_TOP);
     strcpy(d.text, "00");
     d.busy = false;
+
+    /* Created after the label so it draws over the digits. */
+    d.seam = lv_obj_create(d.card);
+    decor(d.seam);
+    lv_obj_set_size(d.seam, CARD_W, SEAM_H);
+    lv_obj_set_style_bg_color(d.seam, COL_BG, LV_PART_MAIN);
+    lv_obj_set_style_bg_opa(d.seam, LV_OPA_COVER, LV_PART_MAIN);
+    lv_obj_align(d.seam, LV_ALIGN_CENTER, 0, 0);
 }
 
 static void timer_icon(lv_event_t *e)
@@ -318,7 +402,7 @@ static void timer_icon(lv_event_t *e)
 
 static lv_obj_t *timer_create(void)
 {
-    running = false; finished = false; dragging = false;
+    running = false; finished = false; dragging = false; drag_moved = false;
     left_seconds = set_seconds;
 
     scr = lv_obj_create(nullptr);
@@ -339,15 +423,28 @@ static lv_obj_t *timer_create(void)
                        CARD_TOP + (i ? (CARD_H * 2) / 3 : CARD_H / 3) - 7);
     }
 
+    make_key(14,                    LV_SYMBOL_PLAY    "  Start", play_cb,  &btn_play_lbl);
+    make_key(14 + CARD_W + CARD_GAP, LV_SYMBOL_REFRESH "  Reset", reset_cb, nullptr);
+
+    /*
+     * The Clock button is gone, so the left-edge swipe is the only way out.
+     * A gesture with no affordance is a gesture nobody finds — this is the
+     * same thin accent the clock used to show for the hold, doing the same
+     * job: say that the edge is live, without spending a line of text on it.
+     */
+    lv_obj_t *edge = lv_obj_create(scr);
+    decor(edge);
+    lv_obj_set_size(edge, 4, 92);
+    lv_obj_set_style_radius(edge, 2, LV_PART_MAIN);
+    lv_obj_set_style_bg_color(edge, lv_color_hex(0x3A3A3A), LV_PART_MAIN);
+    lv_obj_set_style_bg_opa(edge, LV_OPA_COVER, LV_PART_MAIN);
+    lv_obj_align(edge, LV_ALIGN_LEFT_MID, 0, 0);
+
     lbl_hint = lv_label_create(scr);
     lv_obj_set_style_text_font(lbl_hint, &lv_font_montserrat_20, LV_PART_MAIN);
     lv_obj_set_style_text_color(lbl_hint, COL_DIM, LV_PART_MAIN);
     lv_label_set_text(lbl_hint, "");
-    lv_obj_align(lbl_hint, LV_ALIGN_TOP_MID, 0, 272);
-
-    make_btn(scr, LV_SYMBOL_PLAY "  Start",   play_cb,  30, 200, &btn_play_lbl);
-    make_btn(scr, LV_SYMBOL_REFRESH "  Reset", reset_cb, 244, 150, nullptr);
-    make_btn(scr, LV_SYMBOL_LEFT "  Clock",    back_cb,  408, 162, nullptr);
+    lv_obj_align(lbl_hint, LV_ALIGN_TOP_MID, 0, BTN_TOP + BTN_H + 8);
 
     render();
     return scr;
@@ -359,8 +456,8 @@ static void timer_destroy(void)
      * touch freed objects on the way out. */
     running = false; dragging = false;
     scr = lbl_hint = btn_play_lbl = nullptr;
-    d_min.card = d_min.label = nullptr;
-    d_sec.card = d_sec.label = nullptr;
+    d_min.card = d_min.label = d_min.seam = nullptr;
+    d_sec.card = d_sec.label = d_sec.seam = nullptr;
 }
 
 static void timer_tick(void)

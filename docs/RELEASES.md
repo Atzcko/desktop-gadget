@@ -11,6 +11,53 @@ Semantic versioning; the scheme and the release procedure live in [[CLAUDE]].
 The version is reported by the boot log, `GET /health` and Settings ▸ Info,
 each with a compiler build stamp so a stale flash is detectable.
 
+## v1.14.0 — 2026-08-18
+
+**The 3-second hold is gone, the drawer no longer reboots, and the timer is
+usable.**
+
+### Retired: hold to open Settings
+
+Settings is an app and the drawer is how you reach apps — the hold was a second
+route to a place that already had one, and it fired when you rested a finger on
+the clock. Gone, with the accent bar that advertised it. The clock is down to
+three gestures. ([[D030 - Retire the 3-second hold]])
+
+### Fixed: long-pressing a drawer tile reset the device
+
+The handler deleted the active screen from inside an event callback on one of
+that screen's own grandchildren, then rebuilt it — so `lv_disp_t.act_scr` was
+left dangling and the first `lv_obj_create()` of the rebuild invalidated through
+it. Structural, not a race.
+
+Nothing needs deleting: the tiles are flex children, so `lv_obj_move_to_index()`
+*is* the reorder. The layout is the model.
+
+The same handler would then have launched the app it had just moved — LVGL sends
+`LV_EVENT_CLICKED` on every release, including the end of a long press.
+([[D031 - The layout is the model]])
+
+### Timer
+
+- **A split seam across each card**, so it reads as the same object as the clock.
+- **Three ways to set a number, on the same card**: drag for coarse (18 px a
+  step, calmer than before), tap above or below the middle for exactly ±1, hold
+  for ±1 repeating at ~10/s. One control could not be both fast over range and
+  precise; three gestures can. Seconds wrap, minutes clamp, and the fold runs at
+  70 ms a phase so the animation stops lagging the finger.
+  ([[D032 - Three gestures, one control]])
+- **Start and Reset are cards now** — full card width, 122 px tall, montserrat
+  32, sitting directly under the numbers they act on. No seam: that line means
+  *this flips*, and through a word it reads as a strikethrough.
+- **No frame around a running number.** A coloured border reads as an error box;
+  the button already says Pause.
+- **The Clock button is gone.** The left-edge swipe is the way out, with a thin
+  dim bar at the edge so the gesture has an affordance.
+- Pressing **Start** on a finished timer now starts it, rather than only
+  clearing the alarm and waiting to be pressed again.
+
+RAM 18.3 % (59 924 B) · Flash 27.2 % (1 785 665 B).
+
 ## v1.13.0 — 2026-08-17
 
 **Swipe in from the left edge to go home**, from any app and from the drawer.
