@@ -116,14 +116,15 @@ a layer above it. See [[Module map]] for what every file owns.
 
 **Swipe up from the bottom edge** for the app drawer — Timer and Settings live there. Long-press a tile to move it one place left; the order persists.
 
-**Swipe in from the left edge** to go home from any app or the drawer.
+**Swipe in from the left edge** (or tap an app's back button) to go back one
+level: an app returns to the drawer, the drawer returns to the clock.
 
 | Gesture | Action |
 |---|---|
 | Tap | date + weather sync age, 5 s |
 | Long press ≥ 1.2 s | cycle brightness |
 | Swipe up from the bottom edge | app drawer |
-| Swipe in from the left edge | home (inside an app or the drawer) |
+| Swipe in from the left edge | back one level (app → drawer → clock) |
 
 Settings tabs: **Wi-Fi** (scan / join), **Time** (zone, 24 h), **Place** (city search), **Screen** (brightness, night hours, toggles), **Info** (diagnostics, reset).
 

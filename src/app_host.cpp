@@ -139,12 +139,13 @@ static void reorder_cb(lv_event_t *e)
     Serial.printf("[apps] moved %s to slot %d\n", app->name, prev);
 }
 
-static void close_cb(lv_event_t *) { app_host_home(); }
+static void close_cb(lv_event_t *) { app_host_back(); }
 
-void app_host_open_drawer(void)
+/* Build and load the drawer screen. No guard — callers decide when it is
+ * legal. The drawer is rebuilt on every visit rather than kept resident,
+ * same discipline as the apps: nothing stays alive in the background. */
+static void build_drawer(void)
 {
-    if (app_host_is_open()) return;
-
     drawer = lv_obj_create(nullptr);
     lv_obj_set_style_bg_color(drawer, COL_BG, LV_PART_MAIN);
     lv_obj_clear_flag(drawer, LV_OBJ_FLAG_SCROLLABLE);
@@ -204,6 +205,41 @@ void app_host_open_drawer(void)
     lv_scr_load(drawer);
 }
 
+void app_host_open_drawer(void)
+{
+    if (app_host_is_open()) return;
+    build_drawer();
+}
+
+/*
+ * Back pops ONE level of the stack the user actually walked: an app returns to
+ * the drawer, the drawer returns to the clock. See D033 — this replaced the
+ * original everything-goes-home semantics of D029.
+ *
+ * The app still gets first refusal, so Settings closes its text editor instead
+ * of leaving — the same contract hook the gesture has always offered.
+ */
+void app_host_back(void)
+{
+    if (!app_host_is_open()) return;
+
+    if (running) {
+        if (running->back && running->back()) return;
+
+        lv_obj_t *dead = running_scr;
+        running_scr = nullptr;
+        running->destroy();
+        running = nullptr;
+
+        /* Load the drawer BEFORE deleting the app's screen — deleting the
+         * active screen is how you get a use-after-free (D031). */
+        build_drawer();
+        if (dead) lv_obj_del(dead);
+    } else {
+        app_host_home();
+    }
+}
+
 /* ------------------------------------------------- the way back, as a -- */
 /*
  * Swipe in from the LEFT EDGE to go home.
@@ -261,9 +297,9 @@ static void back_gesture_tick(void)
         edge_armed = false;
         if ((edge_last.x - edge_p0.x) >= EDGE_MIN_DX &&
             abs(edge_last.y - edge_p0.y) <= EDGE_MAX_DY) {
-            /* The app gets first refusal, so one with a modal open closes that
-             * instead of losing everything in it. */
-            if (!(running && running->back && running->back())) app_host_home();
+            /* One level, not home — and the app still gets first refusal
+             * inside app_host_back(). */
+            app_host_back();
             edge_down = false;
             return;                      /* the screen may be gone; stop here */
         }

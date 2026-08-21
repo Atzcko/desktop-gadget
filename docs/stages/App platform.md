@@ -66,3 +66,8 @@ the point.
 - [ ] Timer: tap above / below a card's middle changes it by exactly 1
 - [ ] Timer: holding above / below repeats, and a drag never also counts as a tap
 - [ ] Timer: no coloured frame appears around the numbers when running
+- [ ] Back from the timer (button or edge swipe) lands on the DRAWER
+- [ ] Back from Settings (button or edge swipe) lands on the DRAWER
+- [ ] Back from the drawer (button or edge swipe) lands on the clock
+- [ ] Settings with unsaved changes still asks before leaving
+- [ ] Settings with the keyboard open: edge swipe closes the editor only

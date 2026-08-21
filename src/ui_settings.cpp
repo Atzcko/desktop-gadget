@@ -575,7 +575,8 @@ void ui_settings_destroy(void)
     is_open        = false;
 }
 
-static void teardown(void) { app_host_home(); }
+/* One level up — the drawer. The host decides what back means (D033). */
+static void teardown(void) { app_host_back(); }
 
 static void save_cb(lv_event_t *)
 {
@@ -938,7 +939,7 @@ lv_obj_t *ui_settings_create(void)
     lv_obj_set_size(btn_save, 180, 44);
     lv_obj_align(btn_save, LV_ALIGN_LEFT_MID, 210, 0);
 
-    lv_obj_t *btn_close = make_button(bar, LV_SYMBOL_CLOSE "  Close", close_cb, nullptr);
+    lv_obj_t *btn_close = make_button(bar, LV_SYMBOL_LEFT "  Back", close_cb, nullptr);
     lv_obj_set_size(btn_close, 180, 44);
     lv_obj_align(btn_close, LV_ALIGN_LEFT_MID, 400, 0);
 

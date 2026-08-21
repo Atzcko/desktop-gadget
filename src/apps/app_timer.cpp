@@ -308,17 +308,21 @@ static void reset_cb(lv_event_t *)
     render();
 }
 
+/* One level up — the drawer, not the clock. The host owns what "back" means
+ * (D033); the button and the edge swipe go through the same door. */
+static void back_cb(lv_event_t *) { app_host_back(); }
+
 /* ---------------------------------------------------------------- build -- */
 /*
  * The controls are cards too: same charcoal, same radius, same width, sitting
  * directly under the numbers they act on. No seam — that line means "this
  * flips", and drawing it through a word would read as a strikethrough.
  */
-static void make_key(int x, const char *txt, lv_event_cb_t cb, lv_obj_t **out_lbl)
+static void make_key(int x, int w, const char *txt, lv_event_cb_t cb, lv_obj_t **out_lbl)
 {
     lv_obj_t *b = lv_obj_create(scr);
     lv_obj_remove_style_all(b);
-    lv_obj_set_size(b, CARD_W, BTN_H);
+    lv_obj_set_size(b, w, BTN_H);
     lv_obj_set_pos(b, x, BTN_TOP);
     lv_obj_set_style_bg_color(b, COL_CARD, LV_PART_MAIN);
     lv_obj_set_style_bg_opa(b, LV_OPA_COVER, LV_PART_MAIN);
@@ -423,8 +427,9 @@ static lv_obj_t *timer_create(void)
                        CARD_TOP + (i ? (CARD_H * 2) / 3 : CARD_H / 3) - 7);
     }
 
-    make_key(14,                    LV_SYMBOL_PLAY    "  Start", play_cb,  &btn_play_lbl);
-    make_key(14 + CARD_W + CARD_GAP, LV_SYMBOL_REFRESH "  Reset", reset_cb, nullptr);
+    make_key(14,  120, LV_SYMBOL_LEFT, back_cb, nullptr);
+    make_key(150, 202, LV_SYMBOL_PLAY    "  Start", play_cb,  &btn_play_lbl);
+    make_key(368, 202, LV_SYMBOL_REFRESH "  Reset", reset_cb, nullptr);
 
     /*
      * The Clock button is gone, so the left-edge swipe is the only way out.

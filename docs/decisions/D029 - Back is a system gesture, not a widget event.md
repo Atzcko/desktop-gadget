@@ -11,6 +11,13 @@ tags:
 
 # D029 — Back is a system gesture, not a widget event
 
+> [!note] Destination revised
+> The gesture originally went straight home from anywhere. Since
+> [[D033 - Back goes one level, not home]] it pops one level —
+> app → drawer → clock. Everything below about HOW the gesture works —
+> polling above the widget tree, judged on release, app first refusal —
+> stands unchanged.
+
 ## Context
 
 Every app needs a way home. The Timer and the drawer both grew a **Clock**

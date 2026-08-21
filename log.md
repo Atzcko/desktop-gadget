@@ -786,3 +786,35 @@ does not work on hardware, the timer is a trap and the way out is a power cycle.
 A thin dim bar sits at the left edge so the gesture has an affordance at all.
 
 RAM 18.3 % · Flash 27.2 %.
+
+## 2026-08-21 — Back means back (v1.15.0)
+
+The left-edge swipe went straight to the clock from anywhere. With one app that
+was indistinguishable from "back"; with a drawer in the middle it stopped
+matching the path walked — leaving the timer threw you past the drawer, and
+getting to Settings from there was two more gestures. The owner asked for the
+stack model, and for visible back buttons — v1.14.0 had left the timer with an
+invisible gesture as its only exit, which the log called out as a trap at the
+time.
+
+`app_host_back()` now owns what back means: app → drawer → clock, one level per
+invocation. The swipe, the timer's new back card, Settings' bottom-bar button
+(relabelled from Close) and the drawer's Clock button all route through it —
+one door, so the next change to back's meaning happens in one place. The
+app-first-refusal hook survives unchanged inside it, so Settings with the
+editor open still closes the editor and stays put.
+
+Two details:
+
+- **The drawer is rebuilt on every visit.** Backing out of an app calls the
+  same `build_drawer()` that swipe-up uses. Keeping a drawer resident would
+  have been the tempting shortcut — and a stale copy the first time the app
+  order changed underneath it.
+- **Timer controls became three cards** — back · Start · Reset at 120/202/202.
+  Start and Reset gave back 66 px each of v1.14.0's width; still 2.6× their
+  pre-1.14 area.
+
+D033 written; D029 annotated — its destination half is superseded, its
+architecture half (polled above the widget tree, first refusal) stands.
+
+RAM 18.3 % · Flash 27.2 %.

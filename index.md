@@ -88,6 +88,7 @@ bridge is the only way. See [[CLAUDE]].
 | [[D030 - Retire the 3-second hold]] | Settings is an app; the drawer already goes there |
 | [[D031 - The layout is the model]] | Reorder by moving a flex child, never by rebuilding a live screen |
 | [[D032 - Three gestures, one control]] | Drag coarse, tap exact, hold repeat — one card does all three |
+| [[D033 - Back goes one level, not home]] | app → drawer → clock; one function owns what back means |
 
 ## Releases
 

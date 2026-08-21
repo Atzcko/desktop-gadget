@@ -11,6 +11,29 @@ Semantic versioning; the scheme and the release procedure live in [[CLAUDE]].
 The version is reported by the boot log, `GET /health` and Settings ▸ Info,
 each with a compiler build stamp so a stale flash is detectable.
 
+## v1.15.0 — 2026-08-21
+
+**Back means back.** Navigation is a stack — app → drawer → clock — and every
+way out pops one level instead of jumping home.
+([[D033 - Back goes one level, not home]])
+
+- **`app_host_back()` is the one door.** The left-edge swipe, the timer's new
+  back card, Settings' bottom-bar button and the drawer's Clock button all
+  route through it. The app-first-refusal hook is unchanged, so Settings with
+  its editor open still closes the editor and goes nowhere.
+- **The timer has a visible back button again** — a third card in the control
+  row (back · Start · Reset, 120/202/202). v1.14.0 had left the invisible edge
+  swipe as its only exit.
+- **Settings' "Close" is now "Back"** and lands on the drawer, not the clock.
+  The unsaved-changes guard is untouched.
+- **The drawer is rebuilt on every visit** — backing out of an app calls the
+  same `build_drawer()` swipe-up uses. Nothing resident, PSRAM flat, no stale
+  copy when the app order changes.
+
+Supersedes the destination half of D029; the polling architecture stands.
+
+RAM 18.3 % · Flash 27.2 %.
+
 ## v1.14.0 — 2026-08-18
 
 **The 3-second hold is gone, the drawer no longer reboots, and the timer is
