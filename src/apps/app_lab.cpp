@@ -29,11 +29,19 @@
 #define COL_HI     lv_color_hex(0x2FBF71)
 #define COL_LO     lv_color_hex(0x3A3A3A)
 
-struct LabPin { uint8_t gpio; const char *note; };
+struct LabPin { uint8_t gpio; const char *note; bool in_only; };
 
 /* Header pins the firmware does not own. 1-4 double as the SD socket —
- * usable while no card is inserted, and labelled so. */
+ * usable while no card is inserted, and labelled so.
+ *
+ * GPIO0 is INPUT ONLY, and that is a hardware fact rather than caution:
+ * the BOOT button is hard-wired from this pin to ground, so an output
+ * driving high is one button press away from shorting the pad to GND
+ * through nothing but the button. It is also the flash rescue path, which
+ * must survive an OTA image that crash-loops. Reading it is free and useful
+ * — that is the "extra button" the pin can honestly provide. See D036. */
 static const LabPin PINS[] = {
+    {  0, "BOOT (in only)", true },
     { 21, ""       }, { 38, ""       }, { 39, ""       }, { 40, ""       },
     { 41, ""       }, { 42, ""       }, { 47, ""       }, { 48, ""       },
     { 43, "TX0"    }, { 44, "RX0"    },
@@ -64,14 +72,39 @@ static void decor(lv_obj_t *o)
     lv_obj_clear_flag(o, LV_OBJ_FLAG_SCROLL_CHAIN);
 }
 
+/*
+ * Dropdown position -> PINS index, for the I2C and UART tabs.
+ *
+ * An input-only pin cannot drive SCL or a TX line, so it is simply absent
+ * from those lists. Without this map its presence in PINS[] would silently
+ * shift every selection index by one — the kind of off-by-one that produces
+ * a scan on the wrong pins and no error at all.
+ */
+static uint8_t bus_map[NPINS];
+static int     bus_n;
+
+static void build_bus_map(void)
+{
+    bus_n = 0;
+    for (int i = 0; i < NPINS; i++)
+        if (!PINS[i].in_only) bus_map[bus_n++] = (uint8_t)i;
+}
+
+static uint8_t bus_gpio(lv_obj_t *dd)
+{
+    int sel = (int)lv_dropdown_get_selected(dd);
+    if (sel < 0 || sel >= bus_n) sel = 0;
+    return PINS[bus_map[sel]].gpio;
+}
+
 /* Build "21\n38\n39..." once for the pin dropdowns. */
 static const char *pin_options(void)
 {
     static char opts[NPINS * 4 + 1];
     if (!opts[0]) {
         char *p = opts;
-        for (int i = 0; i < NPINS; i++)
-            p += sprintf(p, i ? "\n%u" : "%u", PINS[i].gpio);
+        for (int i = 0; i < bus_n; i++)
+            p += sprintf(p, i ? "\n%u" : "%u", PINS[bus_map[i]].gpio);
     }
     return opts;
 }
@@ -85,6 +118,9 @@ static void apply_mode(int i)
     case PM_IN_PU: pinMode(PINS[i].gpio, INPUT_PULLUP);   break;
     case PM_IN_PD: pinMode(PINS[i].gpio, INPUT_PULLDOWN); break;
     case PM_OUT:
+        /* Unreachable from the UI — the dropdown omits Out for these — but
+         * the pad short is bad enough to check twice. */
+        if (PINS[i].in_only) { pinMode(PINS[i].gpio, INPUT); break; }
         pinMode(PINS[i].gpio, OUTPUT);
         digitalWrite(PINS[i].gpio, pin_out[i]);
         break;
@@ -141,7 +177,8 @@ static void build_gpio_tab(lv_obj_t *tab)
         lv_obj_align(row_lbls[i], LV_ALIGN_LEFT_MID, 4, 0);
 
         lv_obj_t *dd = lv_dropdown_create(row);
-        lv_dropdown_set_options_static(dd, "Hi-Z\nIn PU\nIn PD\nOut");
+        lv_dropdown_set_options_static(dd, PINS[i].in_only ? "Hi-Z\nIn PU\nIn PD"
+                                                           : "Hi-Z\nIn PU\nIn PD\nOut");
         lv_obj_set_style_text_font(dd, &lv_font_montserrat_18, LV_PART_MAIN);
         lv_obj_set_style_text_font(lv_dropdown_get_list(dd),
                                    &lv_font_montserrat_18, LV_PART_MAIN);
@@ -167,8 +204,8 @@ static void build_gpio_tab(lv_obj_t *tab)
 static void scan_cb(lv_event_t *)
 {
     const bool internal = lv_dropdown_get_selected(dd_bus) == 1;
-    uint8_t sda = PINS[lv_dropdown_get_selected(dd_sda)].gpio;
-    uint8_t scl = PINS[lv_dropdown_get_selected(dd_scl)].gpio;
+    uint8_t sda = bus_gpio(dd_sda);
+    uint8_t scl = bus_gpio(dd_scl);
     uint32_t hz = lv_dropdown_get_selected(dd_freq) == 0 ? 100000 : 400000;
 
     if (!internal && sda == scl) {
@@ -291,8 +328,8 @@ static void uart_toggle_cb(lv_event_t *)
         return;
     }
     static const uint32_t BAUD[] = { 9600, 19200, 38400, 57600, 115200, 230400 };
-    uint8_t tx = PINS[lv_dropdown_get_selected(dd_tx)].gpio;
-    uint8_t rx = PINS[lv_dropdown_get_selected(dd_rx)].gpio;
+    uint8_t tx = bus_gpio(dd_tx);
+    uint8_t rx = bus_gpio(dd_rx);
     if (tx == rx) { mon_append("[tx = rx, pick two pins]\n", 25); return; }
     Serial1.begin(BAUD[lv_dropdown_get_selected(dd_baud)], SERIAL_8N1, rx, tx);
     uart_open = true;
@@ -396,6 +433,7 @@ static void lab_icon(lv_event_t *e)
 
 static lv_obj_t *lab_create(void)
 {
+    build_bus_map();                 /* before any pin_options() call */
     memset(pin_mode8, 0, sizeof(pin_mode8));
     memset(pin_out, 0, sizeof(pin_out));
     for (int i = 0; i < NPINS; i++) apply_mode(i);   /* everything Hi-Z */

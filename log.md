@@ -910,3 +910,41 @@ self-heals, but a DHCP reservation on the router remains the real fix, and
 only the owner can set it.
 
 Everything current as of **v1.17.0**. 47 notes, zero dangling links.
+
+## 2026-08-22 — GPIO0 joins the Lab, input-only (v1.18.0)
+
+Owner: *"I don't see in the LAB app GPIO 0"*. Correct, and it was a gap of my
+making — days earlier they had asked whether the BOOT button could serve as a
+normal button and I said yes, a strapping pin is only special at reset. Then
+the bench tool that exists to poke pins did not list it. Both statements true,
+product confusing.
+
+It is in now, with **Hi-Z / In PU / In PD and no Out**. The missing mode is a
+hardware fact, not caution: the BOOT button is hard-wired from GPIO0 to
+ground, so an output driving high is one press away from shorting the pad
+through the button, current limited only by trace resistance against a ~40 mA
+pad. No other whitelist pin has a permanent low-side short attached, which is
+why no other pin needs the rule. Two supporting reasons that would not have
+been enough alone: it is the flash rescue path and there is no OTA rollback,
+and it is still a strapping pin that traps the ROM in download mode if held
+low across a reset. [[D036 - GPIO0 is readable, never drivable]].
+
+Reading it costs nothing and delivers what was promised — the external 10 K
+pull-up means Hi-Z already shows **H** at rest and **L** while pressed.
+
+**The bug that adding one array entry nearly caused.** The I²C and UART tabs
+select pins by dropdown *position*, indexed straight into `PINS[]`. Putting
+GPIO0 first — where someone looking for it looks — would have shifted every
+bus selection by one: a scan on the wrong pins, no error anywhere, and the
+symptom would have looked like broken hardware. Fixed with a `bus_map[]` built
+at app entry, which also excludes input-only pins from bus lists on the honest
+grounds that they cannot drive SCL or TX. Deliberately not solved by "keep
+input-only pins last in the array" — that works today and breaks silently the
+first time someone inserts a pin in the middle. Same genre as the unmatched
+`str.replace` and Fusion's 15-result search cap: the failure mode is silence.
+
+`apply_mode()` refuses `PM_OUT` on an input-only pin as well, even though the
+dropdown cannot request it. The UI is one edit away from being wrong; a shorted
+pad is permanent.
+
+Shipped over the air.

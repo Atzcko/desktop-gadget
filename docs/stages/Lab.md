@@ -16,7 +16,8 @@ Pin ground truth: [[T4-S3#Pin map — who owns what]].
 
 ## Scope
 
-1. GPIO tab — 14 whitelist pins, four modes, live levels, tap-to-toggle.
+1. GPIO tab — 15 whitelist pins, four modes, live levels, tap-to-toggle.
+   GPIO0 is input-only ([[D036 - GPIO0 is readable, never drivable]]).
 2. I²C tab — `Wire1` scanner on any whitelist pair (default 47/48),
    100/400 kHz, plus read-only scan of the internal 6/7 bus.
 3. UART tab — `Serial1` on any pair (default 43/44), 9600–230400, 512-byte
@@ -30,3 +31,6 @@ Pin ground truth: [[T4-S3#Pin map — who owns what]].
 - [ ] TX jumpered to RX echoes the canned sends in the monitor
 - [ ] Re-entering the Lab shows every pin back at Hi-Z
 - [ ] External scan with nothing attached reports "no devices" (no false ACKs)
+- [ ] IO0 reads **H** at rest and **L** while the BOOT button is held
+- [ ] IO0's mode dropdown offers no **Out**
+- [ ] I²C and UART tabs still default to 47/48 and 43/44 (the `bus_map` check)

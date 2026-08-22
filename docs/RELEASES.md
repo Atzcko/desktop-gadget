@@ -11,6 +11,23 @@ Semantic versioning; the scheme and the release procedure live in [[CLAUDE]].
 The version is reported by the boot log, `GET /health` and Settings ▸ Info,
 each with a compiler build stamp so a stale flash is detectable.
 
+## v1.18.0 — 2026-08-22
+
+**GPIO0 joins the Lab, input-only.** The BOOT button is now visible live —
+Hi-Z reads **H** at rest and **L** while pressed, thanks to its external 10 K
+pull-up. ([[D036 - GPIO0 is readable, never drivable]])
+
+- **No Out mode, and the dropdown simply omits it.** The BOOT button is
+  hard-wired from GPIO0 to ground: an output driving high is one press away
+  from shorting the pad through the button. `apply_mode()` refuses it a second
+  time in code, because the UI is one edit away from being wrong.
+- **Bus dropdowns gained a `bus_map[]`.** They index pin lists by dropdown
+  position; adding an entry at the front of `PINS[]` would have shifted every
+  I²C and UART selection by one and scanned the wrong pins with no error.
+  Input-only pins are absent from those lists via the map rather than by an
+  ordering convention that would break silently later.
+- Bus defaults unchanged — the map skips exactly the one added pin.
+
 ## v1.17.0 — 2026-08-22
 
 **The Lab: the clock is now a bench tool.** Third app in the drawer — GPIO
