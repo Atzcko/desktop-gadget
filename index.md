@@ -16,21 +16,26 @@ This vault is the project's memory: every decision, why it was made, and what ha
 
 ## Current state
 
-> [!success] v1.10.1 — running, online, and in daily use
-> Abu Dhabi. Clock, weather with sun/moon icons, a 32-state line display driven
-> over HTTP / BLE / MCP, on-device settings in NVS, 180° flip, brightness that
-> follows sunrise. Eleven tagged releases; every one confirmed on hardware
-> before tagging.
+> [!success] v1.17.0 — running, online, and in daily use
+> Abu Dhabi. Clock, weather, the 32-state line display over HTTP / BLE / MCP,
+> an app platform with three apps (Timer, Settings, Lab), stack navigation,
+> and **OTA — releases ship over Wi-Fi**; the cable is rescue-only. Eighteen
+> tagged releases; every one confirmed on the device via `/health` before
+> being called done.
 
-**Apps** live in ; adding one is a file and a line — see [[D026 - Apps are a platform, not a special case]].
+**Apps** live in `src/apps/`; adding one is a file and a line —
+[[D026 - Apps are a platform, not a special case]]. The bigger arc is
+[[The OS direction]]: OTA done, scripted apps next. The physical side is
+[[Enclosure]].
 
 | Screen | Reached by |
 |---|---|
 | Clock *(home)* | resting state |
 | Line / activity | `POST /emotion`, BLE NUS, or the MCP tool |
-| Settings | hold 3 s |
-| Text editor | tapping any field in Settings |
 | App drawer | swipe up from the bottom edge |
+| Timer · Settings · Lab | tap a tile (long-press moves it; order persists) |
+| Text editor | tapping any field in Settings |
+| *back one level* | swipe in from the left edge, or the app's back button ([[D033 - Back goes one level, not home]]) |
 
 ## Driving the display
 
@@ -94,13 +99,17 @@ bridge is the only way. See [[CLAUDE]].
 
 ## Releases
 
-- [[RELEASES]] — **v1.11.0**, 2026-08-17. Bump `include/version.h`, log it, tag it, flash it, confirm via `/health`.
+- [[RELEASES]] — **v1.17.0**, 2026-08-22. Bump `include/version.h`, log it,
+  tag it, `tools/ota`, confirm via `/health`. (Cable only for first install
+  and rescue — [[D034 - Updates ship over the air]].)
 
 ## Reference
 
-- [[T4-S3]] — pins, panel constants, rotation table, verified USB IDs
+- [[T4-S3]] — the board: pin ownership map, header whitelist, BOOT button
 - [[LilyGo AMOLED library]] — the API surface we actually depend on
 - [[CLAUDE]] — build/flash commands and working agreements
+- [[The OS direction]] — OTA done, scripting next, ELF rejected
+- [[Enclosure]] — the Fusion 360 side
 - [log.md](log.md) — chronological project lifecycle
 
 ## Scope boundaries
@@ -108,7 +117,8 @@ bridge is the only way. See [[CLAUDE]].
 > [!warning] Explicitly out of scope for v1
 > - **BLE HID input** (actually sending keystrokes/media keys) — still a later phase. The device now *presents* a HID keyboard service so macOS will pair with it, but sends no reports: [[D021 - BLE HID, for discoverability not typing]].
 > - **Battery / deep sleep** — USB-powered always-on.
-> - **SD card** — slot unused, init skipped.
+> - **SD card** — slot unused, init skipped (its pins are lendable to the
+>   [[D035 - The Lab may only touch pins the firmware does not own|Lab]]).
 > - **Any cloud beyond Open-Meteo and NTP.** All rendering is local.
 
 ## Acceptance criteria for v1 — see [[Acceptance results]]

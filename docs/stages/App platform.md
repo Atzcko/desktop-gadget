@@ -71,7 +71,5 @@ the point.
 - [ ] Back from the drawer (button or edge swipe) lands on the clock
 - [ ] Settings with unsaved changes still asks before leaving
 - [ ] Settings with the keyboard open: edge swipe closes the editor only
-- [ ] Lab: an output toggled H drives the header pin (LED or meter confirms)
-- [ ] Lab: internal I2C scan lists the PMU and touch controller
-- [ ] Lab: TX looped to RX echoes the canned sends in the monitor
-- [ ] Lab: after leaving, a re-entered Lab shows every pin back at Hi-Z
+
+Lab acceptance moved to its own stage note: [[Lab]].

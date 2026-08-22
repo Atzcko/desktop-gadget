@@ -545,7 +545,7 @@ Both failure modes came from treating the duration as "how long should this be v
 
 Owner: make the red LED on the back stop blinking.
 
-It is the SY6970 charge-status LED, and [[D007 - Skip SD, silence the charge LED]] deliberately left it enabled on the reasoning that it was a useful "it has power" indicator. That reasoning was wrong about what the LED means. **It reports a fault, not power.** There is no battery, so the charger can never complete a cycle, and blinking red is exactly how the part signals that. The signal is correct and permanently useless — and on an object whose entire aesthetic is a black panel with pixels genuinely off, a red light flashing forever on the back is the only thing that looks broken.
+It is the SY6970 charge-status LED, and [[D007 - Skip SD, keep charge LED default]] deliberately left it enabled on the reasoning that it was a useful "it has power" indicator. That reasoning was wrong about what the LED means. **It reports a fault, not power.** There is no battery, so the charger can never complete a cycle, and blinking red is exactly how the part signals that. The signal is correct and permanently useless — and on an object whose entire aesthetic is a black panel with pixels genuinely off, a red light flashing forever on the back is the only thing that looks broken.
 
 D007 said at the time it would be "trivially reversible if it turns out to be visually distracting". It did, and it was: one boolean.
 
@@ -872,3 +872,41 @@ load-bearing.
 First feature shipped entirely over the air: tools/ota, no cable touched.
 
 RAM 18.7 % · Flash 27.7 %.
+
+## 2026-08-22 — Documentation sweep, and the Fusion side gets a note
+
+Owner asked to document everything. The audit found the vault had drifted in
+the way vaults do — decisions kept up (D029–D035 all landed with their
+releases), but the *synthesis* notes had not:
+
+- **index.md still said v1.10.1** and listed "Settings — hold 3 s", a gesture
+  retired two days and seven releases ago. Rewritten to v1.17.0: three apps,
+  stack navigation, OTA.
+- **The Module map predated the app platform** — no host, no apps/, no
+  /update, "twelve source files" against today's sixteen and 5300 lines.
+  Rewritten, with a navigation diagram and the host/apps split first.
+- **[[T4-S3]] had been a dangling link since the index was first written** —
+  it promised pins and constants and no note existed. Now it is the pin
+  ownership map from the D035 schematic cross-check, the header whitelist,
+  and the BOOT-button-after-boot finding. The Lab decision argues; the
+  reference states.
+- **Nothing recorded the Fusion 360 side.** [[Enclosure]] now holds the
+  project name, the working file and its lineage ID, the not-copied battery
+  lid, the prior-art T4 AMOLED CASE — and the lesson that cost a wrong copy:
+  Fusion's document search silently caps at 15 results; enumerate the folder.
+- **The OS conversation existed only in chat.** [[The OS direction]] records
+  the three routes and their verdicts: OTA done, ELF rejected for cause,
+  scripting next with candidates ranked.
+- OTA and the Lab got proper **stage notes** with acceptance lists — OTA's
+  all checked (v1.16.1→v1.17.0 shipped through it), the Lab's waiting on the
+  owner's bench. Lab items moved out of the App platform note where they had
+  been squatting.
+- One stale wikilink fixed in this very file (D007's title had drifted).
+
+Also from this week, recorded where it belongs rather than only in chat: the
+router's DHCP moved the device .181 → .179 on 2026-08-21 after the v1.15.0
+flash; the flipclock CLI and MCP bridge got the new address and the cache
+self-heals, but a DHCP reservation on the router remains the real fix, and
+only the owner can set it.
+
+Everything current as of **v1.17.0**. 47 notes, zero dangling links.
