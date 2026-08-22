@@ -37,7 +37,7 @@ struct Settings {
     bool    burnin_guard;
     bool    rotate_180;         /* upside-down landscape (setRotation(2)) */
     bool    night_follows_sun;  /* dim by sunrise/sunset, not by the clock */
-    uint8_t app_order[8];       /* drawer order as registry indices        */
+    uint8_t app_order[16];      /* drawer order as registry indices        */
 
     /* Bluetooth LE */
     bool    ble_enabled;

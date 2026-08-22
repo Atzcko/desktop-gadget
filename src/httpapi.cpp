@@ -5,12 +5,14 @@
 #include "version.h"
 #include "config.h"
 #include "ble.h"
+#include "script.h"
 
 #include <Arduino.h>
 #include <WiFi.h>
 #include <ESPAsyncWebServer.h>
 #include <ESPmDNS.h>
 #include <Update.h>
+#include <esp_heap_caps.h>
 
 static AsyncWebServer server(HTTP_PORT);
 static bool started;
@@ -126,6 +128,93 @@ static void handle_emotion_body(AsyncWebServerRequest *req, uint8_t *data,
     req->send(200, "application/json", body);
 }
 
+/* ------------------------------------------------------------------ apps -- */
+/*
+ * Script apps, added and removed without a reboot. See D037.
+ *
+ *   GET    /apps            list them, plus filesystem usage
+ *   POST   /apps?name=foo   raw Lua body -> /apps/foo.lua
+ *   DELETE /apps?name=foo
+ *
+ * The name is a query parameter rather than a path segment because
+ * ESPAsyncWebServer matches paths literally — a wildcard route would need
+ * onNotFound parsing, and the name has to be validated either way.
+ */
+static bool app_name_param(AsyncWebServerRequest *req, String &out)
+{
+    if (!req->hasParam("name")) return false;
+    out = req->getParam("name")->value();
+    return out.length() > 0;
+}
+
+static void handle_apps_list(AsyncWebServerRequest *req)
+{
+    char body[512];
+    script_list_json(body, sizeof(body));
+    req->send(200, "application/json", body);
+}
+
+static void handle_apps_delete(AsyncWebServerRequest *req)
+{
+    String name;
+    if (!app_name_param(req, name)) { send_err(req, 400, "need ?name="); return; }
+    if (!script_delete(name.c_str())) { send_err(req, 404, "no such script"); return; }
+
+    Serial.printf("[apps] deleted %s\n", name.c_str());
+    char body[128];
+    snprintf(body, sizeof(body), "{\"ok\":true,\"deleted\":\"%s\",\"apps\":%d}",
+             name.c_str(), script_count());
+    req->send(200, "application/json", body);
+}
+
+/*
+ * Accumulated into one PSRAM buffer before saving. The script has to be
+ * compiled as a whole to be validated, and a rejected upload must not have
+ * already overwritten a working script of the same name.
+ */
+static uint8_t *up_buf;
+static size_t   up_len;
+
+static void handle_apps_body(AsyncWebServerRequest *req, uint8_t *data,
+                             size_t len, size_t index, size_t total)
+{
+    if (index == 0) {
+        free(up_buf);
+        up_buf = (uint8_t *)heap_caps_malloc(total + 1, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+        up_len = 0;
+        if (!up_buf) return;                 /* completion handler reports it */
+    }
+    if (up_buf && up_len + len <= total) {
+        memcpy(up_buf + up_len, data, len);
+        up_len += len;
+    }
+}
+
+static void handle_apps_post(AsyncWebServerRequest *req)
+{
+    String name;
+    if (!app_name_param(req, name)) { send_err(req, 400, "need ?name="); goto done; }
+    if (!up_buf)                    { send_err(req, 500, "out of PSRAM for the upload"); goto done; }
+
+    {
+        char err[192] = "";
+        if (!script_save(name.c_str(), up_buf, up_len, err, sizeof(err))) {
+            send_err(req, 400, err);
+            goto done;
+        }
+        Serial.printf("[apps] saved %s (%u bytes)\n", name.c_str(), (unsigned)up_len);
+        char body[160];
+        snprintf(body, sizeof(body),
+                 "{\"ok\":true,\"saved\":\"%s\",\"bytes\":%u,\"apps\":%d}",
+                 name.c_str(), (unsigned)up_len, script_count());
+        req->send(200, "application/json", body);
+    }
+done:
+    free(up_buf);
+    up_buf = nullptr;
+    up_len = 0;
+}
+
 /* ------------------------------------------------------------------- OTA -- */
 /*
  * POST /update with the raw firmware.bin as the body. See D034.
@@ -224,13 +313,17 @@ void httpapi_begin(void)
 
     server.on("/update", HTTP_POST, handle_update_done, nullptr, handle_update_body);
 
+    server.on("/apps", HTTP_GET,    handle_apps_list);
+    server.on("/apps", HTTP_DELETE, handle_apps_delete);
+    server.on("/apps", HTTP_POST,   handle_apps_post, nullptr, handle_apps_body);
+
     server.on("/emotion", HTTP_POST,
               [](AsyncWebServerRequest *req) { /* completion handled in body cb */ },
               nullptr,
               handle_emotion_body);
 
     server.onNotFound([](AsyncWebServerRequest *req) {
-        send_err(req, 404, "try POST /emotion or GET /health");
+        send_err(req, 404, "try GET /health, POST /emotion, GET|POST|DELETE /apps, POST /update");
     });
 
     server.begin();

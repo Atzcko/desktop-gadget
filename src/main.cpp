@@ -17,6 +17,7 @@
 #include "ui_settings.h"
 #include "app.h"
 #include "app_host.h"
+#include "script.h"
 #include "emotion.h"
 #include "ble.h"
 #include "httpapi.h"
@@ -189,6 +190,11 @@ void setup()
     app_apply_brightness(s.brightness_day);
 
     emotion_begin();
+
+    /* Scripts are discovered before anything can open the drawer. LittleFS
+     * formats itself on first boot, so this is also where a fresh device
+     * grows its /apps directory. */
+    script_begin();
 
     /*
      * ORDER MATTERS. NimBLEDevice::init() -> esp_bt_controller_enable()

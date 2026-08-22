@@ -37,5 +37,13 @@ struct App {
     bool      (*back)(void);
 };
 
-extern const App *const APPS[];
-extern const int        APP_COUNT;
+/*
+ * The list is a FUNCTION PAIR, not an array, because it is no longer fixed at
+ * link time: native apps are joined by Lua scripts discovered in LittleFS, and
+ * uploading one must not need a reboot. See D037.
+ *
+ * app_at() is valid until the next script_rescan(); the drawer is rebuilt on
+ * every visit (D033), so it never holds one across a change.
+ */
+int        app_count(void);
+const App *app_at(int i);

@@ -1,0 +1,57 @@
+#!/bin/zsh
+# tools/app — add, list and remove Lua apps on a running clock. See D037.
+#
+#   tools/app list
+#   tools/app add apps/blink.lua          # name comes from the filename
+#   tools/app add apps/blink.lua Blinker  # or give one
+#   tools/app rm Blinker
+#
+# No reboot at any point. The drawer is rebuilt on every visit (D033), so a
+# newly added app is there the next time you swipe up.
+set -e
+cd "$(dirname "$0")/.."
+
+HOSTS=()
+[ -r "$HOME/.cache/flipclock-host" ] && HOSTS+=("$(cat "$HOME/.cache/flipclock-host")")
+HOSTS+=("flipclock.local")
+
+host() {
+    for h in "${HOSTS[@]}"; do
+        [ -z "$h" ] && continue
+        if curl -s --connect-timeout 1 --max-time 3 "http://$h/health" >/dev/null 2>&1; then
+            echo "$h"; return 0
+        fi
+    done
+    echo "app: device not reachable (tried: ${HOSTS[*]})" >&2
+    return 1
+}
+
+H=$(host)
+
+case "${1:-list}" in
+  list)
+        curl -s --max-time 5 "http://$H/apps" | python3 -m json.tool ;;
+
+  add)
+        FILE="$2"
+        [ -f "$FILE" ] || { echo "app: no such file: $FILE" >&2; exit 1; }
+        NAME="${3:-$(basename "$FILE" .lua)}"
+        # The device compiles before storing, so a syntax error is rejected
+        # here rather than becoming a tile that fails when tapped.
+        curl -s --max-time 10 -X POST \
+             -H "Content-Type: text/plain" \
+             --data-binary @"$FILE" \
+             "http://$H/apps?name=$(python3 -c "import urllib.parse,sys;print(urllib.parse.quote(sys.argv[1]))" "$NAME")" \
+        | python3 -m json.tool ;;
+
+  rm|delete)
+        NAME="$2"
+        [ -n "$NAME" ] || { echo "app: need a name" >&2; exit 1; }
+        curl -s --max-time 5 -X DELETE \
+             "http://$H/apps?name=$(python3 -c "import urllib.parse,sys;print(urllib.parse.quote(sys.argv[1]))" "$NAME")" \
+        | python3 -m json.tool ;;
+
+  *)
+        echo "usage: tools/app [list | add <file.lua> [name] | rm <name>]" >&2
+        exit 1 ;;
+esac

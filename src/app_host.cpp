@@ -10,15 +10,35 @@
 #include "ui.h"
 #include "settings.h"
 
-/* The drawer renders in the owner's order, not the registry's. app_order holds
- * registry indices; anything out of range falls back to identity so a corrupt
- * or half-written NVS value can never hide an app. */
+/*
+ * The drawer renders in the owner's order, not the registry's.
+ *
+ * app_order holds registry indices, and the registry is no longer fixed — a
+ * script app can appear or vanish between visits. A saved order that is not a
+ * permutation of 0..n-1 is therefore not corruption, it is just stale, and the
+ * only safe reading of it is none: fall back to identity for the whole list
+ * rather than trust half of it and hide an app. See D037.
+ */
+static bool order_valid(void)
+{
+    const int n = app_count();
+    Settings &s = settings_get();
+    if (n > (int)sizeof(s.app_order)) return false;
+
+    bool seen[sizeof(s.app_order)] = { false };
+    for (int i = 0; i < n; i++) {
+        uint8_t v = s.app_order[i];
+        if (v >= n || seen[v]) return false;
+        seen[v] = true;
+    }
+    return true;
+}
+
 static const App *order_at(int slot)
 {
-    Settings &s = settings_get();
-    uint8_t i = (slot >= 0 && slot < APP_COUNT) ? s.app_order[slot] : (uint8_t)slot;
-    if (i >= APP_COUNT) i = (uint8_t)slot;
-    return APPS[i];
+    if (slot < 0 || slot >= app_count()) return nullptr;
+    if (!order_valid()) return app_at(slot);
+    return app_at(settings_get().app_order[slot]);
 }
 
 #include <Arduino.h>
@@ -51,6 +71,10 @@ static void decor(lv_obj_t *o)
 }
 
 bool app_host_is_open(void) { return drawer != nullptr || running != nullptr; }
+
+/* Script apps share one set of C callbacks, so the runtime needs to ask which
+ * app it is being called for. Valid during create/destroy/tick/back. */
+const App *app_host_running(void) { return running; }
 
 void app_host_home(void)
 {
@@ -121,11 +145,19 @@ static void reorder_cb(lv_event_t *e)
     const App *app = (const App *)lv_event_get_user_data(e);
     Settings &s = settings_get();
 
+    const int n = app_count();
+    if (n < 2) return;
+
+    /* A stale order must be materialised before it can be edited, or the swap
+     * below would write into an array nobody is reading. */
+    if (!order_valid())
+        for (int i = 0; i < n; i++) s.app_order[i] = (uint8_t)i;
+
     int idx = -1;
-    for (int i = 0; i < APP_COUNT; i++) if (order_at(i) == app) { idx = i; break; }
+    for (int i = 0; i < n; i++) if (order_at(i) == app) { idx = i; break; }
     if (idx < 0) return;
 
-    const int prev = (idx - 1 + APP_COUNT) % APP_COUNT;
+    const int prev = (idx - 1 + n) % n;
     uint8_t tmp = s.app_order[idx];
     s.app_order[idx]  = s.app_order[prev];
     s.app_order[prev] = tmp;
@@ -165,8 +197,9 @@ static void build_drawer(void)
                           LV_FLEX_ALIGN_CENTER);
     lv_obj_set_style_pad_column(row, 22, LV_PART_MAIN);
 
-    for (int i = 0; i < APP_COUNT; i++) {
+    for (int i = 0; i < app_count(); i++) {
         const App *app = order_at(i);
+        if (!app) continue;
 
         lv_obj_t *cell = lv_obj_create(row);
         decor(cell);
