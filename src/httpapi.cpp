@@ -1,6 +1,7 @@
 #include "httpapi.h"
 #include "emotion.h"
 #include "settings.h"
+#include "app_host.h"
 #include "net.h"
 #include "version.h"
 #include "config.h"
@@ -128,6 +129,38 @@ static void handle_emotion_body(AsyncWebServerRequest *req, uint8_t *data,
     snprintf(body, sizeof(body),
              "{\"ok\":true,\"state\":\"%s\",\"duration_s\":%u}",
              emotion_name(r.state), r.duration_s);
+    req->send(200, "application/json", body);
+}
+
+/* ---------------------------------------------------------------- launch -- */
+/*
+ * POST /launch {"name":"Blink"} — open a screen without a finger. See D039.
+ *
+ * The switch itself happens on the LVGL loop; this only records the request,
+ * because touching LVGL from the web server's task is the one rule this
+ * firmware has never broken (D018).
+ */
+static void handle_launch_body(AsyncWebServerRequest *req, uint8_t *data,
+                               size_t len, size_t index, size_t total)
+{
+    static String buf;
+    if (index == 0) buf = "";
+    buf.concat((const char *)data, len);
+    if (index + len != total) return;
+
+    char name[24] = "";
+    const char *p = strstr(buf.c_str(), "\"name\"");
+    if (p) { p = strchr(p + 6, '"'); if (p) sscanf(p + 1, "%23[^\"]", name); }
+    if (!name[0]) { send_err(req, 400, "expected {\"name\":\"...\"}"); return; }
+
+    if (!app_host_request_open(name)) {
+        char msg[96];
+        snprintf(msg, sizeof(msg), "no app named '%s' (try clock, drawer, or GET /apps)", name);
+        send_err(req, 404, msg);
+        return;
+    }
+    char body[96];
+    snprintf(body, sizeof(body), "{\"ok\":true,\"opening\":\"%s\"}", name);
     req->send(200, "application/json", body);
 }
 
@@ -418,6 +451,9 @@ void httpapi_begin(void)
     server.on("/health", HTTP_GET, handle_health);
 
     server.on("/update", HTTP_POST, handle_update_done, nullptr, handle_update_body);
+
+    server.on("/launch", HTTP_POST,
+              [](AsyncWebServerRequest *) {}, nullptr, handle_launch_body);
 
     server.on("/crash", HTTP_GET,    handle_crash);
     server.on("/crash", HTTP_DELETE, handle_crash_clear);

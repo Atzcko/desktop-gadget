@@ -408,9 +408,58 @@ static void back_gesture_tick(void)
     edge_down = down;
 }
 
+/* Set from the web server's task, consumed on the LVGL loop. */
+static volatile bool pending_open;
+static char          pending_name[24];
+
+bool app_host_request_open(const char *name)
+{
+    if (!name || !*name) return false;
+    if (strcasecmp(name, "clock") != 0 && strcasecmp(name, "drawer") != 0) {
+        bool found = false;
+        for (int i = 0; i < app_count(); i++) {
+            const App *a = app_at(i);
+            if (a && a->name && strcasecmp(a->name, name) == 0) { found = true; break; }
+        }
+        if (!found) return false;
+    }
+    snprintf(pending_name, sizeof(pending_name), "%s", name);
+    pending_open = true;
+    return true;
+}
+
+const char *app_host_current(void)
+{
+    if (running && running->name) return running->name;
+    if (drawer) return "drawer";
+    return "clock";
+}
+
+static void serve_pending_open(void)
+{
+    if (!pending_open) return;
+    pending_open = false;
+
+    if (strcasecmp(pending_name, "clock") == 0)  { app_host_home(); return; }
+    if (strcasecmp(pending_name, "drawer") == 0) {
+        if (app_host_is_open()) app_host_home();
+        app_host_open_drawer();
+        return;
+    }
+    for (int i = 0; i < app_count(); i++) {
+        const App *a = app_at(i);
+        if (a && a->name && strcasecmp(a->name, pending_name) == 0) {
+            if (app_host_is_open()) app_host_home();
+            app_host_launch(a);
+            return;
+        }
+    }
+}
+
 void app_host_tick(void)
 {
     back_gesture_tick();
+    serve_pending_open();
 
     /*
      * Script uploads arrive on the async web server's task and only mark the
