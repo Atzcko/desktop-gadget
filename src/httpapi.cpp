@@ -15,6 +15,7 @@
 #include <esp_heap_caps.h>
 #include <esp_system.h>
 #include <esp_core_dump.h>
+#include <esp_ota_ops.h>
 
 static AsyncWebServer server(HTTP_PORT);
 static bool started;
@@ -186,14 +187,34 @@ static void handle_crash(AsyncWebServerRequest *req)
         return;
     }
 
+    /*
+     * Whether the dump can be trusted against the ELF on disk is a FACT the
+     * device can report, not a warning a human has to remember. The dump
+     * carries the first 16 hex chars of the crashing image's ELF sha256;
+     * compare it with the running image's and say plainly whether they match.
+     * They will not, whenever a rebuild has happened since the crash — which
+     * is exactly when the decoded line numbers become fiction.
+     */
+    char running_sha[APP_ELF_SHA256_SZ] = "";
+    const esp_app_desc_t *desc = esp_ota_get_app_description();
+    if (desc)
+        for (int i = 0; i < (APP_ELF_SHA256_SZ - 1) / 2; i++)
+            snprintf(running_sha + i * 2, 3, "%02x", desc->app_elf_sha256[i]);
+
+    const bool same_build = (strncmp(running_sha, (const char *)s->app_elf_sha256,
+                                     APP_ELF_SHA256_SZ - 1) == 0);
+
     char task[24];
     json_escape(s->exc_task, task, sizeof(task));
     o += snprintf(body + o, sizeof(body) - o,
                   ",\"core_dump\":true,\"task\":\"%s\",\"pc\":\"0x%08x\""
                   ",\"exc_cause\":%u,\"exc_vaddr\":\"0x%08x\""
+                  ",\"crash_elf\":\"%s\",\"running_elf\":\"%s\",\"same_build\":%s"
                   ",\"corrupted\":%s,\"backtrace\":[",
                   task, (unsigned)s->exc_pc,
                   (unsigned)s->ex_info.exc_cause, (unsigned)s->ex_info.exc_vaddr,
+                  (const char *)s->app_elf_sha256, running_sha,
+                  same_build ? "true" : "false",
                   s->exc_bt_info.corrupted ? "true" : "false");
 
     for (uint32_t i = 0; i < s->exc_bt_info.depth && i < 16 && o + 16 < sizeof(body); i++)

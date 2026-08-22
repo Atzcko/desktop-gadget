@@ -11,6 +11,21 @@ Semantic versioning; the scheme and the release procedure live in [[CLAUDE]].
 The version is reported by the boot log, `GET /health` and Settings ▸ Info,
 each with a compiler build stamp so a stale flash is detectable.
 
+## v1.19.2 — 2026-08-22
+
+**`/crash` now proves whether its own backtrace can be trusted.** The first
+real capture decoded into a stack mixing `build_drawer` with `l_ui_label` —
+functions that never call each other — because the ELF had been rebuilt since
+the crash.
+
+The dump carries the first 16 hex chars of the crashing image's ELF sha256.
+The endpoint compares it with the running image's and reports `same_build`;
+`tools/crash` refuses to decode when they differ rather than printing
+confident nonsense. What stays trustworthy either way is the reset reason and
+the IDF-region frames, whose addresses do not move between builds.
+
+This turns D038's written warning into an enforced check.
+
 ## v1.19.1 — 2026-08-22
 
 **Fixes the reboot when scrolling the app drawer, and makes the next crash

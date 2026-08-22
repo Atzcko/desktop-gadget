@@ -30,12 +30,30 @@ fi
 J=$(curl -s --max-time 8 "http://$H/crash")
 echo "$J" | python3 -m json.tool
 
+# The device reports whether the dump came from the image now running. If it
+# did not, addr2line against the current ELF produces confident nonsense, so
+# refuse rather than print it.
+SAME=$(echo "$J" | python3 -c "
+import json,sys
+d=json.load(sys.stdin)
+print('yes' if d.get('same_build') else 'no')
+" 2>/dev/null)
+
 PCS=$(echo "$J" | python3 -c "
 import json,sys
 d=json.load(sys.stdin)
 if d.get('core_dump') is True:
     print(d.get('pc',''), *d.get('backtrace',[]))
 " 2>/dev/null)
+
+if [ "$SAME" = "no" ] && [ -n "$PCS" ]; then
+    echo
+    echo "crash: this dump is from a DIFFERENT build than the one running."
+    echo "       Decoding it against the current ELF would be fiction, so it is"
+    echo "       not decoded. The reset reason and the IDF-region frames"
+    echo "       (abort / watchdog) are still trustworthy."
+    exit 0
+fi
 
 if [ -n "$PCS" ] && [ -f "$ELF" ] && [ -n "$A2L" ]; then
     echo

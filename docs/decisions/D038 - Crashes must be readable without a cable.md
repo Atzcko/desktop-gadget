@@ -44,8 +44,15 @@ backtrace. `tools/crash` fetches it and pipes the addresses through
 
 > [!warning] Decode against the ELF that crashed
 > `addr2line` is only truthful against the exact build that produced the
-> dump. Rebuild after a crash and the line numbers are fiction. The dump
-> carries an `app_elf_sha256` for exactly this reason.
+> dump. Rebuild after a crash and the line numbers are fiction.
+>
+> **This is enforced, not just documented** (v1.19.2). The dump carries the
+> first 16 hex chars of the crashing image's ELF sha256; `/crash` compares it
+> with the running image's and reports `same_build`, and `tools/crash` refuses
+> to decode a mismatch. The first real capture proved why: it decoded into a
+> stack mixing `build_drawer` with `l_ui_label`, functions that never call
+> each other. The reset reason and IDF-region frames stay trustworthy
+> regardless, because those addresses do not move between builds.
 
 ## The bug this was built to find, found by reading instead
 
