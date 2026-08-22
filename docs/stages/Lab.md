@@ -34,3 +34,5 @@ Pin ground truth: [[T4-S3#Pin map — who owns what]].
 - [ ] IO0 reads **H** at rest and **L** while the BOOT button is held
 - [ ] IO0's mode dropdown offers no **Out**
 - [ ] I²C and UART tabs still default to 47/48 and 43/44 (the `bus_map` check)
+- [ ] The **UART** tab button is tappable across its full width — nothing floats over it
+- [ ] Back sits in the bottom strip and no tab's content is clipped by it

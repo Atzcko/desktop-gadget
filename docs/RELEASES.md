@@ -11,6 +11,22 @@ Semantic versioning; the scheme and the release procedure live in [[CLAUDE]].
 The version is reported by the boot log, `GET /health` and Settings ▸ Info,
 each with a compiler build stamp so a stale flash is detectable.
 
+## v1.18.1 — 2026-08-22
+
+**The Lab's Back button moved to a bottom bar.** It had floated at the top
+right, over the tab-button row — which put it on top of the right end of the
+**UART** tab, so aiming for UART hit Back instead.
+
+Anywhere in the top 46 px collides: the tab row spans the full width by
+construction. The bottom is also where Timer and Settings already keep Back,
+so this fixes an inconsistency as well as a collision. The tabview now ends at
+398 px, leaving a 52 px strip.
+
+Each tab was checked against the smaller area rather than assumed: UART's
+monitor ends at 306 of 338 usable, I²C's results label starts at 120 and that
+tab scrolls, GPIO scrolled already. The strip also carries a dim reminder that
+leaving returns every pin to Hi-Z — said where the leaving happens.
+
 ## v1.18.0 — 2026-08-22
 
 **GPIO0 joins the Lab, input-only.** The BOOT button is now visible live —

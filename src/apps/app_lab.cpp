@@ -51,6 +51,11 @@ static const LabPin PINS[] = {
 
 enum PinMode8 { PM_HIZ = 0, PM_IN_PU, PM_IN_PD, PM_OUT };
 
+/* 450 tall, less a 52 px strip at the bottom for Back. Every tab was checked
+ * against the smaller area: UART's monitor ends at 306 of 338 usable, I2C's
+ * results label starts at 120 and the tab scrolls, GPIO scrolls already. */
+#define TAB_AREA_H  398
+
 static lv_obj_t *scr;
 static lv_obj_t *rows_gpio[NPINS];       /* state buttons, indexed like PINS */
 static lv_obj_t *row_lbls[NPINS];
@@ -442,7 +447,20 @@ static lv_obj_t *lab_create(void)
     scr = lv_obj_create(nullptr);
     lv_obj_set_style_bg_color(scr, COL_BG, LV_PART_MAIN);
 
+    /*
+     * The tabview stops short of the bottom so Back gets its own strip.
+     *
+     * Back used to float at the top right, over the tab-button row — which
+     * put it on top of the right end of the UART tab, so aiming for UART hit
+     * Back instead. Anywhere in the top 46 px collides with a tab button;
+     * the row spans the full width by construction.
+     *
+     * The bottom is also where the other two apps already keep it, so this
+     * fixes an inconsistency as well as a collision.
+     */
     lv_obj_t *tv = lv_tabview_create(scr, LV_DIR_TOP, 46);
+    lv_obj_set_size(tv, LV_PCT(100), TAB_AREA_H);
+    lv_obj_set_pos(tv, 0, 0);
     lv_obj_set_style_bg_color(tv, COL_BG, LV_PART_MAIN);
     lv_obj_set_style_text_font(lv_tabview_get_tab_btns(tv),
                                &lv_font_montserrat_20, LV_PART_MAIN);
@@ -452,8 +470,8 @@ static lv_obj_t *lab_create(void)
     build_uart_tab(lv_tabview_add_tab(tv, "UART"));
 
     lv_obj_t *back = lv_btn_create(scr);
-    lv_obj_set_size(back, 96, 40);
-    lv_obj_align(back, LV_ALIGN_TOP_RIGHT, -8, 3);
+    lv_obj_set_size(back, 132, 40);
+    lv_obj_align(back, LV_ALIGN_BOTTOM_LEFT, 10, -6);
     lv_obj_set_style_bg_color(back, lv_color_hex(0x2A2A2A), LV_PART_MAIN);
     lv_obj_add_event_cb(back, [](lv_event_t *) { app_host_back(); },
                         LV_EVENT_CLICKED, nullptr);
@@ -461,6 +479,13 @@ static lv_obj_t *lab_create(void)
     lv_obj_set_style_text_font(bl, &lv_font_montserrat_18, LV_PART_MAIN);
     lv_label_set_text(bl, LV_SYMBOL_LEFT "  Back");
     lv_obj_center(bl);
+
+    /* Leaving resets every pin, so say so where the leaving happens. */
+    lv_obj_t *hint = lv_label_create(scr);
+    lv_obj_set_style_text_font(hint, &lv_font_montserrat_18, LV_PART_MAIN);
+    lv_obj_set_style_text_color(hint, COL_DIM, LV_PART_MAIN);
+    lv_label_set_text(hint, "leaving returns every pin to Hi-Z");
+    lv_obj_align(hint, LV_ALIGN_BOTTOM_RIGHT, -12, -14);
 
     return scr;
 }

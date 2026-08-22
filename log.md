@@ -948,3 +948,34 @@ dropdown cannot request it. The UI is one edit away from being wrong; a shorted
 pad is permanent.
 
 Shipped over the air.
+
+## 2026-08-22 — The Lab's Back button was sitting on the UART tab (v1.18.1)
+
+Owner: the Back button overlaps the UART section. It did — it was a child of
+the screen aligned TOP_RIGHT, floating over the tabview's button row, so it
+covered the right end of the **UART** tab button and stole taps meant for it.
+
+Worth being precise about why "just nudge it" was not the fix: **anywhere in
+the top 46 px collides.** The tab row spans the full width by construction, so
+top-left would have covered GPIO instead. The choices were to shrink the
+button matrix or to leave the row entirely.
+
+Shrinking the matrix would have cost no vertical space, and I read
+`lv_tabview.c` far enough to confirm it would work — the tabview is a flex
+column, the width is set once in the constructor and `add_tab` never touches
+it. I went the other way anyway: Back moved to a 52 px bottom strip. Two
+reasons, and the second is the real one:
+
+1. It does not depend on LVGL's tabview internals staying as they are, and I
+   cannot see this screen to check.
+2. **Timer and Settings both keep Back at the bottom.** The Lab was the
+   outlier, so the collision was pointing at an inconsistency, not just a
+   coordinate.
+
+Each tab was measured against the smaller 338 px content area rather than
+assumed to fit: UART's monitor box ends at 306, I²C's results label starts at
+120 in a tab that scrolls, GPIO scrolled already. The strip also picked up a
+dim line saying leaving returns every pin to Hi-Z — the right place to say it
+is next to the control that does it.
+
+Shipped over the air.
