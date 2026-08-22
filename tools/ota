@@ -1,0 +1,58 @@
+#!/bin/zsh
+# tools/ota — build the firmware and push it over Wi-Fi. See D034.
+#
+#   tools/ota              build, push, wait for the new version to answer
+#   tools/ota --no-build   push whatever is already in the build dir
+#
+# The cable is only for first install and rescue. This script refuses to call
+# a push successful until /health on the DEVICE reports the new version —
+# the same trust-the-device rule as the release checklist.
+set -e
+cd "$(dirname "$0")/.."
+export PATH="$HOME/.platformio-venv/bin:$PATH"
+
+BIN="/Users/acko/.pio-builds/desktop-gadget/t4s3/firmware.bin"
+
+HOSTS=()
+[ -r "$HOME/.cache/flipclock-host" ] && HOSTS+=("$(cat "$HOME/.cache/flipclock-host")")
+HOSTS+=("flipclock.local")
+
+if [ "$1" != "--no-build" ]; then
+    pio run
+fi
+[ -f "$BIN" ] || { echo "ota: no firmware at $BIN"; exit 1; }
+
+ver() { curl -s --max-time 3 "http://$1/health" 2>/dev/null \
+        | python3 -c "import json,sys;d=json.load(sys.stdin);print(d['version'],d['git'])" 2>/dev/null }
+
+for h in "${HOSTS[@]}"; do
+    [ -z "$h" ] && continue
+    before=$(ver "$h") || true
+    [ -z "$before" ] && continue
+
+    echo "ota: $h is running $before"
+    echo "ota: pushing $(stat -f %z "$BIN") bytes"
+    if ! curl -sf -X POST -H "Content-Type: application/octet-stream" \
+              --data-binary @"$BIN" "http://$h/update" >/dev/null; then
+        echo "ota: push failed (device said no — see its serial log)"
+        exit 1
+    fi
+
+    echo "ota: accepted, device is rebooting"
+    for i in {1..30}; do
+        sleep 2
+        after=$(ver "$h") || true
+        if [ -n "$after" ]; then
+            echo "ota: device is back, running $after"
+            if [ "$after" = "$before" ]; then
+                echo "ota: WARNING - version did not change; did you bump version.h?"
+                exit 1
+            fi
+            exit 0
+        fi
+    done
+    echo "ota: device did not come back within 60 s — rescue over the cable"
+    exit 1
+done
+echo "ota: device not reachable (tried: ${HOSTS[*]})"
+exit 1

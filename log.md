@@ -818,3 +818,29 @@ D033 written; D029 annotated — its destination half is superseded, its
 architecture half (polled above the widget tree, first refusal) stands.
 
 RAM 18.3 % · Flash 27.2 %.
+
+## 2026-08-22 — Updates ship over the air (v1.16.0 / v1.16.1)
+
+The owner asked for OTA as step one of the "real OS" direction. The plan had
+budgeted a v2.0.0 for this — new partition table, NVS wiped, everything
+re-provisioned. Checking before believing paid off in the right direction for
+once: `default_16MB.csv`, in use since Stage 0, already carries `ota_0` +
+`ota_1` + `otadata`. The second slot sat there unused for the project's whole
+life. No repartition, nothing wiped, MINOR release.
+
+`POST /update` on the existing async server, raw body (curl is the client, so
+the size is known up front and the magic byte kills wrong files in chunk one),
+reboot hooked to the client's disconnect so the 200 demonstrably lands before
+the restart. The upload posts `flashing` through the emotion queue — the
+device shows its own update the way it shows everything else. `tools/ota`
+builds, pushes, and refuses success until `/health` reports the new version,
+which is the release checklist's trust-the-device rule turned into code.
+
+Written down as deliberately absent: auth (private LAN; token hook noted),
+rollback (stock Arduino core cannot — **the cable stays the rescue path**),
+resume. And v1.16.0 itself crossed the cable one last time, since the running
+firmware had no endpoint to receive it — v1.16.1 is a version-bump-only patch
+whose entire purpose is to be the first release delivered by the mechanism it
+proves.
+
+RAM 18.3 % · Flash 27.3 %.

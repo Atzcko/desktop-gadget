@@ -40,7 +40,16 @@ Build:
 export PATH="$HOME/.platformio-venv/bin:$PATH" && pio run
 ```
 
-Flash:
+Flash **over the air** (the normal path since v1.16.0 — no cable, no port):
+
+```bash
+tools/ota
+```
+
+It builds, pushes to `POST /update`, and only reports success once `/health`
+answers with the new version. The cable is for first install and rescue only
+([[D034 - Updates ship over the air]]) — there is no rollback, so an image
+that crash-loops still needs the wire:
 
 ```bash
 export PATH="$HOME/.platformio-venv/bin:$PATH" && pio run -t upload --upload-port "$PORT"

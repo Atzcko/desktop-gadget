@@ -11,6 +11,30 @@ Semantic versioning; the scheme and the release procedure live in [[CLAUDE]].
 The version is reported by the boot log, `GET /health` and Settings ▸ Info,
 each with a compiler build stamp so a stale flash is detectable.
 
+## v1.16.0 — 2026-08-22
+
+**Updates ship over the air.** `POST /update` takes a raw firmware image and
+writes it to the inactive OTA slot; `tools/ota` builds, pushes, and refuses to
+call it done until `/health` reports the new version.
+([[D034 - Updates ship over the air]])
+
+- **No repartition was needed** — `default_16MB.csv` has carried `ota_0`,
+  `ota_1` and `otadata` since Stage 0. The second slot was always there, which
+  is why this is a MINOR release and settings survive untouched.
+- Raw body, not multipart: `Update.begin()` gets the exact size, and the
+  ESP32 magic-byte check rejects a wrong file in the first chunk.
+- Reboot on client disconnect, so the 200 provably reaches the caller first.
+- The device narrates its own update — `flashing` on the line while it writes,
+  `error` if it fails — through the same queue as every other transport.
+- Deliberately absent, and written down as such: authentication (private LAN,
+  accepted; header-token hook noted for the day it matters), rollback (stock
+  Arduino core cannot; **the cable remains the rescue path**), resume.
+
+This release itself still crossed the cable — the running firmware had no
+`/update` yet. v1.16.1 exists to be the proof.
+
+RAM 18.3 % · Flash 27.3 %.
+
 ## v1.15.0 — 2026-08-21
 
 **Back means back.** Navigation is a stack — app → drawer → clock — and every

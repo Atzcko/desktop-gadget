@@ -10,6 +10,7 @@
 #include <WiFi.h>
 #include <ESPAsyncWebServer.h>
 #include <ESPmDNS.h>
+#include <Update.h>
 
 static AsyncWebServer server(HTTP_PORT);
 static bool started;
@@ -125,6 +126,88 @@ static void handle_emotion_body(AsyncWebServerRequest *req, uint8_t *data,
     req->send(200, "application/json", body);
 }
 
+/* ------------------------------------------------------------------- OTA -- */
+/*
+ * POST /update with the raw firmware.bin as the body. See D034.
+ *
+ * Raw body rather than multipart: the client is curl in tools/ota, so the
+ * exact size arrives up front for Update.begin(), and the first chunk's
+ * magic-byte check rejects a wrong file before 1.7 MB of it has been sent.
+ *
+ * Runs on the async_tcp task. Flash writes are safe there; the display is
+ * only told about progress through the emotion queue, which is the same
+ * thread-safe door every other transport uses.
+ */
+static void ota_emote(const char *state, uint16_t secs, const char *msg)
+{
+    int st = emotion_from_name(state);
+    if (st < 0) return;
+    EmotionRequest r = {};
+    r.state      = (uint8_t)st;
+    r.duration_s = secs;
+    snprintf(r.message, sizeof(r.message), "%s", msg);
+    emotion_post(r);
+}
+
+static void handle_update_body(AsyncWebServerRequest *req, uint8_t *data,
+                               size_t len, size_t index, size_t total)
+{
+    static size_t last_log;
+
+    if (index == 0) {
+        /* A push that arrives mid-push wins; the half-written slot was
+         * garbage either way. */
+        if (Update.isRunning()) Update.abort();
+        last_log = 0;
+
+        Serial.printf("[ota] start: %u bytes\n", (unsigned)total);
+        char m[EMOTION_MSG_MAX + 1];
+        snprintf(m, sizeof(m), "firmware, %u KB", (unsigned)(total / 1024));
+        ota_emote("flashing", 120, m);
+
+        if (!Update.begin(total)) {
+            Serial.printf("[ota] begin failed: %s\n", Update.errorString());
+            return;                    /* completion handler reports it */
+        }
+    }
+
+    if (Update.isRunning()) {
+        if (Update.write(data, len) != len) {
+            Serial.printf("[ota] write failed at %u: %s\n",
+                          (unsigned)index, Update.errorString());
+            Update.abort();
+        } else if (index + len - last_log >= 262144) {
+            last_log = index + len;
+            Serial.printf("[ota] %u / %u\n", (unsigned)last_log, (unsigned)total);
+        }
+    }
+
+    if (index + len == total && Update.isRunning()) {
+        if (Update.end(true)) Serial.println("[ota] image valid, awaiting disconnect");
+        else Serial.printf("[ota] end failed: %s\n", Update.errorString());
+    }
+}
+
+static void handle_update_done(AsyncWebServerRequest *req)
+{
+    if (Update.hasError() || !Update.isFinished()) {
+        char msg[96];
+        snprintf(msg, sizeof(msg), "update failed: %s", Update.errorString());
+        Update.abort();                /* clean slate for the retry */
+        ota_emote("error", 8, "OTA failed");
+        send_err(req, 500, msg);
+        return;
+    }
+
+    /* Reboot when the client hangs up — TCP itself confirms the 200 landed.
+     * Restarting inside the handler would race the response out the door. */
+    req->onDisconnect([]() {
+        Serial.println("[ota] rebooting into the new image");
+        ESP.restart();
+    });
+    req->send(200, "application/json", "{\"ok\":true,\"rebooting\":true}");
+}
+
 void httpapi_begin(void)
 {
     if (started) return;
@@ -138,6 +221,8 @@ void httpapi_begin(void)
     }
 
     server.on("/health", HTTP_GET, handle_health);
+
+    server.on("/update", HTTP_POST, handle_update_done, nullptr, handle_update_body);
 
     server.on("/emotion", HTTP_POST,
               [](AsyncWebServerRequest *req) { /* completion handled in body cb */ },
