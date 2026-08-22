@@ -6,7 +6,6 @@
   "frameworks": "arduino",
   "platforms": "espressif32",
   "build": {
-    "flags": ["-DLUA_32BITS=0", "-DLUA_USE_C89=0"],
     "srcFilter": ["+<*.c>"]
   }
 }

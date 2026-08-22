@@ -6,6 +6,7 @@
 #include "app_host.h"
 
 #include <Arduino.h>
+#include <setjmp.h>
 #include <LittleFS.h>
 #include <esp_heap_caps.h>
 #include <stdio.h>
@@ -73,6 +74,30 @@ static void *lua_alloc(void *, void *ptr, size_t, size_t nsize)
 {
     if (nsize == 0) { heap_caps_free(ptr); return nullptr; }
     return heap_caps_realloc(ptr, nsize, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+}
+
+/*
+ * A Lua error raised OUTSIDE a pcall has no handler, and Lua's default
+ * behaviour for that is abort() — which reboots the clock. That is exactly
+ * what happened when luaL_checkversion() failed inside luaL_requiref: a
+ * library mistake took down the whole device, in a runtime whose entire
+ * promise was that a broken script fails alone (D037).
+ *
+ * A panic function must not return; if it does, Lua aborts anyway. So it
+ * longjmps back to script_create, which reports the message on screen and
+ * closes the state. See D040.
+ */
+static jmp_buf panic_jmp;
+static bool    panic_armed;
+static char    panic_msg[160];
+
+static int lua_panic(lua_State *Ls)
+{
+    const char *m = lua_tostring(Ls, -1);
+    snprintf(panic_msg, sizeof(panic_msg), "%s", m ? m : "(no message)");
+    Serial.printf("[lua] PANIC: %s\n", panic_msg);
+    if (panic_armed) { panic_armed = false; longjmp(panic_jmp, 1); }
+    return 0;                    /* unreachable while armed */
 }
 
 static void instr_hook(lua_State *Ls, lua_Debug *)
@@ -398,6 +423,17 @@ static lv_obj_t *script_create(void)
      * leave anything behind for the next one. */
     L = lua_newstate(lua_alloc, nullptr);
     if (!L) { show_error("runtime", "out of PSRAM for the interpreter"); return cur_scr; }
+    lua_atpanic(L, lua_panic);
+
+    /* Everything from here to on_create() runs under the panic guard. Lua API
+     * calls made outside a pcall — luaL_requiref and luaL_newlib among them —
+     * can raise, and unguarded that is a reboot rather than an error. */
+    if (setjmp(panic_jmp) != 0) {
+        show_error("lua panic", panic_msg);
+        if (L) { lua_close(L); L = nullptr; }   /* unusable after a panic */
+        return cur_scr;
+    }
+    panic_armed = true;
 
     /* Deliberately NOT loaded: io, os, package, debug. A UI script has no
      * business opening files, spawning processes or loading C modules, and
@@ -434,6 +470,7 @@ static lv_obj_t *script_create(void)
         return cur_scr;
     }
     call_global("on_create", 0);
+    panic_armed = false;
     return cur_scr;
 }
 
