@@ -1087,3 +1087,63 @@ async task, so an upload landing exactly as a script app launches is unguarded.
 Rare; worth closing when scripts get I2C and UART.
 
 [[D038 - Crashes must be readable without a cable]].
+
+## 2026-08-22 — Two demo apps that rebooted the clock (v1.20.0, v1.20.1)
+
+Owner, on the two Lua apps sitting in the drawer: *"What is Blink app and other
+one without any description? Also when I click on one of those two device
+restarts."*
+
+Both halves of that are my fault. Blink and Uptime are **my test fixtures**,
+written to prove the runtime worked, uploaded to their device, and left there
+with no explanation — they appear in the drawer looking exactly like something
+they chose to install. And they rebooted the clock on launch.
+
+**Reproducing it needed a tool that did not exist.** Every screen could only be
+reached by touching it, and I cannot touch it, so all session the pattern had
+been: build, ship, hand over a checklist. That was tolerable for cosmetic bugs
+and useless for a crash. So `POST /launch` was built first
+([[D039 - The device must be drivable without a finger]]) — the request is
+recorded on the web server's task and served on the LVGL loop, so D018 still
+holds. It turned the problem into one command:
+
+```
+uptime 37 s → POST /launch {"name":"Blink"} → uptime 5 s
+```
+
+and because the dump now came from the running build, `tools/crash` decoded it
+to `script.cpp:343` on the first try. Yesterday's two tools, used in anger the
+same afternoon.
+
+**Defect one, and it is a nasty little trap.** `lib/lua/library.json` carried
+`-DLUA_USE_C89=0`, added to be explicit about the configuration. But
+`luaconf.h` tests `LUA_32BITS` by *value* and `LUA_USE_C89` by *existence*:
+
+```c
+#if LUA_32BITS              /* -D...=0 correctly OFF */
+#if defined(LUA_USE_C89)    /* -D...=0 turns it ON   */
+```
+
+So the flag meant to disable C89 mode enabled it — and only for the library,
+because `library.json` flags do not reach consumers. `lua_Integer` was `long`
+(4 bytes) inside `lib/lua` and `long long` (8) in `src/script.cpp`, so
+`luaL_checkversion` did its job and reported different numeric types.
+
+**Defect two is the one that matters.** That error was raised inside
+`luaL_requiref`, called directly and not under `lua_pcall`. Lua's `luaD_throw`
+with no handler does exactly one thing: `abort()`. So the real bug was never
+"a script did something bad" — it was **any Lua API error, anywhere outside a
+pcall, taking down the device**, in a runtime whose stated promise
+([[D037 - Apps become Lua scripts]]) was that a broken script fails alone.
+Errors *inside* script code were always protected; the runtime's own setup was
+not. `lua_atpanic` now longjmps back into `script_create`, which shows the
+message and closes the state.
+[[D040 - A script must not be able to reboot the clock]].
+
+Verified remotely: both apps launch, uptime keeps climbing, dump cleared.
+
+**Also asked, and worth recording:** the red LED on the back is not on any
+GPIO. `BOARD_AMOLED_241` has `pixelsPins = -1`; the LED is the SY6970 PMU's
+charge-status output, driven by the PMU itself and addressed over the internal
+I2C bus (6/7) via `setChargingLedMode()`. Modes are OFF / BLINK_1HZ /
+BLINK_4HZ / ON / CTRL_CHG. Recorded in [[T4-S3]].

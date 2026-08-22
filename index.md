@@ -95,6 +95,8 @@ bridge is the only way. See [[CLAUDE]].
 | [[D032 - Three gestures, one control]] | Drag coarse, tap exact, hold repeat — one card does all three |
 | [[D033 - Back goes one level, not home]] | app → drawer → clock; one function owns what back means |
 | [[D034 - Updates ship over the air]] | POST /update to the ota_1 slot that was always in the table |
+| [[D040 - A script must not be able to reboot the clock]] | -DFOO=0 enables a defined()-guarded macro; and pcall everything |
+| [[D039 - The device must be drivable without a finger]] | POST /launch, so UI bugs are reproducible from a shell |
 | [[D038 - Crashes must be readable without a cable]] | GET /crash: the core dump partition was always there |
 | [[D037 - Apps become Lua scripts]] | Hybrid: C++ core, Lua app layer, no reboot to add an app |
 | [[D036 - GPIO0 is readable, never drivable]] | BOOT has a button to GND — readable forever, drivable never |

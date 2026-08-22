@@ -11,6 +11,37 @@ Semantic versioning; the scheme and the release procedure live in [[CLAUDE]].
 The version is reported by the boot log, `GET /health` and Settings ▸ Info,
 each with a compiler build stamp so a stale flash is detectable.
 
+## v1.20.1 — 2026-08-22
+
+**Fixes the reboot on launching a Lua app.** Two defects, either of which
+alone was fatal. ([[D040 - A script must not be able to reboot the clock]])
+
+`luaconf.h` tests `LUA_USE_C89` with `defined()`, so the library's
+`-DLUA_USE_C89=0` — added to "be explicit" — switched C89 mode **on** for
+`lib/lua` and only for `lib/lua`, since `library.json` flags do not reach the
+consumer. `lua_Integer` was 4 bytes inside the library and 8 in
+`src/script.cpp`, so `luaL_checkversion` correctly reported different numeric
+types. Both flags removed.
+
+That error was raised inside `luaL_requiref`, outside any `pcall`, where Lua's
+only option is `abort()`. So *any* unprotected Lua API error rebooted the
+device — in a runtime whose stated promise was that a broken script fails
+alone. `lua_atpanic` now longjmps back into `script_create`, which shows the
+message and closes the state.
+
+Verified by launching both scripts remotely: uptime kept climbing.
+
+## v1.20.0 — 2026-08-22
+
+**`POST /launch` opens any screen without a finger.**
+`{"name":"Blink"}`, or `clock` / `drawer`. The request is recorded on the web
+server's task and served on the LVGL loop, so D018's one rule still holds.
+([[D039 - The device must be drivable without a finger]])
+
+Built because the reboot above could not be reproduced from a shell. It turned
+four guesses into one command and a same-build core dump that decoded to the
+exact line on the first try.
+
 ## v1.19.2 — 2026-08-22
 
 **`/crash` now proves whether its own backtrace can be trusted.** The first
