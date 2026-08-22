@@ -844,3 +844,31 @@ whose entire purpose is to be the first release delivered by the mechanism it
 proves.
 
 RAM 18.3 % · Flash 27.3 %.
+
+## 2026-08-22 — The Lab (v1.17.0)
+
+Third app: the clock as a bench tool — GPIO control, I2C scanner, UART
+monitor. The feature work was ordinary; the design work was one question:
+**which pins may an app touch on a board where most pins are spoken for?**
+Answered by cross-referencing the schematic's header netlist against the
+library board config, and the answer had a trap in it: GPIO18 reaches the
+header AND is the display's tearing-effect line. On the header ≠ free —
+that pin is the reason the whitelist is written down as a decision (D035)
+rather than living silently in an array.
+
+Internal I2C (6/7, PMU + touch + the P4 plug) is scannable but never
+drivable; the external scanner runs on Wire1 so the touch driver's bus is
+never reconfigured under it. UART is Serial1 on any whitelist pair, 43/44 by
+default because that is what they are. destroy() returns every pin to Hi-Z
+and releases both peripherals — launching and leaving the Lab is
+electrically invisible.
+
+One self-caught bug worth keeping: the UART monitor replaced unprintable
+bytes with a bare 0xB7 ('·'). LVGL labels are UTF-8; a lone high byte is not
+valid UTF-8 and corrupts the decode of everything after it. Plain '.' now.
+Same genre as the D025 lesson — the display stack's encoding assumptions are
+load-bearing.
+
+First feature shipped entirely over the air: tools/ota, no cable touched.
+
+RAM 18.7 % · Flash 27.7 %.

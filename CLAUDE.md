@@ -123,7 +123,9 @@ a layer above it. See [[Module map]] for what every file owns.
 
 ## Using the device
 
-**Swipe up from the bottom edge** for the app drawer — Timer and Settings live there. Long-press a tile to move it one place left; the order persists.
+**Swipe up from the bottom edge** for the app drawer — Timer, Settings and the
+Lab (GPIO / I2C scan / UART monitor on the free header pins) live there.
+Long-press a tile to move it one place left; the order persists.
 
 **Swipe in from the left edge** (or tap an app's back button) to go back one
 level: an app returns to the drawer, the drawer returns to the clock.

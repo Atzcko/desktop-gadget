@@ -11,6 +11,30 @@ Semantic versioning; the scheme and the release procedure live in [[CLAUDE]].
 The version is reported by the boot log, `GET /health` and Settings ▸ Info,
 each with a compiler build stamp so a stale flash is detectable.
 
+## v1.17.0 — 2026-08-22
+
+**The Lab: the clock is now a bench tool.** Third app in the drawer — GPIO
+control, I2C scanner, UART monitor. ([[D035 - The Lab may only touch pins the firmware does not own]])
+
+- **GPIO** — the 14 header pins the firmware does not own (21, 38–42, 47, 48,
+  TX0/RX0, and the four SD pins, labelled). Hi-Z / pull-up / pull-down /
+  output per pin, live level readout, tap to toggle outputs.
+- **I2C** — scanner on any two whitelist pins via `Wire1` (default 47/48,
+  adjacent on the header), 100/400 kHz, plus a read-only scan of the internal
+  6/7 bus — it lists the PMU, the touch controller, and anything on the P4
+  plug.
+- **UART** — `Serial1` on any pin pair (default 43/44), 9600–230400, live RX
+  monitor with a 512-byte tail, canned test sends.
+- **Leave no trace:** leaving the app returns every pin to Hi-Z and releases
+  both peripherals.
+- The whitelist came from the schematic cross-checked against the board
+  config. GPIO18 is on the header and still excluded — it is the display's TE
+  line. On the header ≠ free.
+
+First feature to ship entirely over the air.
+
+RAM 18.7 % · Flash 27.7 %.
+
 ## v1.16.1 — 2026-08-22
 
 Version bump only. Exists to be the first release delivered over the air —

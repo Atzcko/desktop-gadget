@@ -10,6 +10,7 @@
 
 extern const App app_timer;
 extern const App app_settings;
+extern const App app_lab;
 
-const App *const APPS[]  = { &app_timer, &app_settings };
+const App *const APPS[]  = { &app_timer, &app_settings, &app_lab };
 const int        APP_COUNT = sizeof(APPS) / sizeof(APPS[0]);
