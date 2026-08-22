@@ -11,6 +11,12 @@ Semantic versioning; the scheme and the release procedure live in [[CLAUDE]].
 The version is reported by the boot log, `GET /health` and Settings ▸ Info,
 each with a compiler build stamp so a stale flash is detectable.
 
+## v1.16.1 — 2026-08-22
+
+Version bump only. Exists to be the first release delivered over the air —
+the proof that v1.16.0's mechanism works end to end, confirmed by `/health`
+reporting this version with a fresh uptime.
+
 ## v1.16.0 — 2026-08-22
 
 **Updates ship over the air.** `POST /update` takes a raw firmware image and
