@@ -1040,3 +1040,50 @@ against a clock whose uptime never reset. Two examples ship in `apps/` —
 
 Still native-only: I²C and UART bindings. That is the next small step, and it
 is what turns the Lab from a fixture into an instrument.
+
+## 2026-08-22 — The drawer reboot, and learning to read crashes remotely (v1.19.1)
+
+Owner: *"The device restarts if you want to scroll in the app page."*
+
+I had told them to unplug the cable that morning, correctly, because OTA made
+it unnecessary. The bill arrived the same day: no serial log, no backtrace, and
+I cannot drive touch to reproduce. I could list four plausible causes and rank
+none of them. **That gap is the actual defect** — a device that ships its own
+updates but cannot report its own crashes has given away the one tool that
+turns "it restarts" into a fix.
+
+So the first thing built was `GET /crash`. Nothing needed enabling: the
+partition table has carried `coredump` since Stage 0 and arduino-esp32 ships
+`CONFIG_ESP_COREDUMP_ENABLE_TO_FLASH=y` with ELF format, so the panic handler
+has been writing full core dumps to flash for the project's entire life. They
+needed **reading**. `tools/crash` fetches the summary and pipes the PCs through
+`addr2line`, so a crash is now file-and-line over Wi-Fi.
+
+**Then reading found the bug anyway.** LVGL's `obj_del_core()` clears
+`act_obj`, `last_obj` and `last_pressed` when an object is deleted — and never
+`scroll_obj`. Delete a screen while a finger is mid-scroll and the indev holds
+a pointer into freed memory that the scroll-throw handler dereferences on the
+next read. The reboot lands a fraction of a second after the screen changed,
+which is exactly why it reads as "restarts when you scroll". Fixed with
+`lv_indev_reset(NULL, NULL)` before every screen deletion, and written down as
+a rule: **release the input device before deleting a screen** — the other half
+of D031's "load the new screen before deleting the old one".
+
+**And the reason they were scrolling at all was a bug too.** The drawer was one
+flex row. Three apps fitted; five did not — 5 x 118 + 4 x 22 = 678 px in a
+600 px row, the overflow drawn off-screen and unreachable. Adding two Lua apps
+yesterday made the drawer silently lose two apps. It wraps and scrolls now,
+vertically only so it cannot compete with the left-edge back gesture.
+
+Two more in the same path, both real regardless of which caused the reboot:
+dragging the drawer **launched** whichever app the drag started on, because
+`LV_EVENT_CLICKED` fires on any press-release over a tile and the drawer never
+applied D027's displacement rule; and script uploads rebuilt the registry from
+the web server's task, racing every `app_at()` the LVGL task makes and
+invalidating tile `App` pointers if the drawer was open.
+
+Residual and stated rather than hidden: LittleFS writes still happen on the
+async task, so an upload landing exactly as a script app launches is unguarded.
+Rare; worth closing when scripts get I2C and UART.
+
+[[D038 - Crashes must be readable without a cable]].

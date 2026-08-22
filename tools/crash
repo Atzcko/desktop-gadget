@@ -1,0 +1,49 @@
+#!/bin/zsh
+# tools/crash — read the last panic off the device and decode it. See D038.
+#
+#   tools/crash          show the reset reason and decoded backtrace
+#   tools/crash clear    erase the stored core dump
+#
+# Works with no cable: the panic handler writes an ELF core dump to the
+# coredump partition, and GET /crash reports the summary.
+set -e
+cd "$(dirname "$0")/.."
+
+ELF="/Users/acko/.pio-builds/desktop-gadget/t4s3/firmware.elf"
+A2L=$(ls ~/.platformio/packages/toolchain-xtensa-esp32s3/bin/xtensa-esp32s3-elf-addr2line 2>/dev/null | head -1)
+
+HOSTS=()
+[ -r "$HOME/.cache/flipclock-host" ] && HOSTS+=("$(cat "$HOME/.cache/flipclock-host")")
+HOSTS+=("flipclock.local")
+H=""
+for h in "${HOSTS[@]}"; do
+    [ -z "$h" ] && continue
+    curl -s --connect-timeout 1 --max-time 3 "http://$h/health" >/dev/null 2>&1 && { H="$h"; break; }
+done
+[ -n "$H" ] || { echo "crash: device not reachable" >&2; exit 1; }
+
+if [ "${1:-show}" = "clear" ]; then
+    curl -s --max-time 5 -X DELETE "http://$H/crash" | python3 -m json.tool
+    exit 0
+fi
+
+J=$(curl -s --max-time 8 "http://$H/crash")
+echo "$J" | python3 -m json.tool
+
+PCS=$(echo "$J" | python3 -c "
+import json,sys
+d=json.load(sys.stdin)
+if d.get('core_dump') is True:
+    print(d.get('pc',''), *d.get('backtrace',[]))
+" 2>/dev/null)
+
+if [ -n "$PCS" ] && [ -f "$ELF" ] && [ -n "$A2L" ]; then
+    echo
+    echo "decoded against $(basename $ELF):"
+    # Only meaningful if the ELF still matches the image that crashed —
+    # rebuild after a crash and these line numbers are fiction.
+    echo "$PCS" | xargs "$A2L" -pfiaC -e "$ELF"
+elif [ -n "$PCS" ]; then
+    echo
+    echo "crash: no ELF or addr2line found; addresses above are raw" >&2
+fi

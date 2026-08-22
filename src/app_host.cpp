@@ -9,6 +9,7 @@
 #include "app_api.h"
 #include "ui.h"
 #include "settings.h"
+#include "script.h"
 
 /*
  * The drawer renders in the owner's order, not the registry's.
@@ -70,6 +71,22 @@ static void decor(lv_obj_t *o)
     lv_obj_clear_flag(o, LV_OBJ_FLAG_SCROLL_CHAIN);
 }
 
+/*
+ * Before deleting any screen: cut the input device loose from it.
+ *
+ * LVGL's obj_del_core() clears act_obj, last_obj and last_pressed when an
+ * object dies — but NOT scroll_obj. Delete a screen while the finger is
+ * mid-scroll on it and the indev keeps a pointer into freed memory, which
+ * lv_indev_scroll_throw_handler() dereferences on the very next read. The
+ * result is a reboot a fraction of a second after the screen changed, with
+ * nothing on screen to connect it to scrolling.
+ *
+ * lv_indev_reset(NULL, NULL) sets reset_query on every indev, and
+ * indev_proc_reset_query_handler() — which runs before any further
+ * processing — nulls scroll_obj along with everything else. See D038.
+ */
+static void release_input(void) { lv_indev_reset(nullptr, nullptr); }
+
 bool app_host_is_open(void) { return drawer != nullptr || running != nullptr; }
 
 /* Script apps share one set of C callbacks, so the runtime needs to ask which
@@ -89,6 +106,7 @@ void app_host_home(void)
 
     /* Load the clock BEFORE deleting anything — deleting the active screen is
      * how you get a use-after-free on the next render pass. */
+    release_input();
     lv_scr_load(ui_screen());
     if (dead_drawer) lv_obj_del(dead_drawer);
     if (dead_app)    lv_obj_del(dead_app);
@@ -105,6 +123,7 @@ void app_host_launch(const App *app)
 
     running     = app;
     running_scr = app->create();
+    release_input();
     lv_scr_load(running_scr);
     if (dead) lv_obj_del(dead);
 
@@ -116,13 +135,39 @@ void app_host_launch(const App *app)
  * is CLICKED as well as LONG_PRESSED. So a reorder would launch the app it had
  * just moved. This flag is the whole fix; it is cleared on the next press.
  */
-static bool reorder_fired;
+static bool       reorder_fired;
+static bool       tile_moved;
+static lv_point_t tile_press_pt;
 
-static void press_cb(lv_event_t *)   { reorder_fired = false; }
+#define TILE_MOVE_SLOP 24      /* px: past this the press was a scroll */
+
+static void press_cb(lv_event_t *)
+{
+    reorder_fired = false;
+    tile_moved    = false;
+    lv_indev_t *indev = lv_indev_get_act();
+    if (indev) lv_indev_get_point(indev, &tile_press_pt);
+}
+
+/* Displacement disqualifies a press — the rule the clock has followed since
+ * D027, which the drawer never applied. Without it, dragging the list to
+ * reach an app launches whichever app the drag started on. */
+static void tile_pressing_cb(lv_event_t *)
+{
+    if (tile_moved) return;
+    lv_indev_t *indev = lv_indev_get_act();
+    if (!indev) return;
+    lv_point_t p;
+    lv_indev_get_point(indev, &p);
+    if (abs(p.x - tile_press_pt.x) > TILE_MOVE_SLOP ||
+        abs(p.y - tile_press_pt.y) > TILE_MOVE_SLOP)
+        tile_moved = true;
+}
 
 static void launch_cb(lv_event_t *e)
 {
     if (reorder_fired) { reorder_fired = false; return; }
+    if (tile_moved)    { tile_moved    = false; return; }
     app_host_launch((const App *)lv_event_get_user_data(e));
 }
 
@@ -144,6 +189,8 @@ static void reorder_cb(lv_event_t *e)
 {
     const App *app = (const App *)lv_event_get_user_data(e);
     Settings &s = settings_get();
+
+    if (tile_moved) return;             /* a scroll, not a deliberate hold */
 
     const int n = app_count();
     if (n < 2) return;
@@ -188,14 +235,27 @@ static void build_drawer(void)
     lv_label_set_text(title, "Apps   ·   hold a tile to move it left");
     lv_obj_align(title, LV_ALIGN_TOP_LEFT, 24, 18);
 
+    /*
+     * WRAPPING, and scrollable. A single row fitted three apps and silently
+     * broke at five: 5 x 118 + 4 x 22 = 678 px of tiles in a 600 px row, with
+     * the overflow simply drawn off-screen and no way to reach it. Scripts
+     * make the count unbounded (D037), so the drawer has to grow.
+     *
+     * The row scrolls vertically only. Horizontal scroll would fight the
+     * left-edge back gesture for the same finger movement (D029).
+     */
     lv_obj_t *row = lv_obj_create(drawer);
-    decor(row);
-    lv_obj_set_size(row, 600, TILE + 46);
-    lv_obj_align(row, LV_ALIGN_CENTER, 0, -10);
-    lv_obj_set_flex_flow(row, LV_FLEX_FLOW_ROW);
+    lv_obj_remove_style_all(row);
+    lv_obj_set_size(row, 600, 300);
+    lv_obj_align(row, LV_ALIGN_TOP_MID, 0, 56);
+    lv_obj_set_flex_flow(row, LV_FLEX_FLOW_ROW_WRAP);
     lv_obj_set_flex_align(row, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER,
-                          LV_FLEX_ALIGN_CENTER);
+                          LV_FLEX_ALIGN_START);
     lv_obj_set_style_pad_column(row, 22, LV_PART_MAIN);
+    lv_obj_set_style_pad_row(row, 14, LV_PART_MAIN);
+    lv_obj_clear_flag(row, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_set_scroll_dir(row, LV_DIR_VER);
+    lv_obj_set_scrollbar_mode(row, LV_SCROLLBAR_MODE_AUTO);
 
     for (int i = 0; i < app_count(); i++) {
         const App *app = order_at(i);
@@ -207,6 +267,9 @@ static void build_drawer(void)
 
         lv_obj_t *tile = lv_obj_create(cell);
         lv_obj_remove_style_all(tile);
+        /* remove_style_all does NOT touch flags: a tile is still SCROLLABLE
+         * and in the scroll chain by default. D014, again. */
+        lv_obj_clear_flag(tile, LV_OBJ_FLAG_SCROLLABLE);
         lv_obj_set_size(tile, TILE, TILE);
         lv_obj_align(tile, LV_ALIGN_TOP_MID, 0, 0);
         lv_obj_set_style_bg_color(tile, COL_CARD, LV_PART_MAIN);
@@ -214,6 +277,7 @@ static void build_drawer(void)
         lv_obj_set_style_radius(tile, 22, LV_PART_MAIN);
         lv_obj_add_flag(tile, LV_OBJ_FLAG_CLICKABLE);
         lv_obj_add_event_cb(tile, press_cb,  LV_EVENT_PRESSED, nullptr);
+        lv_obj_add_event_cb(tile, tile_pressing_cb, LV_EVENT_PRESSING, nullptr);
         lv_obj_add_event_cb(tile, launch_cb, LV_EVENT_CLICKED, (void *)app);
         lv_obj_add_event_cb(tile, reorder_cb, LV_EVENT_LONG_PRESSED, (void *)app);
         if (app->icon) lv_obj_add_event_cb(tile, app->icon, LV_EVENT_DRAW_MAIN, nullptr);
@@ -266,6 +330,7 @@ void app_host_back(void)
 
         /* Load the drawer BEFORE deleting the app's screen — deleting the
          * active screen is how you get a use-after-free (D031). */
+        release_input();
         build_drawer();
         if (dead) lv_obj_del(dead);
     } else {
@@ -328,6 +393,9 @@ static void back_gesture_tick(void)
         edge_last = p;
     } else if (edge_down && edge_armed) {
         edge_armed = false;
+        /* A scroll is not a back gesture. Now that the drawer scrolls, a drag
+         * that LVGL claimed for scrolling must not also pop a level. */
+        if (indev->proc.types.pointer.scroll_obj) { edge_down = down; return; }
         if ((edge_last.x - edge_p0.x) >= EDGE_MIN_DX &&
             abs(edge_last.y - edge_p0.y) <= EDGE_MAX_DY) {
             /* One level, not home — and the app still gets first refusal
@@ -343,5 +411,16 @@ static void back_gesture_tick(void)
 void app_host_tick(void)
 {
     back_gesture_tick();
+
+    /*
+     * Script uploads arrive on the async web server's task and only mark the
+     * registry dirty; the rebuild happens HERE, on the LVGL task, and only
+     * while nothing is open. Two reasons, both concrete: rebuilding the
+     * registry from another task races every app_at() the drawer makes, and
+     * rebuilding it while the drawer is up would invalidate the App pointers
+     * its tiles carry as event user data. See D037 and D038.
+     */
+    if (!app_host_is_open()) script_rescan_if_pending();
+
     if (running && running->tick) running->tick();
 }

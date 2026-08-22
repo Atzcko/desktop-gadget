@@ -22,6 +22,15 @@ struct App;
 void script_begin(void);           /* mount LittleFS, first scan          */
 int  script_rescan(void);          /* re-read /apps; returns script count  */
 
+/*
+ * Uploads land on the web server's task, which must not rebuild the registry
+ * the LVGL task is reading. They mark it dirty instead; the host calls this
+ * from the LVGL loop while nothing is open. See D038.
+ */
+void script_mark_dirty(void);
+void script_rescan_if_pending(void);
+bool script_pending(void);
+
 int         script_count(void);
 const App  *script_at(int i);
 

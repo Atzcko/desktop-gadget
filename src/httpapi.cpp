@@ -13,6 +13,8 @@
 #include <ESPmDNS.h>
 #include <Update.h>
 #include <esp_heap_caps.h>
+#include <esp_system.h>
+#include <esp_core_dump.h>
 
 static AsyncWebServer server(HTTP_PORT);
 static bool started;
@@ -128,6 +130,87 @@ static void handle_emotion_body(AsyncWebServerRequest *req, uint8_t *data,
     req->send(200, "application/json", body);
 }
 
+/* ----------------------------------------------------------------- crash -- */
+/*
+ * GET /crash — the last panic, read back over Wi-Fi. See D038.
+ *
+ * The cable stopped being attached once OTA landed, which also removed the
+ * serial backtrace — the one tool that turns "it restarts" into a fix. The
+ * partition table has carried a `coredump` partition since Stage 0 and
+ * arduino-esp32 ships with CONFIG_ESP_COREDUMP_ENABLE_TO_FLASH=y, so the
+ * panic handler has been writing full ELF core dumps to flash all along.
+ * Nothing needed enabling; it needed reading.
+ *
+ * Decode the PCs with:
+ *   xtensa-esp32s3-elf-addr2line -pfiaC -e .pio/build/t4s3/firmware.elf <pc...>
+ * or just run tools/crash, which does it for you.
+ */
+static const char *reset_reason_name(void)
+{
+    switch (esp_reset_reason()) {
+    case ESP_RST_POWERON:  return "poweron";
+    case ESP_RST_EXT:      return "external";
+    case ESP_RST_SW:       return "software";      /* our own ESP.restart(), e.g. OTA */
+    case ESP_RST_PANIC:    return "panic";         /* <-- the interesting one */
+    case ESP_RST_INT_WDT:  return "interrupt watchdog";
+    case ESP_RST_TASK_WDT: return "task watchdog";
+    case ESP_RST_WDT:      return "other watchdog";
+    case ESP_RST_BROWNOUT: return "brownout";
+    case ESP_RST_SDIO:     return "sdio";
+    case ESP_RST_DEEPSLEEP:return "deepsleep";
+    default:               return "unknown";
+    }
+}
+
+static void handle_crash(AsyncWebServerRequest *req)
+{
+    char body[1024];
+    size_t o = snprintf(body, sizeof(body),
+                        "{\"ok\":true,\"reset_reason\":\"%s\"", reset_reason_name());
+
+    if (esp_core_dump_image_check() != ESP_OK) {
+        snprintf(body + o, sizeof(body) - o, ",\"core_dump\":false}");
+        req->send(200, "application/json", body);
+        return;
+    }
+
+    /* ~500 bytes; the async task's stack is not the place for it. */
+    esp_core_dump_summary_t *s =
+        (esp_core_dump_summary_t *)malloc(sizeof(esp_core_dump_summary_t));
+    if (!s) { send_err(req, 500, "out of memory reading the core dump"); return; }
+
+    if (esp_core_dump_get_summary(s) != ESP_OK) {
+        free(s);
+        snprintf(body + o, sizeof(body) - o, ",\"core_dump\":\"unreadable\"}");
+        req->send(200, "application/json", body);
+        return;
+    }
+
+    char task[24];
+    json_escape(s->exc_task, task, sizeof(task));
+    o += snprintf(body + o, sizeof(body) - o,
+                  ",\"core_dump\":true,\"task\":\"%s\",\"pc\":\"0x%08x\""
+                  ",\"exc_cause\":%u,\"exc_vaddr\":\"0x%08x\""
+                  ",\"corrupted\":%s,\"backtrace\":[",
+                  task, (unsigned)s->exc_pc,
+                  (unsigned)s->ex_info.exc_cause, (unsigned)s->ex_info.exc_vaddr,
+                  s->exc_bt_info.corrupted ? "true" : "false");
+
+    for (uint32_t i = 0; i < s->exc_bt_info.depth && i < 16 && o + 16 < sizeof(body); i++)
+        o += snprintf(body + o, sizeof(body) - o, i ? ",\"0x%08x\"" : "\"0x%08x\"",
+                      (unsigned)s->exc_bt_info.bt[i]);
+
+    snprintf(body + o, sizeof(body) - o, "]}");
+    free(s);
+    req->send(200, "application/json", body);
+}
+
+static void handle_crash_clear(AsyncWebServerRequest *req)
+{
+    esp_core_dump_image_erase();
+    req->send(200, "application/json", "{\"ok\":true,\"cleared\":true}");
+}
+
 /* ------------------------------------------------------------------ apps -- */
 /*
  * Script apps, added and removed without a reboot. See D037.
@@ -162,8 +245,9 @@ static void handle_apps_delete(AsyncWebServerRequest *req)
 
     Serial.printf("[apps] deleted %s\n", name.c_str());
     char body[128];
-    snprintf(body, sizeof(body), "{\"ok\":true,\"deleted\":\"%s\",\"apps\":%d}",
-             name.c_str(), script_count());
+    snprintf(body, sizeof(body),
+             "{\"ok\":true,\"deleted\":\"%s\",\"visible_after\":\"the clock screen\"}",
+             name.c_str());
     req->send(200, "application/json", body);
 }
 
@@ -205,8 +289,9 @@ static void handle_apps_post(AsyncWebServerRequest *req)
         Serial.printf("[apps] saved %s (%u bytes)\n", name.c_str(), (unsigned)up_len);
         char body[160];
         snprintf(body, sizeof(body),
-                 "{\"ok\":true,\"saved\":\"%s\",\"bytes\":%u,\"apps\":%d}",
-                 name.c_str(), (unsigned)up_len, script_count());
+                 "{\"ok\":true,\"saved\":\"%s\",\"bytes\":%u,"
+                 "\"visible_after\":\"the clock screen\"}",
+                 name.c_str(), (unsigned)up_len);
         req->send(200, "application/json", body);
     }
 done:
@@ -313,6 +398,9 @@ void httpapi_begin(void)
 
     server.on("/update", HTTP_POST, handle_update_done, nullptr, handle_update_body);
 
+    server.on("/crash", HTTP_GET,    handle_crash);
+    server.on("/crash", HTTP_DELETE, handle_crash_clear);
+
     server.on("/apps", HTTP_GET,    handle_apps_list);
     server.on("/apps", HTTP_DELETE, handle_apps_delete);
     server.on("/apps", HTTP_POST,   handle_apps_post, nullptr, handle_apps_body);
@@ -323,7 +411,7 @@ void httpapi_begin(void)
               handle_emotion_body);
 
     server.onNotFound([](AsyncWebServerRequest *req) {
-        send_err(req, 404, "try GET /health, POST /emotion, GET|POST|DELETE /apps, POST /update");
+        send_err(req, 404, "try GET /health, GET /crash, POST /emotion, GET|POST|DELETE /apps, POST /update");
     });
 
     server.begin();

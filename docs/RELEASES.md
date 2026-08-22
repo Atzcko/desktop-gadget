@@ -11,6 +11,48 @@ Semantic versioning; the scheme and the release procedure live in [[CLAUDE]].
 The version is reported by the boot log, `GET /health` and Settings ▸ Info,
 each with a compiler build stamp so a stale flash is detectable.
 
+## v1.19.1 — 2026-08-22
+
+**Fixes the reboot when scrolling the app drawer, and makes the next crash
+readable without a cable.** ([[D038 - Crashes must be readable without a cable]])
+
+### The drawer could not show five apps
+
+One flex row held 3 comfortably and broke silently at 5: 678 px of tiles in a
+600 px row, overflow drawn off-screen with no way to reach it. **That is why
+scrolling was being attempted at all.** It now wraps and scrolls vertically —
+vertically only, so it cannot fight the left-edge back gesture for the same
+finger movement.
+
+### Deleting a screen mid-scroll was a use-after-free
+
+LVGL's `obj_del_core()` clears `act_obj`, `last_obj` and `last_pressed` when an
+object dies — **but never `scroll_obj`**. Delete a screen while a finger is
+scrolling on it and the input device keeps a pointer into freed memory, which
+the scroll-throw handler dereferences on the next read. `release_input()` now
+runs before every screen deletion.
+
+### Two more in the same path
+
+- **A drag in the drawer launched an app.** `LV_EVENT_CLICKED` fires on any
+  press-release over a tile; the clock has disqualified moved presses since
+  D027, the drawer never did. The same flag stops a scroll being taken as a
+  reorder.
+- **Script uploads rebuilt the registry from the web server's task**, racing
+  the LVGL task's `app_at()` calls and invalidating tile `App` pointers if the
+  drawer was open. Uploads now mark it dirty; the rebuild happens on the LVGL
+  task while nothing is open. `/apps` gained a `pending` flag.
+
+### `GET /crash`
+
+The `coredump` partition and `CONFIG_ESP_COREDUMP_ENABLE_TO_FLASH=y` have been
+there since Stage 0 — panics have been writing full ELF core dumps all along.
+They needed reading, not enabling. The endpoint reports the reset reason, the
+faulting task, PC, exception cause and a 16-deep backtrace; `tools/crash`
+decodes it to file and line with `addr2line`. `DELETE /crash` clears it.
+
+RAM 19.1 % · Flash 30.0 %.
+
 ## v1.19.0 — 2026-08-22
 
 **Apps can be added and removed without restarting.** A Lua 5.4 runtime sits

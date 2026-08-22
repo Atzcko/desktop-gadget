@@ -55,6 +55,17 @@ that crash-loops still needs the wire:
 export PATH="$HOME/.platformio-venv/bin:$PATH" && pio run -t upload --upload-port "$PORT"
 ```
 
+Read the last crash **without a cable** (D038):
+
+```bash
+tools/crash
+```
+
+It reports the reset reason and decodes the stored core dump's backtrace to
+file and line. `tools/crash clear` erases it so the next one is unambiguous.
+Decoding is only truthful against the exact build that crashed — rebuild first
+and the line numbers are fiction.
+
 Serial monitor:
 
 ```bash

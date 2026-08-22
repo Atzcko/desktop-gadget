@@ -55,6 +55,7 @@ struct ScriptApp {
 static ScriptApp  scripts[MAX_SCRIPTS];
 static int        script_n;
 static bool       fs_ok;
+static volatile bool rescan_pending;
 
 static lua_State *L;                  /* one live app at a time, by contract */
 static lv_obj_t  *cur_scr;
@@ -511,6 +512,16 @@ void script_begin(void)
     script_rescan();
 }
 
+void script_mark_dirty(void)      { rescan_pending = true; }
+bool script_pending(void)         { return rescan_pending; }
+
+void script_rescan_if_pending(void)
+{
+    if (!rescan_pending) return;
+    rescan_pending = false;
+    script_rescan();
+}
+
 int         script_count(void)     { return script_n; }
 const App  *script_at(int i)       { return (i >= 0 && i < script_n) ? &scripts[i].app : nullptr; }
 
@@ -547,7 +558,7 @@ bool script_save(const char *name, const uint8_t *body, size_t len, char *err, s
     f.close();
     if (w != len) { snprintf(err, errcap, "short write (%u of %u)", (unsigned)w, (unsigned)len); return false; }
 
-    script_rescan();
+    script_mark_dirty();
     return true;
 }
 
@@ -558,14 +569,16 @@ bool script_delete(const char *name)
     snprintf(path, sizeof(path), APPS_DIR "/%s.lua", name);
     if (!LittleFS.exists(path)) return false;
     bool ok = LittleFS.remove(path);
-    script_rescan();
+    script_mark_dirty();
     return ok;
 }
 
 void script_list_json(char *out, size_t cap)
 {
-    size_t o = snprintf(out, cap, "{\"ok\":true,\"fs\":%s,\"used\":%u,\"total\":%u,\"apps\":[",
+    size_t o = snprintf(out, cap,
+                        "{\"ok\":true,\"fs\":%s,\"pending\":%s,\"used\":%u,\"total\":%u,\"apps\":[",
                         fs_ok ? "true" : "false",
+                        rescan_pending ? "true" : "false",
                         fs_ok ? (unsigned)LittleFS.usedBytes() : 0u,
                         fs_ok ? (unsigned)LittleFS.totalBytes() : 0u);
     for (int i = 0; i < script_n && o + 40 < cap; i++)
