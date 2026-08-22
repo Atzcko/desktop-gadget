@@ -32,6 +32,8 @@ usefully — what each is **not allowed** to do.
 | `apps/app_registry.cpp` (16) | the `APPS[]` list — adding an app is one line here, one file there | encode display order; that lives in NVS (`app_order`) |
 | `apps/app_timer.cpp` (486) | countdown timer: per-card rollers with tap/hold fine-set ([[D028 - Set a number by dragging the number]], [[D032 - Three gestures, one control]]), its own copy of the fold | share the fold with ui.cpp until a third caller exists |
 | `apps/app_settings.cpp` (44) | the adapter that puts Settings in the drawer | contain settings UI — that stays in `ui_settings.cpp` |
+| `script.cpp` (564) | the Lua runtime: PSRAM allocator, instruction budget, `ui`/`gpio` bindings, the LittleFS script registry ([[D037 - Apps become Lua scripts]]) | load `io`, `os`, `package` or `debug` — each is a way out of the sandbox |
+| `apps/app_registry.cpp` | native apps **plus** scripts, natives first so an index never shifts | be an array again |
 | `apps/app_lab.cpp` (463) | GPIO / I²C / UART bench tool on the whitelist ([[D035 - The Lab may only touch pins the firmware does not own]]) | touch a pin outside `PINS[]`; leave anything configured on exit |
 
 ## The rest

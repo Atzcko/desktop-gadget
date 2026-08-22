@@ -19,7 +19,7 @@ reflashing the whole image**. Three routes were assessed:
 |---|---|
 | **OTA full images** | ✅ **Done** — v1.16.0, [[D034 - Updates ship over the air]]. "Add an app" = build here, push over Wi-Fi, ~1 min. |
 | **Dynamically loaded native ELF** | ❌ Rejected. No MMU → no isolation: a bad pointer in a downloaded app reboots the clock. ABI pain on every host change. All of the fragility, none of the safety. |
-| **Embedded scripting runtime** | ⏳ **Next, when wanted.** Apps as text files in flash. |
+| **Embedded scripting runtime** | ✅ **Done** — v1.19.0, [[D037 - Apps become Lua scripts]]. Lua 5.4, apps as text files, no reboot. |
 
 ## The scripting stage, when it comes
 

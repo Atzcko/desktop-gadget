@@ -95,6 +95,7 @@ bridge is the only way. See [[CLAUDE]].
 | [[D032 - Three gestures, one control]] | Drag coarse, tap exact, hold repeat — one card does all three |
 | [[D033 - Back goes one level, not home]] | app → drawer → clock; one function owns what back means |
 | [[D034 - Updates ship over the air]] | POST /update to the ota_1 slot that was always in the table |
+| [[D037 - Apps become Lua scripts]] | Hybrid: C++ core, Lua app layer, no reboot to add an app |
 | [[D036 - GPIO0 is readable, never drivable]] | BOOT has a button to GND — readable forever, drivable never |
 | [[D035 - The Lab may only touch pins the firmware does not own]] | Whitelist from schematic × board config; on the header ≠ free |
 

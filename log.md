@@ -979,3 +979,64 @@ dim line saying leaving returns every pin to Hi-Z — the right place to say it
 is next to the control that does it.
 
 Shipped over the air.
+
+## 2026-08-22 — Apps became Lua scripts (v1.19.0)
+
+The hybrid from [[The OS direction]], built: C++ core untouched, app layer
+gains a Lua 5.4 runtime, apps added and removed on a running clock.
+[[D037 - Apps become Lua scripts]].
+
+Lua 5.4.7 vendored into `lib/lua/` rather than pulled from the registry —
+those entries are third-party wrappers of varying maintenance, and Lua's own
+source is dependency-free C that compiles anywhere. Cost measured rather than
+guessed: **+148 KB flash, +1 KB RAM.** Cheap for what it buys.
+
+Four design choices carried the safety, and each was chosen for a named
+failure:
+
+- **Fresh `lua_State` per launch**, closed on exit, so scripts obey "create on
+  entry, destroy on exit" exactly as native apps do.
+- **PSRAM allocator.** 8 MB of PSRAM against ~60 KB of internal heap in use; a
+  leaking script must not be able to starve the display driver.
+- **An instruction budget.** Scripts run on the LVGL task — which is *why* they
+  may touch LVGL safely — so `while true do end` would freeze the clock with
+  the cable as the only way out. That is the exact failure "add apps without
+  restarting" must not have, so a `LUA_MASKCOUNT` hook stops any entry point
+  past 400 k instructions and says so on screen.
+- **Compile at upload, not at launch.** A broken script is rejected with the
+  parser's own message and the previous working version of that name is never
+  touched. Verified: an unclosed brace came back as
+  `'}' expected (to close '{' at line 2) near 'end'` and nothing was written.
+
+`io`, `os`, `package` and `debug` are not loaded, and names are validated so
+they cannot escape `/apps/` — checked with `?name=../../etc/passwd`, rejected.
+
+**Two things fell out of earlier decisions rather than needing work.** The
+drawer is rebuilt on every visit ([[D033 - Back goes one level, not home]]), so
+a new app appears with no reboot and no cache to invalidate. And the pin rules
+the Lab already enforced ([[D035 - The Lab may only touch pins the firmware does not own]],
+[[D036 - GPIO0 is readable, never drivable]]) became the script GPIO
+whitelist unchanged.
+
+**The bug that ate an hour of the build was not in my code.** Uploads returned
+"out of PSRAM" with the buffer never allocated. ESPAsyncWebServer
+special-cases `Content-Type: text/plain`: if the body starts with param-like
+characters and contains `=`, it parses the whole thing as form data and
+**never calls the body handler**. Lua source is full of `=`. The OTA endpoint
+had always worked because it sends `application/octet-stream`. Reading
+`WebRequest.cpp` found it in a minute; guessing would not have. Same lesson as
+the unmatched `str.replace`, Fusion's 15-result cap, and the dropdown index
+trap: **the expensive bugs are the silent ones**, and the cure is to read the
+thing rather than reason about it.
+
+The registry stopped being an array — `app_count()`/`app_at()`, natives first
+so a native index never shifts when a script appears. A stale `app_order` is
+now normal rather than corruption, so it validates as a permutation and falls
+back to identity for the whole list; trusting half of it would hide an app.
+
+Verified live end to end: upload two apps, list, delete one, re-add it, all
+against a clock whose uptime never reset. Two examples ship in `apps/` —
+`blink.lua` (GPIO, tick, buttons) and `uptime.lua` (cards, the digit font).
+
+Still native-only: I²C and UART bindings. That is the next small step, and it
+is what turns the Lab from a fixture into an instrument.

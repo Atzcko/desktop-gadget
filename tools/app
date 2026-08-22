@@ -38,8 +38,12 @@ case "${1:-list}" in
         NAME="${3:-$(basename "$FILE" .lua)}"
         # The device compiles before storing, so a syntax error is rejected
         # here rather than becoming a tile that fails when tapped.
+        # octet-stream, NOT text/plain: ESPAsyncWebServer special-cases
+        # text/plain and parses a body containing "key=value" as form data,
+        # so the body handler is never called and the upload arrives empty.
+        # Lua source is full of "=". See D037.
         curl -s --max-time 10 -X POST \
-             -H "Content-Type: text/plain" \
+             -H "Content-Type: application/octet-stream" \
              --data-binary @"$FILE" \
              "http://$H/apps?name=$(python3 -c "import urllib.parse,sys;print(urllib.parse.quote(sys.argv[1]))" "$NAME")" \
         | python3 -m json.tool ;;

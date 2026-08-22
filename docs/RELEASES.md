@@ -11,6 +11,39 @@ Semantic versioning; the scheme and the release procedure live in [[CLAUDE]].
 The version is reported by the boot log, `GET /health` and Settings ▸ Info,
 each with a compiler build stamp so a stale flash is detectable.
 
+## v1.19.0 — 2026-08-22
+
+**Apps can be added and removed without restarting.** A Lua 5.4 runtime sits
+beside the native apps; a script is `/apps/<name>.lua` in LittleFS and appears
+in the drawer like anything else. ([[D037 - Apps become Lua scripts]])
+
+```bash
+tools/app add apps/blink.lua Blink     # under a second, no reboot
+tools/app list
+tools/app rm Blink
+```
+
+- **Lua 5.4.7 vendored** in `lib/lua/`, not pulled from the registry. Measured
+  cost: **+148 KB flash (27.3 % → 30.0 %), +1 KB RAM.**
+- **A fresh `lua_State` per launch**, closed on exit — "create on entry,
+  destroy on exit" holds for scripts exactly as for native apps.
+- **Lua allocates from PSRAM**, never the internal heap the display driver
+  needs.
+- **An instruction budget stops runaway scripts.** Scripts run on the LVGL
+  task, so `while true do end` would otherwise freeze the clock with the cable
+  as the only way out — the one failure this feature must not have.
+- **Compiled at upload, not at launch**: a syntax error is rejected with the
+  parser's own message and any previous working version of that name survives.
+- **`io`, `os`, `package` and `debug` are not loaded**, and GPIO bindings
+  enforce the Lab's pin rules including GPIO0 being readable, never drivable.
+- The registry became `app_count()`/`app_at()`; a stale `app_order` now falls
+  back to identity for the whole list rather than hiding an app.
+- Two examples ship in `apps/`: `blink.lua` and `uptime.lua`.
+
+No reboot is needed to see a new tile, and that falls out of
+[[D033 - Back goes one level, not home]] — the drawer is rebuilt on every visit,
+so it re-reads the registry each time.
+
 ## v1.18.1 — 2026-08-22
 
 **The Lab's Back button moved to a bottom bar.** It had floated at the top

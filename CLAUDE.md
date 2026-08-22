@@ -94,7 +94,27 @@ export PATH="$HOME/.platformio-venv/bin:$PATH" && cd ~/.local/src/LilyGo-AMOLED-
 > `scripts/version_stamp.py`, so it cannot: a changed flag forces a rebuild.
 > `+dirty` means uncommitted changes are in the image.
 
-## Adding an app
+## Adding an app — as a Lua script, with no reboot
+
+```bash
+tools/app add apps/blink.lua Blink
+tools/app list
+tools/app rm Blink
+```
+
+A script is `/apps/<name>.lua` in LittleFS implementing `on_create`,
+`on_tick`, `on_back`, `on_exit` as globals; it appears in the drawer beside the
+native apps. Bindings: `ui`, `gpio`, `millis`, `log`, `back`. Uploads are
+compiled on the device, so a syntax error is rejected with the parser's message
+and any working version of that name survives.
+([[D037 - Apps become Lua scripts]])
+
+> [!warning] Upload as `application/octet-stream`
+> ESPAsyncWebServer parses a `text/plain` body containing `=` as form data and
+> never calls the body handler, so the upload arrives empty with no error
+> anywhere. Lua source is full of `=`. `tools/app` already does this right.
+
+## Adding an app — natively, in C++
 
 Apps are a platform, not special cases — see [[D026 - Apps are a platform, not a special case]].
 Put it in `src/apps/`, implement the `App` contract from `app_api.h`, register
