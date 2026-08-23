@@ -21,4 +21,11 @@ void app_host_tick(void);        /* from the LVGL loop                        */
  * bug unverifiable from here. See D039.
  */
 bool app_host_request_open(const char *name);
+
+/*
+ * Ask for back WITHOUT unwinding here. A script's back() runs inside
+ * lua_pcall on the very state that app_host_back() would close, so calling it
+ * directly closes the interpreter that is still executing. See D041.
+ */
+void app_host_request_back(void);
 const char *app_host_current(void);   /* "clock", or the running app's name */

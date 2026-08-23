@@ -43,6 +43,7 @@ static const App *order_at(int slot)
 }
 
 #include <Arduino.h>
+#include <ctype.h>
 
 #define COL_BG      lv_color_hex(0x000000)
 #define COL_CARD    lv_color_hex(0x161616)
@@ -246,13 +247,21 @@ static void build_drawer(void)
      */
     lv_obj_t *row = lv_obj_create(drawer);
     lv_obj_remove_style_all(row);
-    lv_obj_set_size(row, 600, 300);
-    lv_obj_align(row, LV_ALIGN_TOP_MID, 0, 56);
+    /*
+     * 332 px is every pixel between the title and the Clock button, and it is
+     * a computed number, not a guess: a cell is TILE + 40 = 158, so two rows
+     * plus a 12 px gutter need 328. The first cut of this used a round 300,
+     * which clipped the second row by 30 px — and since the name label sits in
+     * the bottom 20 px of a cell, the fifth app appeared as a nameless blank
+     * square. See D041.
+     */
+    lv_obj_set_size(row, 600, 332);
+    lv_obj_align(row, LV_ALIGN_TOP_MID, 0, 52);
     lv_obj_set_flex_flow(row, LV_FLEX_FLOW_ROW_WRAP);
     lv_obj_set_flex_align(row, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER,
                           LV_FLEX_ALIGN_START);
     lv_obj_set_style_pad_column(row, 22, LV_PART_MAIN);
-    lv_obj_set_style_pad_row(row, 14, LV_PART_MAIN);
+    lv_obj_set_style_pad_row(row, 12, LV_PART_MAIN);
     lv_obj_clear_flag(row, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_set_scroll_dir(row, LV_DIR_VER);
     lv_obj_set_scrollbar_mode(row, LV_SCROLLBAR_MODE_AUTO);
@@ -280,7 +289,25 @@ static void build_drawer(void)
         lv_obj_add_event_cb(tile, tile_pressing_cb, LV_EVENT_PRESSING, nullptr);
         lv_obj_add_event_cb(tile, launch_cb, LV_EVENT_CLICKED, (void *)app);
         lv_obj_add_event_cb(tile, reorder_cb, LV_EVENT_LONG_PRESSED, (void *)app);
-        if (app->icon) lv_obj_add_event_cb(tile, app->icon, LV_EVENT_DRAW_MAIN, nullptr);
+        if (app->icon) {
+            lv_obj_add_event_cb(tile, app->icon, LV_EVENT_DRAW_MAIN, nullptr);
+        } else {
+            /*
+             * Script apps have no icon — the App contract lets it be null and
+             * nothing in a .lua file can draw one. An empty charcoal square
+             * tells you nothing, so fall back to the first letter of the name.
+             * It is not decorative: it is what distinguishes Blink from
+             * Uptime at a glance.
+             */
+            lv_obj_t *g = lv_label_create(tile);
+            lv_obj_clear_flag(g, LV_OBJ_FLAG_CLICKABLE);
+            lv_obj_clear_flag(g, LV_OBJ_FLAG_SCROLLABLE);
+            lv_obj_set_style_text_font(g, &lv_font_montserrat_44, LV_PART_MAIN);
+            lv_obj_set_style_text_color(g, lv_color_hex(0x7A7A7A), LV_PART_MAIN);
+            char initial[2] = { (char)toupper((unsigned char)app->name[0]), '\0' };
+            lv_label_set_text(g, initial);
+            lv_obj_center(g);
+        }
 
         lv_obj_t *lbl = lv_label_create(cell);
         lv_obj_set_style_text_font(lbl, &lv_font_montserrat_20, LV_PART_MAIN);
@@ -410,7 +437,10 @@ static void back_gesture_tick(void)
 
 /* Set from the web server's task, consumed on the LVGL loop. */
 static volatile bool pending_open;
+static volatile bool pending_back;
 static char          pending_name[24];
+
+void app_host_request_back(void) { pending_back = true; }
 
 bool app_host_request_open(const char *name)
 {
@@ -435,8 +465,13 @@ const char *app_host_current(void)
     return "clock";
 }
 
-static void serve_pending_open(void)
+static void serve_pending(void)
 {
+    if (pending_back) {
+        pending_back = false;
+        app_host_back();
+        return;                 /* whatever was running is gone; do no more */
+    }
     if (!pending_open) return;
     pending_open = false;
 
@@ -459,7 +494,7 @@ static void serve_pending_open(void)
 void app_host_tick(void)
 {
     back_gesture_tick();
-    serve_pending_open();
+    serve_pending();
 
     /*
      * Script uploads arrive on the async web server's task and only mark the

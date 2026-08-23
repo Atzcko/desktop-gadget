@@ -352,7 +352,13 @@ static int l_log(lua_State *Ls)
     return 0;
 }
 
-static int l_back(lua_State *Ls) { (void)Ls; app_host_back(); return 0; }
+/*
+ * back() must NOT leave here. It is called from Lua, inside lua_pcall on L,
+ * and app_host_back() reaches script_destroy() -> lua_close(L) — closing the
+ * interpreter that is still running. The host performs it on the next tick,
+ * once this call has unwound. See D041.
+ */
+static int l_back(lua_State *Ls) { (void)Ls; app_host_request_back(); return 0; }
 
 static void register_api(lua_State *Ls)
 {
