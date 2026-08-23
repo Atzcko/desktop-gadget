@@ -1147,3 +1147,45 @@ GPIO. `BOARD_AMOLED_241` has `pixelsPins = -1`; the LED is the SY6970 PMU's
 charge-status output, driven by the PMU itself and addressed over the internal
 I2C bus (6/7) via `setChargingLedMode()`. Modes are OFF / BLINK_1HZ /
 BLINK_4HZ / ON / CTRL_CHG. Recorded in [[T4-S3]].
+
+## 2026-08-22 — Back closed the interpreter that called it (v1.20.3, v1.20.4)
+
+Owner: *"Uptime remove, blink make so I can choose any GPIO and make sure when
+I click on back button it doesn't crash."*
+
+The back crash was certain from reading, not a guess. `l_back()` was one line:
+
+```c
+static int l_back(lua_State *Ls) { app_host_back(); return 0; }
+```
+
+That C function runs inside `lua_pcall` on `L`. `app_host_back()` reaches
+`script_destroy()`, which calls `lua_close(L)`. **The interpreter was being
+closed by the code it was running**, and `lua_pcall` then returned into freed
+memory. Bindings now request a lifecycle change and the host serves it from
+`app_host_tick()` once the Lua call has unwound — the same deferral `/launch`
+already used, except that one crosses a task boundary and this one crosses a
+call-stack boundary. One `serve_pending()` now does both.
+[[D041 - Nothing may unwind through a live interpreter]].
+
+Verified without touch: a throwaway script calling `back()` from `on_tick`
+(the same pcall context as the button) launched and returned with uptime
+climbing 48 → 54 s. Before the fix that was a guaranteed reboot.
+
+**The blank tile was two bugs stacked.** The drawer's wrapping row was 300 px
+against a 330 px need — a round number I picked in v1.19.1 instead of computing
+the available space — so the second row clipped by 30 px, and since the name
+label sits in the bottom 20 px of a cell, the fifth app lost its name entirely.
+On top of that, script apps have no icon at all: the `App` contract allows null
+and nothing in a `.lua` file can draw one, so the tile was an empty square.
+Row is now 332 (the whole gap between title and Clock button) and icon-less
+apps show the first letter of their name.
+
+`uptime.lua` deleted. `blink.lua` rewritten as an actual bench tool: ◀ ▶ cycle
+through every output-capable SAFE_PIN, and changing pins releases the previous
+one before claiming the next, because leaving a pin driving is the one thing a
+bench tool must not do. GPIO0 is absent from its list by design (D036).
+
+Also wired `current` into `/health` — D039 claimed it and it had never been
+connected, which is exactly the kind of documentation drift the vault sweep was
+supposed to catch.

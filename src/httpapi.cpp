@@ -58,6 +58,7 @@ static void handle_health(AsyncWebServerRequest *req)
              "\"version\":\"%s\","
              "\"build\":\"%s\","
              "\"git\":\"%s\","
+             "\"current\":\"%s\","
              "\"uptime_s\":%lu,"
              "\"rssi\":%d,"
              "\"ip\":\"%s\","
@@ -78,6 +79,7 @@ static void handle_health(AsyncWebServerRequest *req)
              FW_VERSION,
              FW_BUILD,
              FW_GIT,
+             app_host_current(),
              (unsigned long)(millis() / 1000UL),
              st.rssi,
              st.wifi_up ? st.ip : "",

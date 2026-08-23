@@ -11,6 +11,32 @@ Semantic versioning; the scheme and the release procedure live in [[CLAUDE]].
 The version is reported by the boot log, `GET /health` and Settings ▸ Info,
 each with a compiler build stamp so a stale flash is detectable.
 
+## v1.20.4 — 2026-08-22
+
+`GET /health` reports `current`, the screen now showing — promised by D039 and
+not actually wired until now.
+
+## v1.20.3 — 2026-08-22
+
+**Back inside a Lua app rebooted the device.**
+`l_back()` called `app_host_back()` synchronously, from a C function running
+inside `lua_pcall` on `L` — and that path reaches `script_destroy()` →
+`lua_close(L)`. The interpreter was closed by code it was running. Bindings now
+*request* a lifecycle change and the host serves it on the next tick, once the
+Lua call has unwound. ([[D041 - Nothing may unwind through a live interpreter]])
+
+**The last drawer tile was a nameless blank square.** Two stacked causes: the
+wrapping row was 300 px against a 330 px need, clipping the second row by 30 px
+— and the name label sits in the bottom 20 px of a cell. Plus script apps have
+no icon, because the `App` contract allows null and no `.lua` can draw one. The
+row is now 332 px (the full space between the title and the Clock button), and
+icon-less apps show the first letter of their name.
+
+**`blink.lua` is a bench tool now** — pick any output-capable pin on the device
+with ◀ ▶ and start it; changing pins releases the old one first. GPIO0 is
+deliberately absent from its list (D036). **`uptime.lua` removed** at the
+owner's request.
+
 ## v1.20.1 — 2026-08-22
 
 **Fixes the reboot on launching a Lua app.** Two defects, either of which
