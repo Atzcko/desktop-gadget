@@ -267,11 +267,33 @@ void loop()
     static uint32_t next_batt = 3000;
     if (now >= next_batt) {
         next_batt = now + 30000;
-        g_batt.present  = amoled.isBatteryConnect();
+
+        /*
+         * DO NOT use amoled.isBatteryConnect() here. For this board it is
+         * implemented as `getVbusVoltage() != 0` — it answers "is USB
+         * plugged in", because the real SY6970 battery-detect is marked
+         * error("Not implemented") in XPowersLib and LilyGO papered over it.
+         * Trusting it made the chip vanish the moment USB was unplugged:
+         * hidden exactly when running on battery.
+         *
+         * Presence is judged from the cell voltage instead. A real 1S cell
+         * lives in 2800-4400 mV; with no battery the BAT pin reads either
+         * ~0 (floating ADC) or VSYS regulation (~4.5 V+) — both outside the
+         * window. Two consecutive out-of-window reads are required to flip
+         * to absent, so one bad read on the shared I2C bus cannot blink the
+         * indicator off.
+         */
+        const uint16_t mv = amoled.getBattVoltage();
+        const bool in_window = (mv >= 2800 && mv <= 4400);
+        static uint8_t absent_reads = 0;
+        if (in_window) absent_reads = 0;
+        else if (absent_reads < 2) absent_reads++;
+
+        g_batt.mv       = mv;
+        g_batt.present  = in_window || absent_reads < 2;
         g_batt.vbus     = amoled.isVbusIn();
-        g_batt.charging = g_batt.present && amoled.isCharging();
-        g_batt.mv       = g_batt.present ? amoled.getBattVoltage() : 0;
-        g_batt.pct      = g_batt.present ? batt_percent(g_batt.mv) : -1;
+        g_batt.charging = g_batt.present && g_batt.vbus && amoled.isCharging();
+        g_batt.pct      = g_batt.present ? batt_percent(mv) : -1;
         ui_set_battery(g_batt.present, g_batt.pct, g_batt.charging);
     }
 

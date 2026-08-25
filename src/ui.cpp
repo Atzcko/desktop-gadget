@@ -798,16 +798,14 @@ void ui_set_battery(bool present, int pct, bool charging)
         snprintf(t, sizeof(t), "%d", pct);
         lv_label_set_text(bat_lbl, t);
 
-        /* One colour, three states: green on the charger, red when it is
-         * genuinely time to worry, otherwise the same grey as every other
-         * secondary element on this screen. */
+        /* White, like the digits — the owner's call, and it does sit better
+         * beside them than the grey did. Green stays for charging and red
+         * for low, because those two are information, not decoration. */
         lv_color_t c = charging ? COL_BAT_CHG
-                     : (pct < 15 ? COL_BAT_LOW : COL_SECONDARY);
+                     : (pct < 15 ? COL_BAT_LOW : COL_DIGIT);
         lv_obj_set_style_text_color(bat_lbl, c, LV_PART_MAIN);
         lv_obj_set_style_bg_color(bat_nub, c, LV_PART_MAIN);
-        lv_obj_set_style_border_color(bat_body,
-                                      charging ? COL_BAT_CHG : COL_TERTIARY,
-                                      LV_PART_MAIN);
+        lv_obj_set_style_border_color(bat_body, c, LV_PART_MAIN);
     }
     bat_apply_visibility();
 }

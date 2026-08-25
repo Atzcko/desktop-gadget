@@ -1215,3 +1215,33 @@ correctly absent from the clock. The percent path needs a battery plugged in
 to verify, which only the owner can do.
 
 [[D042 - The battery gauge is a voltage estimate]].
+
+## 2026-08-23 — The indicator hid exactly when it mattered (v1.21.1)
+
+Owner: *"Why did the indicator disappear?"* — almost certainly because they
+unplugged USB, which I had suggested doing to measure runtime.
+
+The cause is a library trap with my fingerprints on the trigger.
+`LilyGo_AMOLED::isBatteryConnect()` for this board is implemented as
+`getVbusVoltage() != 0` — it answers *"is USB plugged in"*, because the real
+SY6970 battery-detect is marked `error("Not implemented")` in XPowersLib and
+the wrapper papered over it. I called it for exactly what its name promised,
+so the chip showed while charging and vanished when the device switched to
+the battery it was supposed to be indicating. Inverted, exactly wrong, and
+found by the owner within a day.
+
+The vault already contained the rule that would have prevented it — "ground
+truth is the library source, not the README" (2026-08-16) — and I had even
+read *adjacent* functions in that same file earlier. The lesson refines to:
+the API's *name* is part of the README.
+
+Presence is now judged from the cell voltage: a real 1S cell lives in
+2800–4400 mV, no-battery reads ~0 or VSYS (~4.5 V+), and two consecutive
+out-of-window reads are required to flip to absent so a single bad
+transaction on the shared I²C bus cannot blink the chip. Addendum written
+into [[D042 - The battery gauge is a voltage estimate]] rather than a new
+decision — the decision stands, the implementation fact is new.
+
+Also per the owner: the chip is white now — border, nub, number in the
+digits' white instead of grey. Green (charging) and red (< 15 %) stay;
+those are information, not decoration.

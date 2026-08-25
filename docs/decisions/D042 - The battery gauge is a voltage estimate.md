@@ -62,6 +62,21 @@ Telemetry, not power management. No low-battery shutdown, no brightness
 reaction, no deep sleep — the scope boundary in [[index]] still stands except
 for the one word "no battery logic", which is now "no battery *management*".
 
+## Addendum, 2026-08-23 — presence is voltage-judged too
+
+> [!warning] `isBatteryConnect()` on this board answers a different question
+> LilyGO implements it as `getVbusVoltage() != 0` — "is USB plugged in" —
+> because the real SY6970 battery-detect is marked `error("Not implemented")`
+> in XPowersLib. Built on that, the chip appeared on USB and vanished when
+> unplugged: **hidden exactly when running on battery.** The owner hit it
+> within a day.
+>
+> Presence is now judged from the cell voltage (2800–4400 mV window; no
+> battery reads ~0 or VSYS ≈ 4.5 V+, both outside), debounced over two reads
+> so one bad transaction on the shared bus cannot blink the chip. The same
+> lesson as the 2026-08-16 research note: **ground truth is the library
+> source, not the API name.**
+
 ## Related
 
 - [[T4-S3]] — the PMU, and the charge LED it also owns

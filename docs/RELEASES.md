@@ -11,6 +11,19 @@ Semantic versioning; the scheme and the release procedure live in [[CLAUDE]].
 The version is reported by the boot log, `GET /health` and Settings ▸ Info,
 each with a compiler build stamp so a stale flash is detectable.
 
+## v1.21.1 — 2026-08-23
+
+**The chip no longer vanishes when USB is unplugged — which was the bug, and
+it was inverted exactly wrong.** The board's `isBatteryConnect()` is
+implemented as `getVbusVoltage() != 0` (the real SY6970 detect is
+`error("Not implemented")` in XPowersLib), so "battery present" actually meant
+"USB plugged in", and the indicator hid the moment the device ran on the
+battery it was indicating. Presence is now judged from cell voltage
+(2800–4400 mV, debounced over two reads). D042 carries the addendum.
+
+Also: **the chip is white now** — border, nub and number in the digits' white,
+per the owner. Green (charging) and red (< 15 %) stay: those are information.
+
 ## v1.21.0 — 2026-08-23
 
 **A battery chip on the clock, and battery telemetry in `/health`.**
