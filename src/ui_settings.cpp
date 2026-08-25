@@ -44,7 +44,7 @@ static lv_obj_t *roller_tz, *sw_24h;
 
 /* Screen tab */
 static lv_obj_t *sl_day, *sl_night, *lbl_day, *lbl_night;
-static lv_obj_t *roller_ns, *roller_ne, *sw_wx, *sw_hum, *sw_burn, *sw_rot, *sw_sun;
+static lv_obj_t *roller_ns, *roller_ne, *sw_wx, *sw_hum, *sw_burn, *dd_rot, *sw_sun;
 
 /* BLE tab */
 static lv_obj_t *sw_ble, *sw_hid, *sw_kbd, *ta_ble_name, *lbl_ble_state;
@@ -447,7 +447,7 @@ static bool dirty(void)
     if ((bool)lv_obj_has_state(sw_wx,   LV_STATE_CHECKED) != snapshot.show_weather)   return true;
     if ((bool)lv_obj_has_state(sw_hum,  LV_STATE_CHECKED) != snapshot.show_humidity)  return true;
     if ((bool)lv_obj_has_state(sw_burn, LV_STATE_CHECKED) != snapshot.burnin_guard)   return true;
-    if ((bool)lv_obj_has_state(sw_rot,  LV_STATE_CHECKED) != snapshot.rotate_180)     return true;
+    if ((uint8_t)lv_dropdown_get_selected(dd_rot) != snapshot.rotation)               return true;
     if ((bool)lv_obj_has_state(sw_sun,  LV_STATE_CHECKED) != snapshot.night_follows_sun) return true;
     if ((bool)lv_obj_has_state(sw_ble,  LV_STATE_CHECKED) != snapshot.ble_enabled)    return true;
     if ((bool)lv_obj_has_state(sw_hid,  LV_STATE_CHECKED) != snapshot.ble_hid)        return true;
@@ -492,7 +492,7 @@ static void apply_widgets(void)
     s.show_weather     = lv_obj_has_state(sw_wx,   LV_STATE_CHECKED);
     s.show_humidity    = lv_obj_has_state(sw_hum,  LV_STATE_CHECKED);
     s.burnin_guard     = lv_obj_has_state(sw_burn, LV_STATE_CHECKED);
-    s.rotate_180       = lv_obj_has_state(sw_rot,  LV_STATE_CHECKED);
+    s.rotation         = (uint8_t)lv_dropdown_get_selected(dd_rot);
     s.night_follows_sun = lv_obj_has_state(sw_sun, LV_STATE_CHECKED);
     s.brightness_day   = lv_slider_get_value(sl_day);
     s.brightness_night = lv_slider_get_value(sl_night);
@@ -558,7 +558,8 @@ static void revert_live(void)
     ui_show_humidity(snapshot.show_humidity);
     app_refresh_clock(false);
     app_apply_brightness(snapshot.brightness_day);
-    app_apply_rotation(snapshot.rotate_180);
+    /* Rotation was never applied live from here (see the Screen tab), so a
+     * revert has nothing to undo — the panel still shows snapshot.rotation. */
 }
 
 /* Settings is an app now, so it no longer routes itself home or deletes its own
@@ -798,13 +799,21 @@ lv_obj_t *ui_settings_create(void)
         body_label(r4, "Burn-in guard");
         sw_burn = lv_switch_create(r4);
         if (s.burnin_guard) lv_obj_add_state(sw_burn, LV_STATE_CHECKED);
-        body_label(r4, "Flip 180");
-        sw_rot = lv_switch_create(r4);
-        if (s.rotate_180) lv_obj_add_state(sw_rot, LV_STATE_CHECKED);
-        lv_obj_add_event_cb(sw_rot, [](lv_event_t *e) {
-            /* Apply live — you cannot judge an orientation you cannot see. */
-            app_apply_rotation(lv_obj_has_state(lv_event_get_target(e), LV_STATE_CHECKED));
-        }, LV_EVENT_VALUE_CHANGED, nullptr);
+        body_label(r4, "Rotation");
+        /*
+         * A selector, applied on SAVE — not live, which is what the old Flip
+         * switch did. Settings itself is a landscape screen (the host forces
+         * landscape under it, D043), so a live 90 here would rotate the very
+         * screen being touched. The live control is the BOOT button, which
+         * works from the clock where every orientation has a real layout.
+         */
+        dd_rot = lv_dropdown_create(r4);
+        lv_dropdown_set_options_static(dd_rot, "0\n90\n180\n270");
+        lv_obj_set_width(dd_rot, 110);
+        lv_obj_set_style_text_font(dd_rot, &lv_font_montserrat_18, LV_PART_MAIN);
+        lv_obj_set_style_text_font(lv_dropdown_get_list(dd_rot),
+                                   &lv_font_montserrat_18, LV_PART_MAIN);
+        lv_dropdown_set_selected(dd_rot, s.rotation);
     }
 
     /* ---- BLE ---- */

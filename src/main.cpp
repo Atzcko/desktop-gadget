@@ -71,16 +71,46 @@ void app_apply_brightness(uint8_t level)
  * dimensions are unchanged either way, which is why LVGL needs no re-init and
  * this can be toggled live from Settings.
  */
-void app_apply_rotation(bool flipped)
+void app_apply_rotation(uint8_t rotation)
 {
-    amoled.setRotation(flipped ? 2 : 0);
+    amoled.setRotation(rotation & 3);
 
-    /* This is called once at boot BEFORE beginLvglHelper(), where lv_scr_act()
-     * is still NULL — dereferencing it panics with LoadProhibited at address
-     * 0x8. Only the runtime toggle from Settings needs a repaint anyway; the
-     * boot call happens before anything has been drawn. */
+    /* Called once at boot BEFORE beginLvglHelper(), where lv_scr_act() is
+     * still NULL — dereferencing it panics with LoadProhibited at 0x8. */
     if (lv_disp_get_default()) lv_obj_invalidate(lv_scr_act());
 }
+
+void app_panel_rotate(uint8_t rotation)
+{
+    amoled.setRotation(rotation & 3);
+    lv_disp_t *d = lv_disp_get_default();
+    if (!d) return;
+    /* The driver struct lives inside the library's LV_Helper; the display
+     * keeps a pointer to it, and lv_disp_drv_update() re-reads the fields. */
+    d->driver->hor_res = amoled.width();
+    d->driver->ver_res = amoled.height();
+    lv_disp_drv_update(d, d->driver);
+}
+
+void app_apply_rotation_live(uint8_t rotation)
+{
+    /* Orientation is a device-level act: leave whatever is open first, from
+     * a known screen, rather than rotating under an absolutely-laid app. */
+    if (app_host_is_open()) app_host_home();
+
+    app_panel_rotate(rotation);
+    ui_init(amoled.width(), amoled.height());   /* re-entrant since D043 */
+
+    Settings &s = settings_get();
+    app_refresh_clock(false);
+    ui_show_weather_block(s.show_weather);
+    ui_show_humidity(s.show_humidity);
+    ui_set_battery(g_batt.present, g_batt.pct, g_batt.charging);
+    Serial.printf("[rot] now %dx90, %ux%u\n", rotation, amoled.width(), amoled.height());
+}
+
+static volatile int pending_rot = -1;
+void app_request_rotation(uint8_t rotation) { pending_rot = rotation & 3; }
 
 void app_refresh_clock(bool animate)
 {
@@ -195,16 +225,21 @@ void setup()
     }
 
     /* Before LVGL starts, so the first frame is already the right way up. */
-    app_apply_rotation(s.rotate_180);
+    app_apply_rotation(s.rotation);
 
     Serial.printf("Panel   : %u x %u  %s\n", amoled.width(), amoled.height(),
-                  s.rotate_180 ? "(180)" : "");
+                  s.rotation ? "(rotated)" : "");
     Serial.printf("Touch   : %s\n", amoled.hasTouch() ? "online" : "OFFLINE");
     Serial.printf("City    : %s (%.4f, %.4f)\n", s.city, s.latitude, s.longitude);
     Serial.printf("TZ      : %s\n", s.tz_posix);
     settings_dump("restored from NVS");
 
     beginLvglHelper(amoled);
+
+    /* BOOT as an orientation button. External 10 K pull-up on the board;
+     * explicit INPUT so a Lab session's leftover mode cannot change what
+     * digitalRead(0) means here. */
+    pinMode(0, INPUT);
 
     ui_init(amoled.width(), amoled.height());
     ui_show_weather_block(s.show_weather);
@@ -264,6 +299,42 @@ void loop()
      * same rule as D018, applied to a bus instead of a widget tree. First
      * read at 3 s so /health is honest soon after boot.
      */
+    /*
+     * BOOT (GPIO0) cycles the orientation, 90 degrees per press. The pin is
+     * only a strapping pin at reset; in normal run it is a plain input with
+     * an external 10 K pull-up, LOW while pressed (see T4-S3 note). Judged on
+     * RELEASE with a 30 ms debounce; presses longer than 2 s are ignored so
+     * a hand resting on the button while repositioning the device does not
+     * spin the screen.
+     */
+    static uint32_t bt0_down_ms = 0;
+    static bool     bt0_was_low = false;
+    const bool bt0_low = (digitalRead(0) == LOW);
+    if (bt0_low && !bt0_was_low) {
+        bt0_down_ms = now;
+    } else if (!bt0_low && bt0_was_low) {
+        const uint32_t held = now - bt0_down_ms;
+        if (held >= 30 && held <= 2000) {
+            Settings &sr = settings_get();
+            sr.rotation = (uint8_t)((sr.rotation + 1) & 3);
+            settings_save();
+            app_apply_rotation_live(sr.rotation);
+        }
+    }
+    bt0_was_low = bt0_low;
+
+    /* Rotation asked for over HTTP: same path, served on this task. */
+    if (pending_rot >= 0) {
+        const uint8_t r = (uint8_t)pending_rot;
+        pending_rot = -1;
+        Settings &sr = settings_get();
+        if (r != sr.rotation) {
+            sr.rotation = r;
+            settings_save();
+            app_apply_rotation_live(r);
+        }
+    }
+
     static uint32_t next_batt = 3000;
     if (now >= next_batt) {
         next_batt = now + 30000;

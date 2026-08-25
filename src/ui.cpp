@@ -160,6 +160,9 @@ static bool      bat_present;
 static bool      bat_line_mode;
 
 static uint16_t scr_w, scr_h;
+static bool     portrait;      /* 450x600: cards stack, no colon, no zoom */
+
+static void emotion_teardown_for_reinit(void);
 static int      clock_x, clock_y;
 
 /*
@@ -582,10 +585,29 @@ static void weather_sync(void)
 
 void ui_init(uint16_t screen_w, uint16_t screen_h)
 {
+    /*
+     * Re-entrant since D043: a live rotation rebuilds the clock for the new
+     * shape by calling this again. The prologue kills everything the last
+     * build left running — timers, animations, the PSRAM canvas buffer — and
+     * NULLs every lazily-created pointer, because the objects die with the
+     * old screen but the statics do not.
+     */
+    lv_obj_t *old_scr = scr_clock ? scr_clock : lv_scr_act();
+    if (scr_clock) {
+        lv_anim_del_all();
+        if (info_timer)  { lv_timer_del(info_timer);  info_timer  = nullptr; }
+        emotion_teardown_for_reinit();      /* timers + lazy statics, defined
+                                             * beside the statics it clears */
+        zoom_canvas = nullptr;
+        if (zoom_buf)    { free(zoom_buf); zoom_buf = nullptr; }
+        bat_line_mode = false;
+    }
+
     scr_w = screen_w;
     scr_h = screen_h;
+    portrait = screen_h > screen_w;
 
-    scr_clock = lv_scr_act();
+    scr_clock = lv_obj_create(nullptr);
     lv_obj_set_style_bg_color(scr_clock, COL_BG, LV_PART_MAIN);
     lv_obj_set_style_bg_opa(scr_clock, LV_OPA_COVER, LV_PART_MAIN);
 
@@ -617,23 +639,35 @@ void ui_init(uint16_t screen_w, uint16_t screen_h)
     lv_obj_set_size(clock_grp, screen_w, screen_h);
     lv_obj_set_pos(clock_grp, 0, 0);
 
-    const int clock_w = CARD_W * 2 + CARD_GAP;
-    clock_x = (screen_w - clock_w) / 2;
-    clock_y = 44;
+    if (portrait) {
+        /*
+         * Portrait is what Fliqlo itself does on a phone: hours above
+         * minutes, no colon — stacked flaps ARE the separator. 24 px top
+         * margin and gap keep 232+232 inside 600 with room for weather.
+         */
+        clock_x = (screen_w - CARD_W) / 2;
+        clock_y = 24;
+        make_card(card_h, clock_x, clock_y);
+        make_card(card_m, clock_x, clock_y + CARD_H + 24);
+    } else {
+        const int clock_w = CARD_W * 2 + CARD_GAP;
+        clock_x = (screen_w - clock_w) / 2;
+        clock_y = 44;
 
-    make_card(card_h, clock_x, clock_y);
-    make_card(card_m, clock_x + CARD_W + CARD_GAP, clock_y);
+        make_card(card_h, clock_x, clock_y);
+        make_card(card_m, clock_x + CARD_W + CARD_GAP, clock_y);
 
-    for (int i = 0; i < 2; i++) {
-        lv_obj_t *dot = lv_obj_create(clock_grp);
-        decor(dot);
-        lv_obj_set_size(dot, COLON_DOT, COLON_DOT);
-        lv_obj_set_style_bg_color(dot, COL_COLON, LV_PART_MAIN);
-        lv_obj_set_style_bg_opa(dot, LV_OPA_COVER, LV_PART_MAIN);
-        lv_obj_set_style_radius(dot, COLON_DOT / 2, LV_PART_MAIN);
-        int dy = (i == 0) ? CARD_H / 3 : (CARD_H * 2) / 3;
-        lv_obj_set_pos(dot, clock_x + CARD_W + CARD_GAP / 2 - COLON_DOT / 2,
-                       clock_y + dy - COLON_DOT / 2);
+        for (int i = 0; i < 2; i++) {
+            lv_obj_t *dot = lv_obj_create(clock_grp);
+            decor(dot);
+            lv_obj_set_size(dot, COLON_DOT, COLON_DOT);
+            lv_obj_set_style_bg_color(dot, COL_COLON, LV_PART_MAIN);
+            lv_obj_set_style_bg_opa(dot, LV_OPA_COVER, LV_PART_MAIN);
+            lv_obj_set_style_radius(dot, COLON_DOT / 2, LV_PART_MAIN);
+            int dy = (i == 0) ? CARD_H / 3 : (CARD_H * 2) / 3;
+            lv_obj_set_pos(dot, clock_x + CARD_W + CARD_GAP / 2 - COLON_DOT / 2,
+                           clock_y + dy - COLON_DOT / 2);
+        }
     }
 
     /* AM/PM marker, only ever visible in 12-hour mode so the default
@@ -656,7 +690,8 @@ void ui_init(uint16_t screen_w, uint16_t screen_h)
     weather_grp = lv_obj_create(root);
     decor(weather_grp);
     lv_obj_set_size(weather_grp, screen_w, WX_H);
-    lv_obj_set_pos(weather_grp, 0, WX_Y);
+    lv_obj_set_pos(weather_grp, 0, portrait ? (clock_y + CARD_H * 2 + 24 + 20)
+                                            : WX_Y);
     lv_obj_set_flex_flow(weather_grp, LV_FLEX_FLOW_ROW);
     lv_obj_set_flex_align(weather_grp, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER,
                           LV_FLEX_ALIGN_CENTER);
@@ -727,7 +762,11 @@ void ui_init(uint16_t screen_w, uint16_t screen_h)
     /* Canvas the big clock is rendered into so it can actually be SCALED.
      * lv_canvas derives from lv_img, so lv_img_set_zoom works on it — LVGL 8
      * cannot transform text, but it can transform an image of text. */
-    zoom_buf = (lv_color_t *)ps_malloc(LV_CANVAS_BUF_SIZE_TRUE_COLOR(ZOOM_W, ZOOM_H));
+    /* The zoom transition renders the two cards SIDE BY SIDE — 572 px that
+     * portrait's 450 cannot hold. Skipping the allocation routes portrait
+     * through the no-canvas fade that has always been the fallback. */
+    zoom_buf = portrait ? nullptr
+             : (lv_color_t *)ps_malloc(LV_CANVAS_BUF_SIZE_TRUE_COLOR(ZOOM_W, ZOOM_H));
     if (zoom_buf) {
         zoom_canvas = lv_canvas_create(root);
         decor(zoom_canvas);
@@ -773,6 +812,12 @@ void ui_init(uint16_t screen_w, uint16_t screen_h)
 
     lv_obj_add_flag(bat_body, LV_OBJ_FLAG_HIDDEN);
     lv_obj_add_flag(bat_nub,  LV_OBJ_FLAG_HIDDEN);
+
+    /* Load the new screen BEFORE deleting the old (D031), and cut the input
+     * device loose from the dying tree first (D038). */
+    lv_indev_reset(nullptr, nullptr);
+    lv_scr_load(scr_clock);
+    if (old_scr && old_scr != scr_clock) lv_obj_del(old_scr);
 }
 
 static void bat_apply_visibility(void)
@@ -947,7 +992,18 @@ static bool        wave_out;
  * line takes the space it vacated.
  */
 static lv_timer_t *enter_timer;          /* fires once, when the scale lands */
+
 static bool        layout_small;         /* is the clock currently in the corner? */
+
+/* Called from ui_init's re-entry prologue: the objects are dying with the old
+ * screen, so kill the timers that drive them and NULL the lazy pointers. */
+static void emotion_teardown_for_reinit(void)
+{
+    if (wave_timer)  { lv_timer_del(wave_timer);  wave_timer  = nullptr; }
+    if (enter_timer) { lv_timer_del(enter_timer); enter_timer = nullptr; }
+    wave = nullptr; lbl_emotion = nullptr;
+    wave_out = false; layout_small = false;
+}
 static char        pending_msg[EMOTION_MSG_MAX + 1];
 
 /* wave_tick() triggers the fly-back, so it needs this before the definition. */

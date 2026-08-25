@@ -61,6 +61,7 @@ static void handle_health(AsyncWebServerRequest *req)
              "\"build\":\"%s\","
              "\"git\":\"%s\","
              "\"current\":\"%s\","
+             "\"rotation\":%u,"
              "\"uptime_s\":%lu,"
              "\"rssi\":%d,"
              "\"ip\":\"%s\","
@@ -83,6 +84,7 @@ static void handle_health(AsyncWebServerRequest *req)
              FW_BUILD,
              FW_GIT,
              app_host_current(),
+             (unsigned)(settings_get().rotation * 90u),
              (unsigned long)(millis() / 1000UL),
              st.rssi,
              st.wifi_up ? st.ip : "",
@@ -171,6 +173,34 @@ static void handle_launch_body(AsyncWebServerRequest *req, uint8_t *data,
     }
     char body[96];
     snprintf(body, sizeof(body), "{\"ok\":true,\"opening\":\"%s\"}", name);
+    req->send(200, "application/json", body);
+}
+
+/* ---------------------------------------------------------------- rotate -- */
+/*
+ * POST /rotate {"deg":0|90|180|270} — the BOOT button, callable from a shell.
+ * Exists for the same reason as /launch (D039): I cannot press the button,
+ * and an orientation feature nobody can verify remotely is a checklist item,
+ * not a feature. Served on the LVGL loop via app_request_rotation().
+ */
+static void handle_rotate_body(AsyncWebServerRequest *req, uint8_t *data,
+                               size_t len, size_t index, size_t total)
+{
+    static String buf;
+    if (index == 0) buf = "";
+    buf.concat((const char *)data, len);
+    if (index + len != total) return;
+
+    int deg = -1;
+    const char *p = strstr(buf.c_str(), "\"deg\"");
+    if (p) { p = strchr(p + 5, ':'); if (p) deg = atoi(p + 1); }
+    if (deg != 0 && deg != 90 && deg != 180 && deg != 270) {
+        send_err(req, 400, "expected {\"deg\":0|90|180|270}");
+        return;
+    }
+    app_request_rotation((uint8_t)(deg / 90));
+    char body[64];
+    snprintf(body, sizeof(body), "{\"ok\":true,\"rotating_to\":%d}", deg);
     req->send(200, "application/json", body);
 }
 
@@ -464,6 +494,9 @@ void httpapi_begin(void)
 
     server.on("/launch", HTTP_POST,
               [](AsyncWebServerRequest *) {}, nullptr, handle_launch_body);
+
+    server.on("/rotate", HTTP_POST,
+              [](AsyncWebServerRequest *) {}, nullptr, handle_rotate_body);
 
     server.on("/crash", HTTP_GET,    handle_crash);
     server.on("/crash", HTTP_DELETE, handle_crash_clear);

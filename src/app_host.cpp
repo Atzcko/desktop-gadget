@@ -10,6 +10,7 @@
 #include "ui.h"
 #include "settings.h"
 #include "script.h"
+#include "app.h"
 
 /*
  * The drawer renders in the owner's order, not the registry's.
@@ -88,6 +89,10 @@ static void decor(lv_obj_t *o)
  */
 static void release_input(void) { lv_indev_reset(nullptr, nullptr); }
 
+/* Defined beside app_host_launch, used from home/back as well. */
+static void force_landscape_for_app(void);
+static void restore_user_rotation(void);
+
 bool app_host_is_open(void) { return drawer != nullptr || running != nullptr; }
 
 /* Script apps share one set of C callbacks, so the runtime needs to ask which
@@ -105,12 +110,40 @@ void app_host_home(void)
 
     if (running) { running->destroy(); running = nullptr; }
 
+    restore_user_rotation();     /* the clock screen is laid out for the
+                                  * owner's orientation, not the app's */
+
     /* Load the clock BEFORE deleting anything — deleting the active screen is
      * how you get a use-after-free on the next render pass. */
     release_input();
     lv_scr_load(ui_screen());
     if (dead_drawer) lv_obj_del(dead_drawer);
     if (dead_app)    lv_obj_del(dead_app);
+}
+
+/*
+ * Every app screen in this firmware — native and script alike — is laid out
+ * for 600x450. The clock and the drawer know portrait; the apps do not, and
+ * pretending otherwise would clip every one of them at x=450. So the host
+ * rotates the PANEL to the nearest landscape for the duration of an app and
+ * restores the owner's orientation on the way out (D043). When a
+ * portrait-capable app exists, this is where its flag gets honoured.
+ */
+static bool app_forced_landscape;
+
+static void force_landscape_for_app(void)
+{
+    const uint8_t r = settings_get().rotation;
+    if (!(r & 1)) return;                       /* already landscape */
+    app_panel_rotate(r == 1 ? 0 : 2);           /* nearest: 90->0, 270->180 */
+    app_forced_landscape = true;
+}
+
+static void restore_user_rotation(void)
+{
+    if (!app_forced_landscape) return;
+    app_forced_landscape = false;
+    app_panel_rotate(settings_get().rotation);
 }
 
 void app_host_launch(const App *app)
@@ -121,6 +154,8 @@ void app_host_launch(const App *app)
      * ever resident — the same discipline that keeps PSRAM flat. */
     lv_obj_t *dead = drawer;
     drawer = nullptr;
+
+    force_landscape_for_app();
 
     running     = app;
     running_scr = app->create();
@@ -255,7 +290,9 @@ static void build_drawer(void)
      * the bottom 20 px of a cell, the fifth app appeared as a nameless blank
      * square. See D041.
      */
-    lv_obj_set_size(row, 600, 332);
+    /* PCT, not 600: since D043 the drawer lays itself out in portrait too,
+     * where 450 wide wraps the tiles three to a row. */
+    lv_obj_set_size(row, LV_PCT(100), 332);
     lv_obj_align(row, LV_ALIGN_TOP_MID, 0, 52);
     lv_obj_set_flex_flow(row, LV_FLEX_FLOW_ROW_WRAP);
     lv_obj_set_flex_align(row, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER,
@@ -354,6 +391,8 @@ void app_host_back(void)
         running_scr = nullptr;
         running->destroy();
         running = nullptr;
+
+        restore_user_rotation();   /* drawer lays out for the owner's shape */
 
         /* Load the drawer BEFORE deleting the app's screen — deleting the
          * active screen is how you get a use-after-free (D031). */

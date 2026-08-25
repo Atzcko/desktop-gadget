@@ -35,7 +35,9 @@ struct Settings {
     bool    show_weather;
     bool    show_humidity;
     bool    burnin_guard;
-    bool    rotate_180;         /* upside-down landscape (setRotation(2)) */
+    uint8_t rotation;           /* panel rotation 0-3: 0/2 landscape 600x450,
+                                   1/3 portrait 450x600. Replaces rotate_180;
+                                   old NVS bool migrates on first load. */
     bool    night_follows_sun;  /* dim by sunrise/sunset, not by the clock */
     uint8_t app_order[16];      /* drawer order as registry indices        */
 

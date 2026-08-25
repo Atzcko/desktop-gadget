@@ -83,7 +83,7 @@ static void apply_defaults(void)
     s.show_weather     = true;
     s.show_humidity    = true;
     s.burnin_guard     = true;
-    s.rotate_180       = DEFAULT_ROTATE_180;
+    s.rotation         = DEFAULT_ROTATION;
     s.night_follows_sun = true;
     for (uint8_t i = 0; i < sizeof(s.app_order); i++) s.app_order[i] = i;
     s.ble_enabled      = true;
@@ -134,7 +134,11 @@ void settings_load(void)
     if (have("wx"))     s.show_weather     = prefs.getBool("wx");
     if (have("hum"))    s.show_humidity    = prefs.getBool("hum");
     if (have("burn"))   s.burnin_guard     = prefs.getBool("burn");
-    if (have("rot"))    s.rotate_180       = prefs.getBool("rot");
+    /* Migration: "rotd" (0-3) supersedes the old bool "rot". Read the old
+     * key only when the new one has never been written, so a device that has
+     * chosen a portrait orientation cannot be snapped back by a stale bool. */
+    if      (have("rotd")) s.rotation = prefs.getUChar("rotd") & 3;
+    else if (have("rot"))  s.rotation = prefs.getBool("rot") ? 2 : 0;
     if (have("sun"))    s.night_follows_sun = prefs.getBool("sun");
     if (have("apps"))   prefs.getBytes("apps", s.app_order, sizeof(s.app_order));
     if (have("ble"))    s.ble_enabled      = prefs.getBool("ble");
@@ -172,7 +176,7 @@ void settings_save(void)
     prefs.putBool("wx",       s.show_weather);
     prefs.putBool("hum",      s.show_humidity);
     prefs.putBool("burn",     s.burnin_guard);
-    prefs.putBool("rot",      s.rotate_180);
+    prefs.putUChar("rotd",    s.rotation);
     prefs.putBool("sun",      s.night_follows_sun);
     prefs.putBytes("apps",    s.app_order, sizeof(s.app_order));
     prefs.putBool("ble",      s.ble_enabled);
@@ -204,8 +208,8 @@ void settings_dump(const char *tag)
     Serial.printf("           bright day=%u night=%u  night %02u:00-%02u:00\n",
                   s.brightness_day, s.brightness_night,
                   s.night_start_hour, s.night_end_hour);
-    Serial.printf("           weather=%d humidity=%d burnin=%d rot180=%d\n",
-                  s.show_weather, s.show_humidity, s.burnin_guard, s.rotate_180);
+    Serial.printf("           weather=%d humidity=%d burnin=%d rot=%dx90\n",
+                  s.show_weather, s.show_humidity, s.burnin_guard, s.rotation);
     Serial.printf("           night_follows_sun=%d\n", s.night_follows_sun);
     Serial.printf("           ble=%d hid=%d as_keyboard=%d name=\"%s\"\n",
                   s.ble_enabled, s.ble_hid, s.ble_as_keyboard, s.ble_name);
