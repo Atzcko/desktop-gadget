@@ -11,6 +11,26 @@ Semantic versioning; the scheme and the release procedure live in [[CLAUDE]].
 The version is reported by the boot log, `GET /health` and Settings ▸ Info,
 each with a compiler build stamp so a stale flash is detectable.
 
+## v1.21.0 — 2026-08-23
+
+**A battery chip on the clock, and battery telemetry in `/health`.**
+([[D042 - The battery gauge is a voltage estimate]])
+
+- 46×22 battery glyph, top right, percentage inside. Grey normally, green on
+  the charger, red under 15 %. **Hidden when no battery is connected** — the
+  normal state of this device — and in line mode, where the weather strip owns
+  that corner. Rides the burn-in walk like everything else.
+- The SY6970 has no fuel gauge, so percent is a piecewise resting-curve
+  estimate from cell voltage: low under load, optimistic while charging (the
+  CV phase sits at 4.2 V long before full). The green is partly a disclaimer.
+- Polled every 30 s from the loop task — the PMU shares the internal I²C bus
+  with touch, so the bus keeps a single master (D018's rule, applied to
+  wires).
+- `/health` gains `battery{present, mv, pct, charging, vbus}`; `pct` is −1
+  with no battery.
+
+Telemetry, not power management: no low-battery shutdown, no deep sleep.
+
 ## v1.20.4 — 2026-08-22
 
 `GET /health` reports `current`, the screen now showing — promised by D039 and

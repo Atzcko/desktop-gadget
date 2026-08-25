@@ -1189,3 +1189,29 @@ bench tool must not do. GPIO0 is absent from its list by design (D036).
 Also wired `current` into `/health` — D039 claimed it and it had never been
 connected, which is exactly the kind of documentation drift the vault sweep was
 supposed to catch.
+
+## 2026-08-23 — A battery chip that knows what it does not know (v1.21.0)
+
+Follow-on from yesterday's battery-life question: a small battery glyph, top
+right of the clock, percentage inside.
+
+The constraint worth writing down is that the SY6970 is a charger, not a
+gauge — no coulomb counter, voltage only (its ADC was already enabled by the
+library's `beginAMOLED_241`, so the read path existed all along). Percent is
+therefore a piecewise resting-LiPo estimate, and the UI is designed around
+that honestly: green while charging partly as a disclaimer that the number
+leans optimistic (CV holds 4.2 V long before full), red under 15 %, grey
+otherwise, and *hidden entirely* when no battery is connected — which is this
+device's normal state, and a USB clock should not wear a battery icon.
+
+Placement details that matter: child of `root` so the burn-in walk carries
+it; hidden in line mode because the weather strip takes that corner; polled
+every 30 s from the loop task because the PMU shares the internal I²C bus
+with the touch controller — D018's single-master rule, applied to wires.
+
+`/health` gains `battery{present,mv,pct,charging,vbus}`. Verified on the
+device: `present:false, pct:-1` on USB with no cell attached, and the chip
+correctly absent from the clock. The percent path needs a battery plugged in
+to verify, which only the owner can do.
+
+[[D042 - The battery gauge is a voltage estimate]].

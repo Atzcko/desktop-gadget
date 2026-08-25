@@ -38,6 +38,8 @@ LV_FONT_DECLARE(fliqlo_mid);
 #define COL_TERTIARY    lv_color_hex(0x4E4E4E)
 #define COL_ACCENT      lv_color_hex(0x3C7DD9)
 #define COL_STALE       lv_color_hex(0x8A6A2A)
+#define COL_BAT_CHG     lv_color_hex(0x2FBF71)   /* charging: the green used everywhere */
+#define COL_BAT_LOW     lv_color_hex(0xE0483B)   /* under 15%, not charging */
 
 /* See D012 — every constant derives from the 116.8 px digit advance, and
  * every one of them is even so LVGL's even-coordinate rounder never
@@ -149,6 +151,13 @@ static lv_obj_t *lbl_ampm;
 static lv_obj_t *dot_stale;
 static lv_obj_t *lbl_info;
 static lv_timer_t *info_timer;
+
+/* Battery chip: body, nub, and the percentage inside. Hidden when no battery
+ * is connected — the normal, USB-powered state of this object — and while the
+ * line display owns the top-right corner. */
+static lv_obj_t *bat_body, *bat_nub, *bat_lbl;
+static bool      bat_present;
+static bool      bat_line_mode;
 
 static uint16_t scr_w, scr_h;
 static int      clock_x, clock_y;
@@ -736,6 +745,71 @@ void ui_init(uint16_t screen_w, uint16_t screen_h)
     lv_label_set_text(lbl_info, "");
     lv_obj_align(lbl_info, LV_ALIGN_BOTTOM_MID, 0, -14);
     lv_obj_add_flag(lbl_info, LV_OBJ_FLAG_HIDDEN);
+
+    /* Battery chip, top right. A child of root, so the burn-in walk moves it
+     * with everything else. 46x22 with the nub outside — small enough to
+     * ignore, big enough for "100" in montserrat 14. */
+    bat_body = lv_obj_create(root);
+    decor(bat_body);
+    lv_obj_set_size(bat_body, 46, 22);
+    lv_obj_set_style_radius(bat_body, 4, LV_PART_MAIN);
+    lv_obj_set_style_border_width(bat_body, 2, LV_PART_MAIN);
+    lv_obj_set_style_border_color(bat_body, COL_TERTIARY, LV_PART_MAIN);
+    lv_obj_align(bat_body, LV_ALIGN_TOP_RIGHT, -18, 12);
+
+    bat_nub = lv_obj_create(root);
+    decor(bat_nub);
+    lv_obj_set_size(bat_nub, 4, 10);
+    lv_obj_set_style_radius(bat_nub, 1, LV_PART_MAIN);
+    lv_obj_set_style_bg_color(bat_nub, COL_TERTIARY, LV_PART_MAIN);
+    lv_obj_set_style_bg_opa(bat_nub, LV_OPA_COVER, LV_PART_MAIN);
+    lv_obj_align_to(bat_nub, bat_body, LV_ALIGN_OUT_RIGHT_MID, 1, 0);
+
+    bat_lbl = lv_label_create(bat_body);
+    lv_obj_set_style_text_font(bat_lbl, &lv_font_montserrat_14, LV_PART_MAIN);
+    lv_obj_set_style_text_color(bat_lbl, COL_SECONDARY, LV_PART_MAIN);
+    lv_label_set_text(bat_lbl, "");
+    lv_obj_center(bat_lbl);
+
+    lv_obj_add_flag(bat_body, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_add_flag(bat_nub,  LV_OBJ_FLAG_HIDDEN);
+}
+
+static void bat_apply_visibility(void)
+{
+    const bool show = bat_present && !bat_line_mode;
+    if (show) {
+        lv_obj_clear_flag(bat_body, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_clear_flag(bat_nub,  LV_OBJ_FLAG_HIDDEN);
+    } else {
+        lv_obj_add_flag(bat_body, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(bat_nub,  LV_OBJ_FLAG_HIDDEN);
+    }
+}
+
+void ui_set_battery(bool present, int pct, bool charging)
+{
+    if (!bat_body) return;
+    bat_present = present;
+    if (present) {
+        if (pct < 0) pct = 0;
+        if (pct > 100) pct = 100;
+        char t[8];
+        snprintf(t, sizeof(t), "%d", pct);
+        lv_label_set_text(bat_lbl, t);
+
+        /* One colour, three states: green on the charger, red when it is
+         * genuinely time to worry, otherwise the same grey as every other
+         * secondary element on this screen. */
+        lv_color_t c = charging ? COL_BAT_CHG
+                     : (pct < 15 ? COL_BAT_LOW : COL_SECONDARY);
+        lv_obj_set_style_text_color(bat_lbl, c, LV_PART_MAIN);
+        lv_obj_set_style_bg_color(bat_nub, c, LV_PART_MAIN);
+        lv_obj_set_style_border_color(bat_body,
+                                      charging ? COL_BAT_CHG : COL_TERTIARY,
+                                      LV_PART_MAIN);
+    }
+    bat_apply_visibility();
 }
 
 lv_obj_t *ui_screen(void) { return scr_clock; }
@@ -1295,6 +1369,8 @@ static void enter_done_cb(lv_timer_t *tm)
 
 void ui_emotion_clear(void)
 {
+    bat_line_mode = false;
+    bat_apply_visibility();
     if (!layout_small && !wave) return;
 
     if (enter_timer) { lv_timer_del(enter_timer); enter_timer = nullptr; }
@@ -1314,6 +1390,10 @@ void ui_emotion_clear(void)
 
 void ui_emotion_show(uint8_t state, const char *message)
 {
+    /* The weather strip takes the top-right corner in line mode; the battery
+     * chip yields it. */
+    bat_line_mode = true;
+    bat_apply_visibility();
     emo_state = state;
     strncpy(pending_msg, message ? message : "", EMOTION_MSG_MAX);
     pending_msg[EMOTION_MSG_MAX] = '\0';

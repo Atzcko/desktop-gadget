@@ -308,8 +308,8 @@ curl -X POST http://flipclock.local/emotion \
 curl http://flipclock.local/health
 ```
 
-`/health` returns uptime, RSSI, IP, SSID, NTP state, weather age, BLE state
-and free PSRAM/heap.
+`/health` returns uptime, RSSI, IP, SSID, NTP state, weather age, battery
+(present/mv/pct/charging), BLE state and free PSRAM/heap.
 
 ### Python (HTTP **or** BLE)
 

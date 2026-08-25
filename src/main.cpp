@@ -32,6 +32,32 @@ static uint32_t next_burnin_ms = 0;
 
 /* -------------------------------------------------------- host callbacks -- */
 
+static BatteryState g_batt;
+BatteryState app_battery(void) { return g_batt; }
+
+/*
+ * Voltage -> percent, resting LiPo curve, linear between points. Honest about
+ * what it is: under load it reads low, on the charger it reads high (the CV
+ * phase holds the cell at 4.2 V long before it is full). D042.
+ */
+static int batt_percent(uint16_t mv)
+{
+    static const struct { uint16_t mv; uint8_t pct; } C[] = {
+        {4200,100},{4060,90},{3980,80},{3920,70},{3870,60},
+        {3820,50},{3790,40},{3770,30},{3740,20},{3680,10},{3450,0},
+    };
+    const unsigned N = sizeof(C) / sizeof(C[0]);
+    if (mv >= C[0].mv) return 100;
+    for (unsigned i = 1; i < N; i++) {
+        if (mv >= C[i].mv) {
+            const int span_mv  = C[i-1].mv - C[i].mv;
+            const int span_pct = C[i-1].pct - C[i].pct;
+            return C[i].pct + (int)(mv - C[i].mv) * span_pct / span_mv;
+        }
+    }
+    return 0;
+}
+
 void app_apply_brightness(uint8_t level)
 {
     if (level == applied_brightness) return;
@@ -231,6 +257,23 @@ void loop()
 
     static uint32_t next_tick = 0;
     uint32_t now = millis();
+
+    /*
+     * Battery, every 30 s, from THIS task: the PMU shares the internal I2C
+     * bus with the touch controller, and single-master discipline is the
+     * same rule as D018, applied to a bus instead of a widget tree. First
+     * read at 3 s so /health is honest soon after boot.
+     */
+    static uint32_t next_batt = 3000;
+    if (now >= next_batt) {
+        next_batt = now + 30000;
+        g_batt.present  = amoled.isBatteryConnect();
+        g_batt.vbus     = amoled.isVbusIn();
+        g_batt.charging = g_batt.present && amoled.isCharging();
+        g_batt.mv       = g_batt.present ? amoled.getBattVoltage() : 0;
+        g_batt.pct      = g_batt.present ? batt_percent(g_batt.mv) : -1;
+        ui_set_battery(g_batt.present, g_batt.pct, g_batt.charging);
+    }
 
     if (now >= next_tick) {
         next_tick = now + 200;

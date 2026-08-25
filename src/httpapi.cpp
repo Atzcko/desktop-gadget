@@ -2,6 +2,7 @@
 #include "emotion.h"
 #include "settings.h"
 #include "app_host.h"
+#include "app.h"
 #include "net.h"
 #include "version.h"
 #include "config.h"
@@ -45,6 +46,7 @@ static void send_err(AsyncWebServerRequest *req, int code, const char *msg)
 
 static void handle_health(AsyncWebServerRequest *req)
 {
+    const BatteryState bat = app_battery();
     NetStatus   st = net_status();
     WeatherData w  = net_weather();
     Settings   &s  = settings_get();
@@ -52,7 +54,7 @@ static void handle_health(AsyncWebServerRequest *req)
     uint32_t a = net_weather_age_s();
     long age = (a == UINT32_MAX) ? -1 : (long)a;
 
-    char body[640];
+    char body[768];
     snprintf(body, sizeof(body),
              "{\"ok\":true,"
              "\"version\":\"%s\","
@@ -70,6 +72,7 @@ static void handle_health(AsyncWebServerRequest *req)
              "\"humidity_pct\":%.0f,"
              "\"weather_code\":%d,"
              "\"is_day\":%s,"
+             "\"battery\":{\"present\":%s,\"mv\":%u,\"pct\":%d,\"charging\":%s,\"vbus\":%s},"
              "\"brightness\":{\"day\":%u,\"night\":%u,\"follows_sun\":%s},"
              "\"city\":\"%s\","
              "\"emotion\":{\"active\":%s,\"state\":\"%s\",\"remaining_s\":%u},"
@@ -91,6 +94,11 @@ static void handle_health(AsyncWebServerRequest *req)
              w.humidity,
              w.code,
              w.is_day ? "true" : "false",
+             bat.present  ? "true" : "false",
+             (unsigned)bat.mv,
+             bat.pct,
+             bat.charging ? "true" : "false",
+             bat.vbus     ? "true" : "false",
              s.brightness_day, s.brightness_night,
              s.night_follows_sun ? "true" : "false",
              s.city,
