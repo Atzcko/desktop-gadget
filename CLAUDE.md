@@ -167,6 +167,7 @@ level: an app returns to the drawer, the drawer returns to the clock.
 | Long press ≥ 1.2 s | cycle brightness |
 | Swipe up from the bottom edge | app drawer |
 | Swipe in from the left edge | back one level (app → drawer → clock) |
+| **Press BOOT** (back of the device) | cycle orientation, 90° per press |
 
 Settings tabs: **Wi-Fi** (scan / join), **Time** (zone, 24 h), **Place** (city search), **Screen** (brightness, night hours, toggles), **Info** (diagnostics, reset).
 

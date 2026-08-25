@@ -1245,3 +1245,39 @@ decision — the decision stands, the implementation fact is new.
 Also per the owner: the chip is white now — border, nub, number in the
 digits' white instead of grey. Green (charging) and red (< 15 %) stay;
 those are information, not decoration.
+
+## 2026-08-25 — Any orientation, and the button that floated (v1.22.0, v1.22.1)
+
+The ask: work in any orientation, BOOT cycles 90° per press. The library had
+all four rotations with touch remapping waiting since Stage 0; the firmware
+did not — every screen was 600×450, and the line mode's zoom canvas renders
+both cards side by side, 572 px that portrait cannot hold.
+
+The shape of the solution is three tiers ([[D043 - Orientation is the clock's job; apps borrow landscape]]):
+clock and drawer are orientation-native (portrait stacks the cards, Fliqlo's
+own phone layout; the drawer wraps three wide); apps borrow the nearest
+landscape from the host and give it back on exit; portrait line mode takes
+the no-canvas fade that had always been the fallback. `ui_init` became
+re-entrant for this — the prologue kills the previous build's timers, frees
+the 265 KB zoom buffer, and NULLs every lazily-created static, because the
+objects die with the old screen but the statics do not.
+
+Two of this project's own rules made the remote proof possible: `/rotate`
+exists because of D039 (a feature nobody can verify without a finger is a
+checklist item), and the verification promptly earned its keep — **the first
+cycle test caught a phantom BOOT press** (asked 180, landed 90). The pin was
+floating: the "external 10 K pull-up" the code trusted was an unverified
+claim in our own T4-S3 reference note, and the schematic shows none.
+`INPUT_PULLUP` fixed it; the note is corrected in place with the correction
+visible rather than quietly rewritten. Same genre as the battery
+`isBatteryConnect()` lesson two days ago: a reference note is only as good as
+what was actually checked, and this time the bad reference was mine.
+
+Verified over HTTP through all four orientations twice, then
+portrait→Timer→back (host forced landscape and restored), uptime climbing
+through roughly ten screen rebuilds. Left the device at the owner's 180.
+
+What the fingers still have to check: that the portrait layouts *look* right
+(stacked cards, weather row, wrapped drawer), that a physical BOOT press
+cycles once and only once, and that the line display's portrait fade reads
+acceptably from across the desk.

@@ -11,6 +11,32 @@ Semantic versioning; the scheme and the release procedure live in [[CLAUDE]].
 The version is reported by the boot log, `GET /health` and Settings ▸ Info,
 each with a compiler build stamp so a stale flash is detectable.
 
+## v1.22.1 — 2026-08-25
+
+**BOOT uses the internal pull-up.** The first remote rotation test caught a
+phantom press — asked 180, landed 90. The "external 10 K pull-up" the code
+trusted was an unverified claim in our own T4-S3 note; the schematic shows
+none, so plain `INPUT` floated. The note is corrected, not quietly edited.
+
+## v1.22.0 — 2026-08-25
+
+**Any orientation, and BOOT cycles them 90° per press.**
+([[D043 - Orientation is the clock's job; apps borrow landscape]])
+
+- Portrait clock: hours over minutes, no colon — Fliqlo's own phone layout.
+  `ui_init` is re-entrant; a live change rebuilds the clock for the new shape.
+- The drawer wraps three tiles wide in portrait. Apps stay 600×450 and the
+  host lends them the nearest landscape, restoring on the way out.
+- Portrait line mode routes through the no-canvas fade — the zoom renders the
+  cards side by side, and 572 px cannot fit 450.
+- `settings.rotation` (0–3) migrates from the old `rotate_180` bool. The
+  Settings switch became a Rotation selector applied on Save; BOOT is the
+  live control. `POST /rotate {"deg":..}` drives it over HTTP; `/health`
+  reports `rotation`.
+- Verified remotely through all four orientations twice, plus
+  portrait→Timer→clock forcing and restoring landscape, uptime climbing
+  throughout.
+
 ## v1.21.1 — 2026-08-23
 
 **The chip no longer vanishes when USB is unplugged — which was the bug, and

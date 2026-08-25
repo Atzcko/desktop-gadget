@@ -95,6 +95,7 @@ bridge is the only way. See [[CLAUDE]].
 | [[D032 - Three gestures, one control]] | Drag coarse, tap exact, hold repeat — one card does all three |
 | [[D033 - Back goes one level, not home]] | app → drawer → clock; one function owns what back means |
 | [[D034 - Updates ship over the air]] | POST /update to the ota_1 slot that was always in the table |
+| [[D043 - Orientation is the clock's job; apps borrow landscape]] | Clock and drawer go portrait; apps get lent a landscape panel |
 | [[D042 - The battery gauge is a voltage estimate]] | SY6970 has no fuel gauge; the chip is honest about it |
 | [[D041 - Nothing may unwind through a live interpreter]] | A binding may request a lifecycle change, never perform one |
 | [[D040 - A script must not be able to reboot the clock]] | -DFOO=0 enables a defined()-guarded macro; and pcall everything |
