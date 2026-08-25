@@ -236,10 +236,12 @@ void setup()
 
     beginLvglHelper(amoled);
 
-    /* BOOT as an orientation button. External 10 K pull-up on the board;
-     * explicit INPUT so a Lab session's leftover mode cannot change what
-     * digitalRead(0) means here. */
-    pinMode(0, INPUT);
+    /* BOOT as an orientation button, with the INTERNAL pull-up. Plain INPUT
+     * left the pin floating and the very first remote test caught a phantom
+     * press corrupting an orientation change — the "external 10 K pull-up"
+     * this code first trusted was an unverified claim in our own reference
+     * note, now corrected. The library's own examples use INPUT_PULLUP. */
+    pinMode(0, INPUT_PULLUP);
 
     ui_init(amoled.width(), amoled.height());
     ui_show_weather_block(s.show_weather);
