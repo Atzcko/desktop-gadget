@@ -90,7 +90,7 @@ static void decor(lv_obj_t *o)
 static void release_input(void) { lv_indev_reset(nullptr, nullptr); }
 
 /* Defined beside app_host_launch, used from home/back as well. */
-static void force_landscape_for_app(void);
+static void force_landscape_for_app(const App *app);
 static void restore_user_rotation(void);
 
 bool app_host_is_open(void) { return drawer != nullptr || running != nullptr; }

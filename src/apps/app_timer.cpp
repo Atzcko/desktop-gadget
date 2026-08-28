@@ -490,4 +490,4 @@ static void timer_tick(void)
  * this symbol and the link fails with "undefined reference to app_timer".
  */
 extern const App app_timer = { "Timer", timer_icon, timer_create, timer_destroy,
-                               timer_tick, nullptr };
+                               timer_tick, nullptr, /*portrait_ok=*/true };

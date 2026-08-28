@@ -64,6 +64,7 @@ static void handle_health(AsyncWebServerRequest *req)
              "\"git\":\"%s\","
              "\"current\":\"%s\","
              "\"rotation\":%u,"
+             "\"panel\":\"%dx%d\","
              "\"uptime_s\":%lu,"
              "\"rssi\":%d,"
              "\"ip\":\"%s\","
@@ -88,6 +89,7 @@ static void handle_health(AsyncWebServerRequest *req)
              FW_GIT,
              app_host_current(),
              (unsigned)(settings_get().rotation * 90u),
+             (int)lv_disp_get_hor_res(nullptr), (int)lv_disp_get_ver_res(nullptr),
              (unsigned long)(millis() / 1000UL),
              st.rssi,
              st.wifi_up ? st.ip : "",

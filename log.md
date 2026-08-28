@@ -1379,3 +1379,28 @@ flash-erase theory and leaves TCP-window pressure during long writes as the
 open suspect. tools/ota now retries three times and says so, rather than
 pretending a first-try failure is fatal. Worth a real look if images keep
 growing.
+
+## 2026-08-28 — The flag that silently never shipped (v1.24.2)
+
+Owner: Timer still has no portrait mode. Correct — and the cause is a genre
+this log already documents from the other side. The v1.24.0 patch script that
+added `portrait_ok=true` to the timer's initializer DIED on an earlier assert
+in the same run; every patch after the failure never applied, the six-field
+aggregate initializer stayed legal C++ (missing fields value-initialize to
+false), the build succeeded, and the host dutifully forced landscape on the
+one app whose portrait layout was the headline. The assert-every-patch rule
+caught the collision and then the recovery only replayed the patch that had
+FAILED, not the ones queued behind it. New rule for the rescue pass: after
+any aborted patch script, re-verify every patch it contained, not just the
+one that raised.
+
+The deeper hole: my remote verification could not have caught it. /health
+reported the rotation SETTING while forced-landscape changes the PANEL behind
+the setting's back — the test read "rot 90, current Timer" while the panel
+sat at 600x450. /health now reports `panel` (live LVGL resolution), so a
+silently-borrowed landscape is visible from a shell. Verified after the fix:
+rot 90 + Timer -> panel 450x600.
+
+Also fixed in passing: the stale `force_landscape_for_app(void)` forward
+declaration — C++ treated it as an unused overload declaration, so it
+compiled clean while lying to the reader.
