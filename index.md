@@ -95,6 +95,7 @@ bridge is the only way. See [[CLAUDE]].
 | [[D032 - Three gestures, one control]] | Drag coarse, tap exact, hold repeat — one card does all three |
 | [[D033 - Back goes one level, not home]] | app → drawer → clock; one function owns what back means |
 | [[D034 - Updates ship over the air]] | POST /update to the ota_1 slot that was always in the table |
+| [[D047 - Messages are conversations, and the clock wears the badge]] | Threads + bubbles; contacts learned from every direction |
 | [[D046 - Gadgets message over HTTP and mDNS]] | Identity is the device name; the server was already listening |
 | [[D045 - One chrome, every shape]] | One back chip, every app portrait-native; scripts tag in |
 | [[D044 - Coulombs where measurable, model where not]] | Charge is counted, discharge is modelled and voltage-tethered |

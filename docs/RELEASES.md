@@ -11,6 +11,32 @@ Semantic versioning; the scheme and the release procedure live in [[CLAUDE]].
 The version is reported by the boot log, `GET /health` and Settings ▸ Info,
 each with a compiler build stamp so a stale flash is detectable.
 
+## v1.25.0 — 2026-08-28
+
+**Messages looks like a messenger now.**
+([[D047 - Messages are conversations, and the clock wears the badge]])
+
+- Chats list → thread of bubbles (theirs charcoal left, ours green right),
+  composer on the keyboard; New takes a **name or an IP** typed directly.
+- The contact book learns addresses from scans, from sends, and from the
+  source IP of everything received — replying never needs a scan.
+- **An envelope badge on the clock** (top-left, tappable → opens Messages,
+  yields to line mode like the battery chip) appears when something arrives
+  and clears when you read it.
+- `/messages` reports direction, peer and `unread`.
+
+*Release-discipline note:* the first push of this feature went out without
+the version bump — the image changed, `FW_VERSION` did not, and only the git
+hash in `/health` told the truth. `FW_GIT` existing is what made the slip
+visible; this entry and the re-push are the correction.
+
+## v1.24.2 — 2026-08-28
+
+**Restores the Timer's portrait_ok flag** — lost when a patch script died on
+an earlier assert and everything queued behind it silently never applied.
+`/health` gains `panel` (the live LVGL resolution) so a silently-borrowed
+landscape can never again hide from remote verification.
+
 ## v1.24.1 — 2026-08-28
 
 **Rotation happens IN the app now.** v1.22.0 sent you to the clock on every
