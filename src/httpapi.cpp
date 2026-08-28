@@ -85,7 +85,8 @@ static void handle_health(AsyncWebServerRequest *req)
              "\"brightness\":{\"day\":%u,\"night\":%u,\"follows_sun\":%s},"
              "\"city\":\"%s\","
              "\"emotion\":{\"active\":%s,\"state\":\"%s\",\"remaining_s\":%u},"
-             "\"ble\":{\"running\":%s,\"connected\":%s,\"name\":\"%s\"},"
+             "\"ble\":{\"running\":%s,\"connected\":%s,\"name\":\"%s\","
+             "\"subs\":{\"mouse\":%d,\"key\":%d}},"
              "\"free_psram\":%u,"
              "\"free_heap\":%u}",
              FW_VERSION,
@@ -122,6 +123,8 @@ static void handle_health(AsyncWebServerRequest *req)
              ble_is_running()   ? "true" : "false",
              ble_is_connected() ? "true" : "false",
              s.ble_name,
+             ble_mouse_subs(),
+             ble_key_subs(),
              (unsigned)ESP.getFreePsram(),
              (unsigned)ESP.getFreeHeap());
 

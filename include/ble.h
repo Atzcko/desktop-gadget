@@ -22,6 +22,11 @@ bool ble_mouse(uint8_t buttons, int8_t dx, int8_t dy, int8_t wheel);
  * bit1 = left shift. US usage codes (D052). */
 bool ble_key(uint8_t modifiers, uint8_t keycode);
 
+/* How many hosts subscribed to each input report; -1 = report absent.
+ * 0 on a connected host means the bond predates the report map (re-pair). */
+int ble_mouse_subs(void);
+int ble_key_subs(void);
+
 /* Forget every bonded host. Use when macOS pairing gets into a bad state:
  * the Mac remembers a bond the device has forgotten, or vice versa. */
 void ble_clear_bonds(void);

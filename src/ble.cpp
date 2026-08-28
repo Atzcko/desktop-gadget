@@ -102,36 +102,6 @@ static const uint8_t HID_REPORT_MAP[] = {
     0xC0,              /*   End Collection                     */
     0xC0,              /* End Collection                       */
 
-    /*
-     * Standard keyboard, Report ID 3 (D052). Both identities carry it: the
-     * owner asked the gadget to type, so "cannot be mistaken for a keyboard"
-     * (D022) is deliberately traded for "is one, on request". 8-byte boot
-     * report: modifiers, reserved, six keycodes.
-     */
-    0x05, 0x01,        /* Usage Page (Generic Desktop)         */
-    0x09, 0x06,        /* Usage (Keyboard)                     */
-    0xA1, 0x01,        /* Collection (Application)             */
-    0x85, 0x03,        /*   Report ID (3)                      */
-    0x05, 0x07,        /*   Usage Page (Key Codes)             */
-    0x19, 0xE0,        /*   Usage Minimum (224)                */
-    0x29, 0xE7,        /*   Usage Maximum (231)                */
-    0x15, 0x00,        /*   Logical Minimum (0)                */
-    0x25, 0x01,        /*   Logical Maximum (1)                */
-    0x75, 0x01,        /*   Report Size (1)                    */
-    0x95, 0x08,        /*   Report Count (8)                   */
-    0x81, 0x02,        /*   Input (Var) modifiers              */
-    0x95, 0x01,        /*   Report Count (1)                   */
-    0x75, 0x08,        /*   Report Size (8)                    */
-    0x81, 0x01,        /*   Input (Const) reserved             */
-    0x95, 0x06,        /*   Report Count (6)                   */
-    0x75, 0x08,        /*   Report Size (8)                    */
-    0x15, 0x00,        /*   Logical Minimum (0)                */
-    0x25, 0x65,        /*   Logical Maximum (101)              */
-    0x05, 0x07,        /*   Usage Page (Key Codes)             */
-    0x19, 0x00,        /*   Usage Minimum (0)                  */
-    0x29, 0x65,        /*   Usage Maximum (101)                */
-    0x81, 0x00,        /*   Input (Array) keys                 */
-    0xC0,              /* End Collection                       */
 };
 
 /*
@@ -379,15 +349,18 @@ void ble_begin(void)
 
         if (s.ble_as_keyboard) {
             hid->reportMap((uint8_t *)HID_REPORT_MAP, sizeof(HID_REPORT_MAP));
-            hid->inputReport(1);
+            /* The fallback identity IS a keyboard on ID 1 — typing uses
+             * that native report; a second keyboard collection would be a
+             * malformed map (v1.30.1). */
+            key_input = hid->inputReport(1);
         } else {
             hid->reportMap((uint8_t *)GADGET_REPORT_MAP, sizeof(GADGET_REPORT_MAP));
             hid->inputReport(1);
             NimBLECharacteristic *out = hid->outputReport(1);
             out->setCallbacks(&hid_out_cb);
+            key_input = hid->inputReport(3);    /* gadget identity: ID 3   */
         }
         mouse_input = hid->inputReport(2);      /* both identities (D051) */
-        key_input   = hid->inputReport(3);      /* both identities (D052) */
         hid->startServices();
     }
 
@@ -522,3 +495,9 @@ bool ble_key(uint8_t modifiers, uint8_t keycode)
     key_input->notify();
     return true;
 }
+
+/* Subscription truth for /health: a bonded host that paired against an older
+ * report map subscribes to nothing new, and that silence is otherwise
+ * indistinguishable from every other keyboard failure (v1.30.1). */
+int ble_mouse_subs(void) { return mouse_input ? (int)mouse_input->getSubscribedCount() : -1; }
+int ble_key_subs(void)   { return key_input   ? (int)key_input->getSubscribedCount()   : -1; }
