@@ -32,9 +32,21 @@ for h in "${HOSTS[@]}"; do
 
     echo "ota: $h is running $before"
     echo "ota: pushing $(stat -f %z "$BIN") bytes"
-    if ! curl -sf -X POST -H "Content-Type: application/octet-stream" \
-              --data-binary @"$BIN" "http://$h/update" >/dev/null; then
-        echo "ota: push failed (device said no — see its serial log)"
+    # Images past ~2 MB intermittently drop the connection mid-body (seen
+    # from v1.24.0 on; varying offsets, device stays healthy). A retry has
+    # always landed within three attempts. Root cause unproven - suspected
+    # flash-erase stalls vs the TCP window - so retry rather than pretend.
+    pushed=""
+    for attempt in 1 2 3; do
+        if curl -sf --max-time 90 -X POST -H "Content-Type: application/octet-stream" \
+                --data-binary @"$BIN" "http://$h/update" >/dev/null; then
+            pushed=yes; break
+        fi
+        echo "ota: attempt $attempt failed mid-transfer, retrying"
+        sleep 3
+    done
+    if [ -z "$pushed" ]; then
+        echo "ota: push failed three times (see the device's serial log)"
         exit 1
     fi
 

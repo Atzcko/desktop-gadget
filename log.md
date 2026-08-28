@@ -1370,3 +1370,12 @@ already knows how to be born into whatever shape the display is.
 Stated casualty: rotating inside Settings discards unsaved edits. Blink
 rewritten with the portrait_ok tag and SCREEN_W/H branching — the first
 script to use both.
+
+Addendum, same day: OTA pushes of the now-2.08 MB image intermittently drop
+mid-body at varying offsets (four failures across v1.24.0/1.24.1 deliveries;
+the device stays healthy and a retry has always landed within three). Root
+cause unproven — pacing the transfer made it WORSE, which argues against the
+flash-erase theory and leaves TCP-window pressure during long writes as the
+open suspect. tools/ota now retries three times and says so, rather than
+pretending a first-try failure is fatal. Worth a real look if images keep
+growing.
