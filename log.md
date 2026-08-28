@@ -1600,3 +1600,18 @@ changed, so the existing bond is a lie until both sides forget and re-pair.
 
 Shipped OTA; motion itself is physically unverifiable from here - the owner
 has the only cursor.
+
+## 2026-08-28 — The scroller nobody could reach (v1.29.1)
+
+Owner: cannot see the Trackpad app in portrait. The drawer HAS a vertical
+scroller since v1.19.1 - but the tile cells were decor()'d, and decor()
+clears SCROLL_CHAIN, so any drag beginning on a tile stopped dead at the
+cell. Scrolling technically worked... from the 22 px gutters between tiles.
+Landscape hid the bug for nine releases because its rows always fit.
+
+decor() is the right hygiene for ornaments (D014) and exactly wrong for a
+container whose children must pass drags upward - same flag, opposite need.
+The cell now keeps the chain and loses everything else, and the drawer
+height computes from the live display (another landscape 332 hiding in a
+portrait world). Third row reachable, and portrait shows one more row
+before scrolling at all.

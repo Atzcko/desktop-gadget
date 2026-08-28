@@ -309,9 +309,10 @@ static void build_drawer(void)
      * the bottom 20 px of a cell, the fifth app appeared as a nameless blank
      * square. See D041.
      */
-    /* PCT, not 600: since D043 the drawer lays itself out in portrait too,
-     * where 450 wide wraps the tiles three to a row. */
-    lv_obj_set_size(row, LV_PCT(100), 332);
+    /* PCT wide; height is whatever sits between the title and the strip —
+     * a landscape constant here is why portrait could not reach its third
+     * row of tiles (v1.29.1). */
+    lv_obj_set_size(row, LV_PCT(100), lv_disp_get_ver_res(nullptr) - 56 - 76);
     lv_obj_align(row, LV_ALIGN_TOP_MID, 0, 52);
     lv_obj_set_flex_flow(row, LV_FLEX_FLOW_ROW_WRAP);
     lv_obj_set_flex_align(row, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER,
@@ -327,7 +328,16 @@ static void build_drawer(void)
         if (!app) continue;
 
         lv_obj_t *cell = lv_obj_create(row);
-        decor(cell);
+        /*
+         * NOT decor(): that clears SCROLL_CHAIN, and the chain is how a drag
+         * that starts on a tile reaches the row's scroller. With it cleared,
+         * scrolling only worked from the 22 px gaps BETWEEN tiles — which is
+         * why portrait's third row was unreachable (v1.29.1). The cell keeps
+         * the chain, loses everything else.
+         */
+        lv_obj_remove_style_all(cell);
+        lv_obj_clear_flag(cell, LV_OBJ_FLAG_CLICKABLE);
+        lv_obj_clear_flag(cell, LV_OBJ_FLAG_SCROLLABLE);
         lv_obj_set_size(cell, TILE, TILE + 40);
 
         lv_obj_t *tile = lv_obj_create(cell);

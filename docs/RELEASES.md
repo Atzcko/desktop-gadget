@@ -11,6 +11,18 @@ Semantic versioning; the scheme and the release procedure live in [[CLAUDE]].
 The version is reported by the boot log, `GET /health` and Settings ▸ Info,
 each with a compiler build stamp so a stale flash is detectable.
 
+## v1.29.1 — 2026-08-28
+
+**The drawer scrolls again — from anywhere, in both shapes.** It always had
+a vertical scroller, but the tile CELLS went through `decor()`, which strips
+`SCROLL_CHAIN` — so a drag starting on a tile (99 % of the surface) died at
+the cell, and scrolling only worked from the 22 px gaps between tiles.
+Landscape never noticed because its two rows fit; portrait's third row
+(Trackpad, and any script) was unreachable. Cells now keep the chain, and
+the drawer's height is computed from the live display instead of a
+landscape constant, so portrait also SHOWS a full extra row before
+scrolling at all.
+
 ## v1.29.0 — 2026-08-28
 
 **The clock is a Bluetooth trackpad.**
