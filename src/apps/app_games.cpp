@@ -377,6 +377,8 @@ static uint16_t     gb_pal[4];
 /* zone rects, computed per orientation: {x1,y1,x2,y2,joypad_bit} */
 static int          gb_zones[8][5];
 static int          gb_zone_n;
+static char         gb_cart_path[40];
+static void games_request_open(int which);   /* defined with the tick */
 
 static uint8_t gb_rom_read_cb(struct gb_s *, const uint_fast32_t addr)
 {
@@ -496,11 +498,59 @@ static void gb_open(void)
     lv_label_set_long_mode(gb_msg, LV_LABEL_LONG_WRAP);
     lv_obj_align(gb_msg, LV_ALIGN_TOP_MID, 0, 8);
 
-    File f = LittleFS.open("/roms/boot.gb", "r");
+    /* The shelf (v1.36.0): every /roms/*.gb is a cartridge. One boots
+     * directly; several show a picker, one row per cart. */
+    if (!gb_cart_path[0]) {
+        char carts[6][32];
+        int  cn = 0;
+        File dir = LittleFS.open("/roms");
+        if (dir && dir.isDirectory()) {
+            for (File e = dir.openNextFile(); e && cn < 6; e = dir.openNextFile()) {
+                const char *fn = strrchr(e.name(), '/');
+                fn = fn ? fn + 1 : e.name();
+                if (strstr(fn, ".gb") && e.size() >= 0x150)
+                    snprintf(carts[cn++], sizeof(carts[0]), "%s", fn);
+                e.close();
+            }
+            dir.close();
+        }
+        if (cn == 0) {
+            lv_label_set_text(gb_msg, "No cartridge.\n\nUpload one from the Mac:\n"
+                                      "tools/rom <game.gb>\n\n"
+                                      "Homebrew ROMs only - Libbet ships with the repo.");
+            return;
+        }
+        if (cn == 1) {
+            snprintf(gb_cart_path, sizeof(gb_cart_path), "/roms/%s", carts[0]);
+        } else {
+            lv_label_set_text(gb_msg, "Pick a cartridge");
+            for (int i = 0; i < cn; i++) {
+                lv_obj_t *row = lv_btn_create(game_view);
+                lv_obj_set_size(row, LV_PCT(80), 52);
+                lv_obj_align(row, LV_ALIGN_TOP_MID, 0, 48 + i * 62);
+                lv_obj_set_style_bg_color(row, lv_color_hex(0x161616), LV_PART_MAIN);
+                lv_obj_set_style_radius(row, 12, LV_PART_MAIN);
+                static char paths[6][40];
+                snprintf(paths[i], sizeof(paths[0]), "/roms/%s", carts[i]);
+                lv_obj_add_event_cb(row, [](lv_event_t *e) {
+                    snprintf(gb_cart_path, sizeof(gb_cart_path), "%s",
+                             (const char *)lv_event_get_user_data(e));
+                    games_request_open(2);       /* reopen straight into it */
+                }, LV_EVENT_CLICKED, (void *)paths[i]);
+                lv_obj_t *l = lv_label_create(row);
+                lv_obj_set_style_text_font(l, &lv_font_montserrat_20, LV_PART_MAIN);
+                lv_obj_set_style_text_color(l, COL_TEXT, LV_PART_MAIN);
+                lv_label_set_text(l, carts[i]);
+                lv_obj_center(l);
+            }
+            return;                              /* picker showing; no boot */
+        }
+    }
+
+    File f = LittleFS.open(gb_cart_path, "r");
     if (!f || f.size() < 0x150) {
-        lv_label_set_text(gb_msg, "No cartridge.\n\nUpload one from the Mac:\n"
-                                  "tools/rom <game.gb>\n\n"
-                                  "Homebrew ROMs only - Libbet ships with the repo.");
+        lv_label_set_text(gb_msg, "cartridge unreadable");
+        gb_cart_path[0] = '\0';
         if (f) f.close();
         return;
     }
@@ -524,7 +574,11 @@ static void gb_open(void)
         gb_cram = (uint8_t *)heap_caps_malloc(save, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
         if (gb_cram) {
             memset(gb_cram, 0xFF, save);
-            File sf = LittleFS.open("/roms/boot.sav", "r");
+            char sav[44];
+            snprintf(sav, sizeof(sav), "%s", gb_cart_path);
+            char *dot = strstr(sav, ".gb");
+            if (dot) snprintf(dot, sizeof(sav) - (dot - sav), ".sav");
+            File sf = LittleFS.open(sav, "r");
             if (sf) { sf.read(gb_cram, save); sf.close(); }
         }
     }
@@ -570,7 +624,11 @@ static void gb_close(void)
         size_t save = 0;
         gb_get_save_size_s(&gb, &save);
         if (save) {
-            File sf = LittleFS.open("/roms/boot.sav", "w");
+            char sav[44];
+            snprintf(sav, sizeof(sav), "%s", gb_cart_path);
+            char *dot = strstr(sav, ".gb");
+            if (dot) snprintf(dot, sizeof(sav) - (dot - sav), ".sav");
+            File sf = LittleFS.open(sav, "w");
             if (sf) { sf.write(gb_cram, save); sf.close(); }
         }
         heap_caps_free(gb_cram); gb_cram = nullptr;
@@ -672,7 +730,7 @@ static void menu_build(void)
 
 static void game_close(void)
 {
-    if (view == V_GB) gb_close();
+    if (view == V_GB) { gb_close(); gb_cart_path[0] = '\0'; }
     if (view == V_SNAKE) {
         if (sn_buf)  { heap_caps_free(sn_buf);  sn_buf = nullptr; }
         if (sn_body) { heap_caps_free(sn_body); sn_body = nullptr; }
@@ -751,7 +809,8 @@ static void games_destroy(void)
 /* Remote pick, for shell-driven verification (D039): the same entry the
  * chooser cards use, consumed on the app's own tick. */
 static volatile int games_pending_pick = -1;
-void games_request_open(int which) { games_pending_pick = which; }
+static void games_request_open(int which) { games_pending_pick = which; }
+extern "C" void games_request_open_c(int which) { games_request_open(which); }
 
 static void games_tick(void)
 {

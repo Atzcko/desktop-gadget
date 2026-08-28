@@ -40,6 +40,14 @@ downloaded Peanut-GB themselves (found extracted in ~/Downloads) and said
 - Frame pacing: one `gb_run_frame()` per 16 ms on the LVGL task (the
   emulator costs a few ms at 240 MHz), full-canvas invalidate per frame.
 
+## Amended same day (v1.35.1, v1.36.0)
+
+The zones shipped invisible — hitboxes with no chrome, reported by the
+owner within the hour. They now draw themselves from the same table the
+hit-test reads. And the single `boot.gb` slot became a SHELF: every
+`/roms/*.gb` is a cartridge, a picker appears when there is more than one,
+and saves are per-cart. `tools/rom` keeps filenames.
+
 ## Consequences
 
 - The chooser's third card is live; ~330 KB PSRAM while playing (ROM +

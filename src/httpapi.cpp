@@ -7,6 +7,8 @@
 #include "theme.h"
 #include "yt.h"
 #include <LittleFS.h>
+
+extern "C" void games_request_open_c(int);
 #include "app.h"
 #include "app.h"
 #include "net.h"
@@ -688,13 +690,12 @@ void httpapi_begin(void)
         if (index == 0) buf = "";
         buf.concat((const char *)data, len);
         if (index + len != total) return;
-        extern void games_request_open(int);
         int w = -1;
         if      (strstr(buf.c_str(), "snake"))    w = 0;
         else if (strstr(buf.c_str(), "breakout")) w = 1;
         else if (strstr(buf.c_str(), "gameboy"))  w = 2;
         if (w < 0) { send_err(req, 400, "expected snake|breakout|gameboy"); return; }
-        games_request_open(w);
+        games_request_open_c(w);
         req->send(200, "application/json", "{\"ok\":true}");
     });
 
@@ -707,8 +708,17 @@ void httpapi_begin(void)
         static File rf;
         if (index == 0) {
             LittleFS.mkdir("/roms");
-            rf = LittleFS.open("/roms/boot.gb", "w");
-            LittleFS.remove("/roms/boot.sav");   /* new cart, fresh save */
+            char path[48] = "/roms/boot.gb";
+            if (req->hasParam("name")) {
+                String nm = req->getParam("name")->value();
+                nm.replace("/", "");             /* stay inside /roms */
+                if (nm.endsWith(".gb") && nm.length() < 32)
+                    snprintf(path, sizeof(path), "/roms/%s", nm.c_str());
+            }
+            rf = LittleFS.open(path, "w");
+            String sav = String(path);
+            sav.replace(".gb", ".sav");
+            LittleFS.remove(sav);                /* new cart, fresh save  */
         }
         if (rf) rf.write(data, len);
         if (index + len == total && rf) { rf.close(); Serial.printf("[gb] cart %u bytes\n", (unsigned)total); }

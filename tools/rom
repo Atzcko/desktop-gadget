@@ -9,8 +9,9 @@ HOSTS=()
 HOSTS+=("flipclock.local")
 for h in "${HOSTS[@]}"; do
     [ -z "$h" ] && continue
+    NAME=$(basename "$1")
     if curl -sf --max-time 20 -X POST -H "Content-Type: application/octet-stream" \
-            --data-binary @"$1" "http://$h/rom" >/dev/null; then
+            --data-binary @"$1" "http://$h/rom?name=$NAME" >/dev/null; then
         echo "rom: $(basename "$1") ($(stat -f %z "$1") bytes) loaded - open Games > Game Boy"
         exit 0
     fi

@@ -23,6 +23,17 @@ the drawer's height is computed from the live display instead of a
 landscape constant, so portrait also SHOWS a full extra row before
 scrolling at all.
 
+## v1.36.0 — 2026-08-28
+
+**The Game Boy grew a cartridge shelf, and its controls became visible.**
+Every zone now draws a dim outline and label FROM the hit-test table (what
+you see is exactly where it works) — they were invisible hitboxes before,
+which is also why "controls" were reported missing. `/roms/*.gb` are all
+cartridges now: one boots straight in, several show a picker; saves are
+per-cart; `tools/rom` uploads by filename. `POST /games` drives the chooser
+from a shell, which is how all six game transitions were verified without a
+finger.
+
 ## v1.35.0 — 2026-08-28
 
 **The Game Boy is real** ([[D056 - A real Game Boy lives in the arcade]]).

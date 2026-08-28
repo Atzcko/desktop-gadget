@@ -1811,3 +1811,20 @@ Three implementation notes:
 
 Also spotted in ~/Downloads and recorded in [[Enclosure]]: DG_Case.stl,
 DG_Buttons.stl, DG_Switch.stl - the owner is printing the case.
+
+## 2026-08-28 — Invisible controls and the shelf (v1.35.1, v1.36.0)
+
+Owner: cannot see the controls, and only one game loads. The first was
+plain embarrassment - I shipped HITBOXES with no chrome, a gamepad you had
+to imagine. Zones now draw a dim outline+label from the same table the
+hit-test reads, so the drawing cannot drift from the touch (the theme-app
+swatch trick, reused for input).
+
+The second report earned its keep twice. First it produced the remote
+picker seam (POST /games), and driving all six game transitions from the
+shell proved the chooser was NEVER broken - every launch clean, heap flat.
+Which reframed the report correctly: "only one game" meant the Game Boy
+itself, single boot.gb slot by design. Fair ask, so the slot became a
+shelf: /roms/*.gb all count, a picker appears past one cart, saves are
+per-cart, tools/rom keeps filenames. The lesson logged: when a report
+survives the first fix, re-read it literally.
