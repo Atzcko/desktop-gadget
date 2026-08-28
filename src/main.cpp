@@ -394,6 +394,14 @@ void loop()
         ui_set_battery(g_batt.present, g_batt.pct, g_batt.charging);
     }
 
+    /* The clock's unread badge follows the message store (D047). Cheap:
+     * two volatile reads and a comparison. */
+    static int shown_unread = -1;
+    if (msg_unread() != shown_unread) {
+        shown_unread = msg_unread();
+        ui_set_unread(shown_unread);
+    }
+
     if (now >= next_tick) {
         next_tick = now + 200;
 

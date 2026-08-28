@@ -156,6 +156,8 @@ static lv_timer_t *info_timer;
  * is connected — the normal, USB-powered state of this object — and while the
  * line display owns the top-right corner. */
 static lv_obj_t *bat_body, *bat_nub, *bat_lbl;
+static lv_obj_t *unread_badge;
+static int       unread_n;
 static bool      bat_present;
 static bool      bat_line_mode;
 
@@ -599,6 +601,7 @@ void ui_init(uint16_t screen_w, uint16_t screen_h)
         emotion_teardown_for_reinit();      /* timers + lazy statics, defined
                                              * beside the statics it clears */
         zoom_canvas = nullptr;
+        unread_badge = nullptr;
         if (zoom_buf)    { free(zoom_buf); zoom_buf = nullptr; }
         bat_line_mode = false;
     }
@@ -788,6 +791,25 @@ void ui_init(uint16_t screen_w, uint16_t screen_h)
     /* Battery chip, top right. A child of root, so the burn-in walk moves it
      * with everything else. 46x22 with the nub outside — small enough to
      * ignore, big enough for "100" in montserrat 14. */
+    /* Unread badge, top-left — the battery's opposite corner. A real button:
+     * tapping the envelope opens Messages, which is what a badge promises. */
+    unread_badge = lv_btn_create(root);
+    lv_obj_set_size(unread_badge, 88, 34);
+    lv_obj_align(unread_badge, LV_ALIGN_TOP_LEFT, 10, 8);
+    lv_obj_set_style_bg_color(unread_badge, lv_color_hex(0x1E1E1E), LV_PART_MAIN);
+    lv_obj_set_style_radius(unread_badge, 17, LV_PART_MAIN);
+    lv_obj_add_event_cb(unread_badge, [](lv_event_t *) {
+        app_host_request_open("Messages");
+    }, LV_EVENT_CLICKED, nullptr);
+    {
+        lv_obj_t *ul = lv_label_create(unread_badge);
+        lv_obj_set_style_text_font(ul, &lv_font_montserrat_18, LV_PART_MAIN);
+        lv_obj_set_style_text_color(ul, COL_DIGIT, LV_PART_MAIN);
+        lv_label_set_text(ul, LV_SYMBOL_ENVELOPE);
+        lv_obj_center(ul);
+    }
+    lv_obj_add_flag(unread_badge, LV_OBJ_FLAG_HIDDEN);
+
     bat_body = lv_obj_create(root);
     decor(bat_body);
     lv_obj_set_size(bat_body, 46, 22);
@@ -830,6 +852,25 @@ static void bat_apply_visibility(void)
         lv_obj_add_flag(bat_body, LV_OBJ_FLAG_HIDDEN);
         lv_obj_add_flag(bat_nub,  LV_OBJ_FLAG_HIDDEN);
     }
+    /* The unread badge yields to line mode the same way (D047). */
+    if (unread_badge) {
+        if (unread_n > 0 && !bat_line_mode)
+            lv_obj_clear_flag(unread_badge, LV_OBJ_FLAG_HIDDEN);
+        else
+            lv_obj_add_flag(unread_badge, LV_OBJ_FLAG_HIDDEN);
+    }
+}
+
+void ui_set_unread(int n)
+{
+    unread_n = n;
+    if (!unread_badge) return;
+    if (n > 0) {
+        char t[16];
+        snprintf(t, sizeof(t), LV_SYMBOL_ENVELOPE "  %d", n);
+        lv_label_set_text(lv_obj_get_child(unread_badge, 0), t);
+    }
+    bat_apply_visibility();
 }
 
 void ui_set_battery(bool present, int pct, bool charging)

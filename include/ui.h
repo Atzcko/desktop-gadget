@@ -35,3 +35,7 @@ void ui_show_info(const char *date_line, const char *sync_line);
 /* Emotion overlay. Called only from emotion_tick(), i.e. the LVGL task. */
 void ui_emotion_show(uint8_t state, const char *message);
 void ui_emotion_clear(void);
+
+/* Unread-messages badge, top-left of the clock (D047). 0 hides it; tapping
+ * it opens the Messages app. */
+void ui_set_unread(int n);

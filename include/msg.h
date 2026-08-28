@@ -1,42 +1,54 @@
 /**
- * msg.h — gadget-to-gadget messages over the LAN. See D046.
+ * msg.h — gadget-to-gadget messages over the LAN. See D046, D047.
  *
- * Transport is HTTP into the async server every device already runs, and
- * discovery is mDNS-SD: each device advertises _gadget-msg._tcp with its
- * name (Settings ▸ BLE ▸ name — the device's one identity) in a TXT record.
- * Chosen over ESP-NOW (MAC-only identity, AP-channel-locked, no cross-AP)
- * and MQTT (an external broker, which the scope boundary forbids).
+ * v1.25.0 turned the flat inbox into CONVERSATIONS: a history of in/out
+ * entries per peer, a contact book that learns addresses on its own, and an
+ * unread count the clock face shows. Transport is unchanged: HTTP into the
+ * async server, mDNS-SD discovery, worker task for anything that blocks.
  *
- * Scans and sends BLOCK for seconds, so they run on a worker task; the UI
- * requests and polls. Only msg_store() is called from the web server's task,
- * and it takes a lock shared with the readers.
+ * Contacts are learned three ways, so replying never requires a scan:
+ *   - a scan finds peers advertising _gadget-msg._tcp
+ *   - SENDING to a typed name/IP remembers it
+ *   - RECEIVING remembers the sender's name against the connection's source
+ *     IP — the address arrives with the message, no lookup needed
  */
 #pragma once
 #include <stdint.h>
 #include <stdbool.h>
+#include <stddef.h>
 
 #define MSG_TEXT_MAX   96
 #define MSG_FROM_MAX   23
-#define MSG_INBOX_N    16
-#define MSG_PEERS_N     8
+#define MSG_HISTORY_N  32
+#define MSG_PEERS_N    10
 
 struct MsgPeer  { char name[MSG_FROM_MAX + 1]; char ip[16]; };
-struct MsgEntry { char from[MSG_FROM_MAX + 1]; char text[MSG_TEXT_MAX + 1];
-                  uint32_t at_ms; };
+struct MsgEntry { char peer[MSG_FROM_MAX + 1]; char text[MSG_TEXT_MAX + 1];
+                  uint32_t at_ms; bool outgoing; };
 
 void        msg_begin(void);
-const char *msg_name(void);                  /* this device's identity      */
+const char *msg_name(void);
 
-void msg_request_scan(void);                 /* worker: mDNS browse ~3 s    */
-bool msg_busy(void);                         /* a scan or send in flight    */
-int  msg_peer_count(void);
-bool msg_peer(int i, MsgPeer *out);
+/* ---- discovery + contacts (name -> ip, learned from every direction) ---- */
+void msg_request_scan(void);
+bool msg_busy(void);
+int  msg_contact_count(void);
+bool msg_contact(int i, MsgPeer *out);
+/* Accepts a known contact name OR a literal IP; false when unresolvable. */
+bool msg_resolve(const char *name_or_ip, char *ip_out, size_t cap);
 
+/* ---- sending (worker task; poll msg_last_send_result) ---- */
 void msg_request_send(const char *ip, const char *text);
-int  msg_last_send_result(void);             /* -1 pending, else HTTP code  */
+int  msg_last_send_result(void);
+/* Record an outgoing message in the history + remember the contact. */
+void msg_note_sent(const char *peer, const char *ip, const char *text);
 
-/* Inbox: newest first. rev increments on every store, so the UI can poll. */
-uint32_t msg_inbox_rev(void);
-int      msg_inbox_count(void);
-bool     msg_inbox(int i, MsgEntry *out);
-void     msg_store(const char *from, const char *text);   /* any task */
+/* ---- history (flat, newest first; filter by peer for a thread) ---- */
+uint32_t msg_rev(void);
+int      msg_history_count(void);
+bool     msg_history(int i, MsgEntry *out);
+void     msg_store(const char *from, const char *from_ip, const char *text);
+
+/* ---- unread, for the clock badge ---- */
+int  msg_unread(void);
+void msg_mark_read(void);

@@ -1404,3 +1404,27 @@ rot 90 + Timer -> panel 450x600.
 Also fixed in passing: the stale `force_landscape_for_app(void)` forward
 declaration — C++ treated it as an unused overload declaration, so it
 compiled clean while lying to the reader.
+
+## 2026-08-28 — Messages grows up (v1.25.0)
+
+Owner: make it look like WhatsApp/iMessage — write to a name or a unique
+number, keyboard compose, and an icon on the home screen when a message
+lands. All three shipped as [[D047 - Messages are conversations, and the clock wears the badge]].
+
+The design decision that makes it feel like a messenger is not the bubbles —
+it is that **the contact book learns from every direction**: scans merge
+advertising gadgets, sends remember what you typed, and every received
+message stores the sender's name against the connection's source IP. That
+last one means replying never requires discovery; the address arrived with
+the message. "A unique number" is honoured literally too: the recipient
+field accepts a dotted-quad IP and validates it octet by octet.
+
+The badge went top-left (the battery owns top-right), hides at zero and in
+line mode under the battery chip's exact visibility discipline, and is a
+real button: tapping it opens Messages through app_host_request_open() — the
+door built for the HTTP API in D039, now used by a finger.
+
+Sent bubbles render before delivery confirms (the worker is seconds slow on
+a cold peer; un-sending a bubble on failure would be worse than a "delivery
+failed" line under the thread). History stays RAM per D046's ephemera
+stance; the day that stops feeling right, LittleFS is sitting there.

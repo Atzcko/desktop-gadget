@@ -7,99 +7,154 @@
 #include <ESPmDNS.h>
 #include <HTTPClient.h>
 
-static MsgPeer  peers[MSG_PEERS_N];
-static int      peer_n;
-static MsgEntry inbox[MSG_INBOX_N];
-static int      inbox_n;
-static volatile uint32_t inbox_rev_v;
+static MsgPeer  contacts[MSG_PEERS_N];
+static int      contact_n;
+static MsgEntry history[MSG_HISTORY_N];
+static int      history_n;
+static volatile uint32_t rev_v;
+static volatile int      unread_v;
 static volatile bool     busy;
 static volatile int      send_result = 0;
 
 static portMUX_TYPE mux = portMUX_INITIALIZER_UNLOCKED;
 
-/* Worker commands. One slot is enough: the UI disables itself while busy. */
 enum CmdType { CMD_NONE, CMD_SCAN, CMD_SEND };
 static struct { CmdType type; char ip[16]; char text[MSG_TEXT_MAX + 1]; } cmd;
 static QueueHandle_t cmd_q;
 
 const char *msg_name(void) { return settings_get().ble_name; }
 
-void msg_store(const char *from, const char *text)
+/* ---------------------------------------------------------------- contacts */
+
+/* Learn or refresh a name->ip pair. Names are the identity (D046): a known
+ * name arriving from a new IP means the device moved; take the new address. */
+static void contact_learn_locked(const char *name, const char *ip)
 {
+    if (!name || !name[0] || !ip || !ip[0]) return;
+    for (int i = 0; i < contact_n; i++) {
+        if (strcasecmp(contacts[i].name, name) == 0) {
+            snprintf(contacts[i].ip, sizeof(contacts[i].ip), "%s", ip);
+            return;
+        }
+    }
+    if (contact_n >= MSG_PEERS_N) {          /* forget the oldest slot */
+        for (int i = 1; i < contact_n; i++) contacts[i - 1] = contacts[i];
+        contact_n--;
+    }
+    snprintf(contacts[contact_n].name, sizeof(contacts[0].name), "%s", name);
+    snprintf(contacts[contact_n].ip,   sizeof(contacts[0].ip),   "%s", ip);
+    contact_n++;
+}
+
+int  msg_contact_count(void) { return contact_n; }
+bool msg_contact(int i, MsgPeer *out)
+{
+    if (i < 0 || i >= contact_n) return false;
     taskENTER_CRITICAL(&mux);
-    if (inbox_n < MSG_INBOX_N) inbox_n++;
-    for (int i = inbox_n - 1; i > 0; i--) inbox[i] = inbox[i - 1];
-    snprintf(inbox[0].from, sizeof(inbox[0].from), "%s", from);
-    snprintf(inbox[0].text, sizeof(inbox[0].text), "%s", text);
-    inbox[0].at_ms = millis();
-    inbox_rev_v++;
+    *out = contacts[i];
+    taskEXIT_CRITICAL(&mux);
+    return true;
+}
+
+bool msg_resolve(const char *q, char *ip_out, size_t cap)
+{
+    if (!q || !q[0]) return false;
+    taskENTER_CRITICAL(&mux);
+    for (int i = 0; i < contact_n; i++) {
+        if (strcasecmp(contacts[i].name, q) == 0) {
+            snprintf(ip_out, cap, "%s", contacts[i].ip);
+            taskEXIT_CRITICAL(&mux);
+            return true;
+        }
+    }
     taskEXIT_CRITICAL(&mux);
 
-    /* Show it on the desk the moment it lands — through the queue, which is
-     * the one legal door into LVGL from this task (D018). */
+    /* Not a known name: accept a literal dotted quad — "a unique number". */
+    int a, b, c, d;
+    if (sscanf(q, "%d.%d.%d.%d", &a, &b, &c, &d) == 4 &&
+        !(a | b | c | d & ~255)) {          /* all 0-255 */
+        snprintf(ip_out, cap, "%d.%d.%d.%d", a, b, c, d);
+        return true;
+    }
+    return false;
+}
+
+/* ----------------------------------------------------------------- history */
+
+static void history_add_locked(const char *peer, const char *text, bool out)
+{
+    if (history_n < MSG_HISTORY_N) history_n++;
+    for (int i = history_n - 1; i > 0; i--) history[i] = history[i - 1];
+    snprintf(history[0].peer, sizeof(history[0].peer), "%s", peer);
+    snprintf(history[0].text, sizeof(history[0].text), "%s", text);
+    history[0].at_ms   = millis();
+    history[0].outgoing = out;
+    rev_v++;
+}
+
+uint32_t msg_rev(void)           { return rev_v; }
+int      msg_history_count(void) { return history_n; }
+bool     msg_history(int i, MsgEntry *out)
+{
+    if (i < 0 || i >= history_n) return false;
+    taskENTER_CRITICAL(&mux);
+    *out = history[i];
+    taskEXIT_CRITICAL(&mux);
+    return true;
+}
+
+int  msg_unread(void)    { return unread_v; }
+void msg_mark_read(void) { unread_v = 0; }
+
+void msg_store(const char *from, const char *from_ip, const char *text)
+{
+    taskENTER_CRITICAL(&mux);
+    history_add_locked(from, text, false);
+    contact_learn_locked(from, from_ip);     /* reply needs no scan */
+    taskEXIT_CRITICAL(&mux);
+    unread_v = unread_v + 1;
+
     int st = emotion_from_name("excited");
     if (st >= 0) {
         EmotionRequest r = {};
         r.state      = (uint8_t)st;
-        r.duration_s = 12;
+        r.duration_s = 10;
         snprintf(r.message, sizeof(r.message), "%s: %.32s", from, text);
         emotion_post(r);
     }
-    Serial.printf("[msg] from %s: %s\n", from, text);
+    Serial.printf("[msg] from %s (%s): %s\n", from, from_ip ? from_ip : "?", text);
 }
 
-uint32_t msg_inbox_rev(void)  { return inbox_rev_v; }
-int      msg_inbox_count(void){ return inbox_n; }
-bool     msg_inbox(int i, MsgEntry *out)
+void msg_note_sent(const char *peer, const char *ip, const char *text)
 {
-    if (i < 0 || i >= inbox_n) return false;
     taskENTER_CRITICAL(&mux);
-    *out = inbox[i];
+    history_add_locked(peer, text, true);
+    contact_learn_locked(peer, ip);
     taskEXIT_CRITICAL(&mux);
-    return true;
 }
 
-int  msg_peer_count(void) { return peer_n; }
-bool msg_peer(int i, MsgPeer *out)
-{
-    if (i < 0 || i >= peer_n) return false;
-    taskENTER_CRITICAL(&mux);
-    *out = peers[i];
-    taskEXIT_CRITICAL(&mux);
-    return true;
-}
-
-bool msg_busy(void)            { return busy; }
-int  msg_last_send_result(void){ return send_result; }
+/* ------------------------------------------------------------------ worker */
 
 static void do_scan(void)
 {
-    /* queryService blocks ~3 s — precisely why this task exists. */
     int n = MDNS.queryService("gadget-msg", "tcp");
-    MsgPeer found[MSG_PEERS_N];
-    int fn = 0;
     const String self_ip = WiFi.localIP().toString();
-
-    for (int i = 0; i < n && fn < MSG_PEERS_N; i++) {
+    taskENTER_CRITICAL(&mux);
+    for (int i = 0; i < n; i++) {
         String ip = MDNS.IP(i).toString();
-        if (ip == self_ip || ip == "0.0.0.0") continue;   /* not ourselves */
+        if (ip == self_ip || ip == "0.0.0.0") continue;
         String name = MDNS.txt(i, "name");
         if (name.length() == 0) name = MDNS.hostname(i);
-        snprintf(found[fn].name, sizeof(found[fn].name), "%s", name.c_str());
-        snprintf(found[fn].ip,   sizeof(found[fn].ip),   "%s", ip.c_str());
-        fn++;
+        contact_learn_locked(name.c_str(), ip.c_str());
     }
-    taskENTER_CRITICAL(&mux);
-    memcpy(peers, found, sizeof(peers));
-    peer_n = fn;
     taskEXIT_CRITICAL(&mux);
-    Serial.printf("[msg] scan: %d gadget(s)\n", fn);
+    rev_v++;                                 /* the UI repaints its list */
+    Serial.printf("[msg] scan merged %d service(s), %d contact(s)\n", n, contact_n);
 }
 
 static void do_send(const char *ip, const char *text)
 {
     char esc[MSG_TEXT_MAX * 2 + 2], name_esc[MSG_FROM_MAX * 2 + 2];
-    /* Minimal JSON escape: backslash and quote. Same rule as httpapi. */
     auto escape = [](const char *in, char *out, size_t cap) {
         size_t o = 0;
         for (const char *p = in; *p && o + 2 < cap; p++) {
@@ -136,6 +191,9 @@ static void msg_task(void *)
         busy = false;
     }
 }
+
+bool msg_busy(void)             { return busy; }
+int  msg_last_send_result(void) { return send_result; }
 
 void msg_request_scan(void)
 {

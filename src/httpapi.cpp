@@ -209,24 +209,25 @@ static void handle_msg_body(AsyncWebServerRequest *req, uint8_t *data,
         send_err(req, 400, "expected {\"from\":\"...\",\"text\":\"...\"}");
         return;
     }
-    msg_store(from, text);
+    msg_store(from, req->client()->remoteIP().toString().c_str(), text);
     req->send(200, "application/json", "{\"ok\":true,\"delivered\":true}");
 }
 
 static void handle_messages(AsyncWebServerRequest *req)
 {
-    char body[1400];
-    size_t o = snprintf(body, sizeof(body), "{\"ok\":true,\"name\":\"%s\",\"inbox\":[",
-                        msg_name());
+    char body[1600];
+    size_t o = snprintf(body, sizeof(body),
+                        "{\"ok\":true,\"name\":\"%s\",\"unread\":%d,\"history\":[",
+                        msg_name(), msg_unread());
     MsgEntry e;
-    for (int i = 0; i < msg_inbox_count() && o + 160 < sizeof(body); i++) {
-        if (!msg_inbox(i, &e)) break;
+    for (int i = 0; i < msg_history_count() && o + 180 < sizeof(body); i++) {
+        if (!msg_history(i, &e)) break;
         char f[48], t[200];
-        json_escape(e.from, f, sizeof(f));
+        json_escape(e.peer, f, sizeof(f));
         json_escape(e.text, t, sizeof(t));
         o += snprintf(body + o, sizeof(body) - o,
-                      "%s{\"from\":\"%s\",\"text\":\"%s\",\"age_s\":%lu}",
-                      i ? "," : "", f, t,
+                      "%s{\"peer\":\"%s\",\"dir\":\"%s\",\"text\":\"%s\",\"age_s\":%lu}",
+                      i ? "," : "", f, e.outgoing ? "out" : "in", t,
                       (unsigned long)((millis() - e.at_ms) / 1000UL));
     }
     snprintf(body + o, sizeof(body) - o, "]}");
