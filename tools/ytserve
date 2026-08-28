@@ -1,0 +1,54 @@
+#!/usr/bin/env python3
+"""tools/ytserve — the YouTube companion (D050).
+
+The clock cannot play video (no codec, no audio path), so tapping a video in
+its YouTube app POSTs here and the Mac opens it. Run it, note the IP it
+prints, put that IP in the app's Setup > Companion IP (or
+POST /youtube {"host":"<ip>"}).
+
+    tools/ytserve            listen on :8999, open videos in the browser
+"""
+import json, socket, subprocess
+from http.server import BaseHTTPRequestHandler, HTTPServer
+
+PORT = 8999
+
+def my_ip():
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        s.connect(("192.168.0.1", 80))
+        return s.getsockname()[0]
+    finally:
+        s.close()
+
+class H(BaseHTTPRequestHandler):
+    def do_POST(self):
+        if self.path != "/play":
+            self.send_error(404); return
+        try:
+            body = json.loads(self.rfile.read(int(self.headers.get("Content-Length", 0))))
+            vid = str(body["id"])
+            assert vid.replace("-", "").replace("_", "").isalnum() and len(vid) <= 15
+        except Exception:
+            self.send_error(400); return
+        url = f"https://www.youtube.com/watch?v={vid}"
+        print(f"[ytserve] opening {url}")
+        subprocess.Popen(["open", url])
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json")
+        self.end_headers()
+        self.wfile.write(b'{"ok":true}')
+
+    def do_GET(self):
+        self.send_response(200)
+        self.end_headers()
+        self.wfile.write(b"ytserve ok\n")
+
+    def log_message(self, *a):        # quiet
+        pass
+
+if __name__ == "__main__":
+    ip = my_ip()
+    print(f"[ytserve] listening on {ip}:{PORT} - set this IP as the clock's Companion IP")
+    print(f'[ytserve]   curl -X POST http://flipclock.local/youtube -d \'{{"host":"{ip}"}}\'')
+    HTTPServer(("0.0.0.0", PORT), H).serve_forever()

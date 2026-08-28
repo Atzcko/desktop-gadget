@@ -16,6 +16,7 @@
 #include "ui.h"
 #include "gauge.h"
 #include "msg.h"
+#include "yt.h"
 #include "app_api.h"
 #include "ui_settings.h"
 #include "app.h"
@@ -250,6 +251,7 @@ void setup()
 
     gauge_begin(amoled.getBattVoltage());
     msg_begin();
+    yt_begin();
 
     ui_init(amoled.width(), amoled.height());
     ui_show_weather_block(s.show_weather);

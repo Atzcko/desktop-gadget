@@ -33,7 +33,7 @@ This vault is the project's memory: every decision, why it was made, and what ha
 | Clock *(home)* | resting state |
 | Line / activity | `POST /emotion`, BLE NUS, or the MCP tool |
 | App drawer | swipe up from the bottom edge |
-| Timer · Settings · Lab · Messages · Themes | tap a tile (long-press moves it; order persists) |
+| Timer · Settings · Lab · Messages · Themes · YouTube | tap a tile (long-press moves it; order persists) |
 | Text editor | tapping any field in Settings |
 | *back one level* | swipe in from the left edge, or the app's back button ([[D033 - Back goes one level, not home]]) |
 
@@ -95,6 +95,7 @@ bridge is the only way. See [[CLAUDE]].
 | [[D032 - Three gestures, one control]] | Drag coarse, tap exact, hold repeat — one card does all three |
 | [[D033 - Back goes one level, not home]] | app → drawer → clock; one function owns what back means |
 | [[D034 - Updates ship over the air]] | POST /update to the ota_1 slot that was always in the table |
+| [[D050 - YouTube is a dashboard and a remote, not a player]] | Official API + thumbnails on-device; the Mac does the playing |
 | [[D049 - The look is a table]] | Themes cascade because every screen is create-on-entry |
 | [[D048 - Settings navigates like Apple's]] | macOS sidebar in landscape, iOS stack in portrait, all vertical |
 | [[D047 - Messages are conversations, and the clock wears the badge]] | Threads + bubbles; contacts learned from every direction |

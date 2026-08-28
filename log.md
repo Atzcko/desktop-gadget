@@ -1552,3 +1552,25 @@ Process note, at my own expense: mid-fix I aborted a bad edit with
 the same file. Redone from scratch in declaration order. The command erases
 the file's whole uncommitted state, not the last edit — the log now says so
 where I will reread it.
+
+## 2026-08-28 — YouTube, the honest version (v1.28.0)
+
+Owner picked Tier A from the assessment: dashboard + remote, official API.
+[[D050 - YouTube is a dashboard and a remote, not a player]].
+
+The pipeline that makes it feel real is the thumbnails: worker task fetches
+mqdefault.jpg (320x180), the ESP32-S3 ROM's own TJpgDec decodes it at 1/2
+scale - which lands EXACTLY on the 160x90 row size - into PSRAM RGB565, and
+the LVGL task only ever blits finished buffers. No JPEG work on the UI
+thread, D018 intact. Key-only auth cannot see subscriptions, so the owner
+configures channels by @handle; resolution is cached in NVS so a refresh is
+~12 quota units of the daily 10,000.
+
+The key is provisioned like Wi-Fi credentials always have been (D016): typed
+or POSTed once, NVS, never a file. tools/ytserve is the whole companion -
+40 lines of stdlib python; tap -> POST {"id"} -> open. When it is down the
+app says "companion offline" and everything else keeps working.
+
+Awaiting the owner: a real API key, and running tools/ytserve. Verified
+without either: the app renders its guidance states, GET/POST /youtube
+round-trip, channels persist, and the drawer holds seven tiles.

@@ -5,6 +5,7 @@
 #include "gauge.h"
 #include "msg.h"
 #include "theme.h"
+#include "yt.h"
 #include "app.h"
 #include "app.h"
 #include "net.h"
@@ -581,6 +582,50 @@ void httpapi_begin(void)
 
     server.on("/launch", HTTP_POST,
               [](AsyncWebServerRequest *) {}, nullptr, handle_launch_body);
+
+    server.on("/youtube", HTTP_GET, [](AsyncWebServerRequest *req) {
+        char chans[220] = "";
+        for (int i = 0; i < yt_channel_count(); i++) {
+            strlcat(chans, i ? "," : "", sizeof(chans));
+            strlcat(chans, yt_channel(i), sizeof(chans));
+        }
+        char body[420], st[96];
+        json_escape(yt_status(), st, sizeof(st));
+        snprintf(body, sizeof(body),
+                 "{\"ok\":true,\"has_key\":%s,\"channels\":\"%s\","
+                 "\"host\":\"%s\",\"videos\":%d,\"busy\":%s,\"status\":\"%s\"}",
+                 yt_has_key() ? "true" : "false", chans, yt_play_host(),
+                 yt_video_count(), yt_busy() ? "true" : "false", st);
+        req->send(200, "application/json", body);
+    });
+
+    server.on("/youtube", HTTP_POST,
+              [](AsyncWebServerRequest *) {}, nullptr,
+              [](AsyncWebServerRequest *req, uint8_t *data, size_t len,
+                 size_t index, size_t total) {
+        static String buf;
+        if (index == 0) buf = "";
+        buf.concat((const char *)data, len);
+        if (index + len != total) return;
+        char val[220];
+        bool did = false;
+        const char *p;
+        if ((p = strstr(buf.c_str(), "\"key\""))) {
+            p = strchr(p + 5, '"');
+            if (p && sscanf(p + 1, "%47[^\"]", val) == 1) { yt_set_key(val); did = true; }
+        }
+        if ((p = strstr(buf.c_str(), "\"channels\""))) {
+            p = strchr(p + 10, '"');
+            if (p && sscanf(p + 1, "%219[^\"]", val) == 1) { yt_set_channels(val); did = true; }
+        }
+        if ((p = strstr(buf.c_str(), "\"host\""))) {
+            p = strchr(p + 6, '"');
+            if (p && sscanf(p + 1, "%19[^\"]", val) == 1) { yt_set_play_host(val); did = true; }
+        }
+        if (!did) { send_err(req, 400, "expected key / channels / host"); return; }
+        yt_request_refresh();
+        req->send(200, "application/json", "{\"ok\":true,\"refreshing\":true}");
+    });
 
     server.on("/theme", HTTP_POST,
               [](AsyncWebServerRequest *) {}, nullptr,

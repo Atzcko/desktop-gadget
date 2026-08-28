@@ -11,6 +11,19 @@ Semantic versioning; the scheme and the release procedure live in [[CLAUDE]].
 The version is reported by the boot log, `GET /health` and Settings ▸ Info,
 each with a compiler build stamp so a stale flash is detectable.
 
+## v1.28.0 — 2026-08-28
+
+**A YouTube app — the dashboard-and-remote, exactly as assessed.**
+([[D050 - YouTube is a dashboard and a remote, not a player]])
+
+Latest uploads from up to six configured channels, newest first, with real
+thumbnails (fetched and ROM-TJpgDec-decoded on a worker task, ½-scaled to
+160×90 rows). Tap a video and the Mac companion (`tools/ytserve`) opens it —
+the clock is the remote, the Mac is the screen. Setup lives in the app (API
+key, channels, companion IP — keyboard overlays, NVS, never a file) and
+everything is POSTable for provisioning from a shell. Refresh costs ~12 of
+the 10 000 daily quota units.
+
 ## v1.27.4 — 2026-08-28
 
 **The tap overlay and the weather no longer print over each other in

@@ -1,0 +1,59 @@
+---
+title: D050 - YouTube is a dashboard and a remote, not a player
+type: decision
+status: accepted
+date: 2026-08-28
+tags:
+  - decision
+  - apps
+  - api
+---
+
+# D050 — YouTube is a dashboard and a remote, not a player
+
+## Context
+
+The owner asked whether a YouTube app is possible. The honest assessment:
+watching on-device is walled off three ways — no hardware codec (software
+H.264 is single-digit fps on this CPU), stream acquisition is the signed-URL
+cat-and-mouse that breaks monthly, and the board has no audio path at all.
+The owner chose Tier A: the official Data API, thumbnails, and tap-to-play
+throwing the video to the Mac.
+
+## Decision
+
+- **Official API only** (Data API v3, API key). Key-only auth cannot read
+  the owner's subscriptions, so the app shows the latest uploads of channels
+  the owner CONFIGURES (`@handle` list, up to six). Cost per refresh: one
+  `channels.list` per un-cached handle, then one `playlistItems.list` per
+  channel — ~12 units of the daily 10 000. No `search.list` (100 units each)
+  in the daily path.
+- **The key is provisioned like Wi-Fi credentials** (D016): typed on-device
+  or POSTed once over the LAN, kept in the module's NVS, never in a file,
+  never in the repo.
+- **Thumbnails decode on the worker task** through the ESP32-S3 ROM's
+  TJpgDec: `mqdefault.jpg` is 320×180, the decoder's ½ scale lands exactly
+  on the 160×90 row size, and the LVGL task only ever blits finished RGB565
+  buffers from PSRAM (D018 kept).
+- **Playing = the companion.** `tools/ytserve` on the Mac listens on :8999;
+  a tapped row POSTs the video id; the Mac opens the watch page. The device
+  stores the companion IP. When the companion is down, the app says so and
+  nothing else breaks.
+- **TLS without certificate pinning, stated plainly**: public read-only
+  data on a desk gadget; the CA-bundle maintenance does not pay for the
+  wrong-thumbnail failure it would prevent.
+
+## Consequences
+
+- Quota math means the app could refresh every few minutes all day and not
+  dent the free tier; it refreshes on open and on demand instead.
+- Titles are ASCII-rendered by the montserrat fonts — emoji and CJK in
+  video titles show as blanks. Known, cosmetic, not worth a font today.
+- ~230 KB PSRAM for eight thumbnails, freed on every refresh.
+- A future OAuth device-flow could add real subscriptions; the seam is
+  `do_refresh()`, nothing above it.
+
+## Related
+
+- [[D046 - Gadgets message over HTTP and mDNS]] — the worker-task pattern
+- [[D016 - Wi-Fi is provisioned on-device]] · [[D039 - The device must be drivable without a finger]]
