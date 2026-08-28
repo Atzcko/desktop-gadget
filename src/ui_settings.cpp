@@ -120,12 +120,10 @@ static lv_obj_t *body_label(lv_obj_t *parent, const char *text)
     lv_obj_t *l = lv_label_create(parent);
     lv_obj_set_style_text_font(l, &lv_font_montserrat_20, LV_PART_MAIN);
     lv_obj_set_style_text_color(l, lv_color_hex(0xE0E0E0), LV_PART_MAIN);
-    /* Width-capped and wrapping: the pane is 410 px in landscape (D048), and
-     * an unconstrained label sizes to its text and sails off the right edge.
-     * Vertical growth is fine - the pages scroll that way, and only that
-     * way. */
-    lv_obj_set_width(l, LV_PCT(100));
-    lv_label_set_long_mode(l, LV_LABEL_LONG_WRAP);
+    /* Content-sized: these live inside flex ROWS, where a PCT(100) width
+     * makes one label claim the whole row (v1.27.1 tried exactly that and
+     * broke the Screen tab). The few genuinely long labels get an explicit
+     * width + wrap at their call sites instead. */
     lv_label_set_text(l, text);
     return l;
 }
@@ -796,6 +794,8 @@ lv_obj_t *ui_settings_create(void)
                                  s.wifi_ssid, st.ip, st.rssi);
         else            snprintf(buf, sizeof(buf), "Not connected");
         lbl_wifi_state = body_label(t_wifi, buf);
+        lv_obj_set_width(lbl_wifi_state, LV_PCT(100));
+        lv_label_set_long_mode(lbl_wifi_state, LV_LABEL_LONG_WRAP);
     }
     lbl_pick = section(t_wifi, picked_ssid[0] ? picked_ssid : "No network picked");
     make_button(t_wifi, LV_SYMBOL_REFRESH "  Scan", wifi_scan_cb, nullptr);
@@ -840,8 +840,13 @@ lv_obj_t *ui_settings_create(void)
     {
         lv_obj_t *row = lv_obj_create(t_time);
         lv_obj_remove_style_all(row);
-        lv_obj_set_size(row, LV_PCT(100), 40);
-        lv_obj_set_flex_flow(row, LV_FLEX_FLOW_ROW);
+        lv_obj_set_size(row, LV_PCT(100), LV_SIZE_CONTENT);
+        /* Rows WRAP into the narrow pane and never scroll - an LVGL container
+         * is scrollable by default, and a too-wide flex row scrolls SIDEWAYS,
+         * which is the one direction this screen forbids (D048). */
+        lv_obj_clear_flag(row, LV_OBJ_FLAG_SCROLLABLE);
+        lv_obj_set_style_pad_row(row, 6, LV_PART_MAIN);
+        lv_obj_set_flex_flow(row, LV_FLEX_FLOW_ROW_WRAP);
         lv_obj_set_flex_align(row, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER,
                               LV_FLEX_ALIGN_CENTER);
         lv_obj_set_style_pad_column(row, 16, LV_PART_MAIN);
@@ -880,8 +885,13 @@ lv_obj_t *ui_settings_create(void)
         section(t_screen, "Day brightness");
         lv_obj_t *r1 = lv_obj_create(t_screen);
         lv_obj_remove_style_all(r1);
-        lv_obj_set_size(r1, LV_PCT(100), 36);
-        lv_obj_set_flex_flow(r1, LV_FLEX_FLOW_ROW);
+        lv_obj_set_size(r1, LV_PCT(100), LV_SIZE_CONTENT);
+        /* Rows WRAP into the narrow pane and never scroll - an LVGL container
+         * is scrollable by default, and a too-wide flex row scrolls SIDEWAYS,
+         * which is the one direction this screen forbids (D048). */
+        lv_obj_clear_flag(r1, LV_OBJ_FLAG_SCROLLABLE);
+        lv_obj_set_style_pad_row(r1, 6, LV_PART_MAIN);
+        lv_obj_set_flex_flow(r1, LV_FLEX_FLOW_ROW_WRAP);
         lv_obj_set_flex_align(r1, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER,
                               LV_FLEX_ALIGN_CENTER);
         lv_obj_set_style_pad_column(r1, 14, LV_PART_MAIN);
@@ -896,8 +906,13 @@ lv_obj_t *ui_settings_create(void)
         section(t_screen, "Night brightness");
         lv_obj_t *r2 = lv_obj_create(t_screen);
         lv_obj_remove_style_all(r2);
-        lv_obj_set_size(r2, LV_PCT(100), 36);
-        lv_obj_set_flex_flow(r2, LV_FLEX_FLOW_ROW);
+        lv_obj_set_size(r2, LV_PCT(100), LV_SIZE_CONTENT);
+        /* Rows WRAP into the narrow pane and never scroll - an LVGL container
+         * is scrollable by default, and a too-wide flex row scrolls SIDEWAYS,
+         * which is the one direction this screen forbids (D048). */
+        lv_obj_clear_flag(r2, LV_OBJ_FLAG_SCROLLABLE);
+        lv_obj_set_style_pad_row(r2, 6, LV_PART_MAIN);
+        lv_obj_set_flex_flow(r2, LV_FLEX_FLOW_ROW_WRAP);
         lv_obj_set_flex_align(r2, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER,
                               LV_FLEX_ALIGN_CENTER);
         lv_obj_set_style_pad_column(r2, 14, LV_PART_MAIN);
@@ -914,8 +929,13 @@ lv_obj_t *ui_settings_create(void)
         hours_options(hopts, sizeof(hopts));
         lv_obj_t *r3 = lv_obj_create(t_screen);
         lv_obj_remove_style_all(r3);
-        lv_obj_set_size(r3, LV_PCT(100), 90);
-        lv_obj_set_flex_flow(r3, LV_FLEX_FLOW_ROW);
+        lv_obj_set_size(r3, LV_PCT(100), LV_SIZE_CONTENT);
+        /* Rows WRAP into the narrow pane and never scroll - an LVGL container
+         * is scrollable by default, and a too-wide flex row scrolls SIDEWAYS,
+         * which is the one direction this screen forbids (D048). */
+        lv_obj_clear_flag(r3, LV_OBJ_FLAG_SCROLLABLE);
+        lv_obj_set_style_pad_row(r3, 6, LV_PART_MAIN);
+        lv_obj_set_flex_flow(r3, LV_FLEX_FLOW_ROW_WRAP);
         lv_obj_set_flex_align(r3, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER,
                               LV_FLEX_ALIGN_CENTER);
         lv_obj_set_style_pad_column(r3, 12, LV_PART_MAIN);
@@ -936,8 +956,13 @@ lv_obj_t *ui_settings_create(void)
     {
         lv_obj_t *r4 = lv_obj_create(t_screen);
         lv_obj_remove_style_all(r4);
-        lv_obj_set_size(r4, LV_PCT(100), 40);
-        lv_obj_set_flex_flow(r4, LV_FLEX_FLOW_ROW);
+        lv_obj_set_size(r4, LV_PCT(100), LV_SIZE_CONTENT);
+        /* Rows WRAP into the narrow pane and never scroll - an LVGL container
+         * is scrollable by default, and a too-wide flex row scrolls SIDEWAYS,
+         * which is the one direction this screen forbids (D048). */
+        lv_obj_clear_flag(r4, LV_OBJ_FLAG_SCROLLABLE);
+        lv_obj_set_style_pad_row(r4, 6, LV_PART_MAIN);
+        lv_obj_set_flex_flow(r4, LV_FLEX_FLOW_ROW_WRAP);
         lv_obj_set_flex_align(r4, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER,
                               LV_FLEX_ALIGN_CENTER);
         lv_obj_set_style_pad_column(r4, 14, LV_PART_MAIN);
@@ -973,8 +998,13 @@ lv_obj_t *ui_settings_create(void)
     {
         lv_obj_t *row = lv_obj_create(t_ble);
         lv_obj_remove_style_all(row);
-        lv_obj_set_size(row, LV_PCT(100), 40);
-        lv_obj_set_flex_flow(row, LV_FLEX_FLOW_ROW);
+        lv_obj_set_size(row, LV_PCT(100), LV_SIZE_CONTENT);
+        /* Rows WRAP into the narrow pane and never scroll - an LVGL container
+         * is scrollable by default, and a too-wide flex row scrolls SIDEWAYS,
+         * which is the one direction this screen forbids (D048). */
+        lv_obj_clear_flag(row, LV_OBJ_FLAG_SCROLLABLE);
+        lv_obj_set_style_pad_row(row, 6, LV_PART_MAIN);
+        lv_obj_set_flex_flow(row, LV_FLEX_FLOW_ROW_WRAP);
         lv_obj_set_flex_align(row, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER,
                               LV_FLEX_ALIGN_CENTER);
         lv_obj_set_style_pad_column(row, 16, LV_PART_MAIN);
@@ -1002,8 +1032,13 @@ lv_obj_t *ui_settings_create(void)
     {
         lv_obj_t *row = lv_obj_create(t_ble);
         lv_obj_remove_style_all(row);
-        lv_obj_set_size(row, LV_PCT(100), 40);
-        lv_obj_set_flex_flow(row, LV_FLEX_FLOW_ROW);
+        lv_obj_set_size(row, LV_PCT(100), LV_SIZE_CONTENT);
+        /* Rows WRAP into the narrow pane and never scroll - an LVGL container
+         * is scrollable by default, and a too-wide flex row scrolls SIDEWAYS,
+         * which is the one direction this screen forbids (D048). */
+        lv_obj_clear_flag(row, LV_OBJ_FLAG_SCROLLABLE);
+        lv_obj_set_style_pad_row(row, 6, LV_PART_MAIN);
+        lv_obj_set_flex_flow(row, LV_FLEX_FLOW_ROW_WRAP);
         lv_obj_set_flex_align(row, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER,
                               LV_FLEX_ALIGN_CENTER);
         lv_obj_set_style_pad_column(row, 16, LV_PART_MAIN);
@@ -1015,8 +1050,13 @@ lv_obj_t *ui_settings_create(void)
     {
         lv_obj_t *row = lv_obj_create(t_ble);
         lv_obj_remove_style_all(row);
-        lv_obj_set_size(row, LV_PCT(100), 40);
-        lv_obj_set_flex_flow(row, LV_FLEX_FLOW_ROW);
+        lv_obj_set_size(row, LV_PCT(100), LV_SIZE_CONTENT);
+        /* Rows WRAP into the narrow pane and never scroll - an LVGL container
+         * is scrollable by default, and a too-wide flex row scrolls SIDEWAYS,
+         * which is the one direction this screen forbids (D048). */
+        lv_obj_clear_flag(row, LV_OBJ_FLAG_SCROLLABLE);
+        lv_obj_set_style_pad_row(row, 6, LV_PART_MAIN);
+        lv_obj_set_flex_flow(row, LV_FLEX_FLOW_ROW_WRAP);
         lv_obj_set_flex_align(row, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER,
                               LV_FLEX_ALIGN_CENTER);
         lv_obj_set_style_pad_column(row, 16, LV_PART_MAIN);
@@ -1074,6 +1114,8 @@ lv_obj_t *ui_settings_create(void)
                  (unsigned)(ESP.getFreePsram() / 1024),
                  (unsigned)(ESP.getFreeHeap() / 1024));
         lbl_info_body = lv_label_create(t_info);
+        lv_obj_set_width(lbl_info_body, LV_PCT(100));
+        lv_label_set_long_mode(lbl_info_body, LV_LABEL_LONG_WRAP);
         lv_obj_set_style_text_font(lbl_info_body, &lv_font_montserrat_18, LV_PART_MAIN);
         lv_obj_set_style_text_color(lbl_info_body, lv_color_hex(0xC8C8C8), LV_PART_MAIN);
         lv_label_set_text(lbl_info_body, buf);

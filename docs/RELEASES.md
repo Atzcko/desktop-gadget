@@ -11,6 +11,18 @@ Semantic versioning; the scheme and the release procedure live in [[CLAUDE]].
 The version is reported by the boot log, `GET /health` and Settings ▸ Info,
 each with a compiler build stamp so a stale flash is detectable.
 
+## v1.27.2 — 2026-08-28
+
+**The Screen page scrolled sideways; now nothing in Settings can.** Two
+causes, one of them v1.27.1's own fix: LVGL containers are scrollable by
+default, so a flex row wider than the pane scrolls HORIZONTALLY rather than
+wrapping — and v1.27.1's PCT-width `body_label` made every label inside a
+row claim the full row width, guaranteeing the overflow. All eight row
+containers now wrap (`ROW_WRAP`), size to content, and have SCROLLABLE
+cleared — a row physically cannot scroll any more, in any direction. Labels
+are content-sized again, with explicit wrap only on the genuinely long ones
+(Wi-Fi status, Info diagnostics).
+
 ## v1.27.1 — 2026-08-28
 
 **Settings text no longer runs off the screen.** Eleven fixed widths from the

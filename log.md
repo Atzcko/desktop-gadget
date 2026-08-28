@@ -1489,3 +1489,28 @@ called it done; the real fix was hiding in the HELPERS, which every tab uses.
 Now: every width is percentage-of-pane, every helper label wraps, and the
 only direction anything grows is down — the direction that scrolls. The
 left/right rule survives untouched.
+
+## 2026-08-28 — Rows that scrolled sideways, and the fix that fed them (v1.27.2)
+
+Owner, rightly annoyed: the Screen page scrolls left/right after being told
+twice that nothing should. Two causes stacked, and the second was mine from
+the previous patch:
+
+1. LVGL containers are SCROLLABLE by default, in every direction. A flex ROW
+   whose children exceed its width does not wrap and does not clip — it
+   scrolls sideways. The Screen page's fourth row (four label/switch pairs
+   plus a dropdown) never fit the 410 px pane.
+2. v1.27.1 "fixed" overflowing text by giving body_label a PCT(100) width —
+   which inside a flex row makes EVERY label claim the full row width. The
+   fix for one page's overflow manufactured a worse overflow on another.
+
+The row is the unit that had to be fixed: all eight row containers are now
+ROW_WRAP, LV_SIZE_CONTENT tall, and have SCROLLABLE cleared. A settings row
+physically cannot scroll — content that does not fit horizontally wraps
+downward, the direction the page scrolls. body_label is content-sized again;
+the two genuinely long labels (Wi-Fi status, Info diagnostics) carry their
+own width+wrap.
+
+Lesson entered into the collection: in LVGL, "do not scroll sideways" is not
+a rule you follow, it is a flag you must CLEAR on every container that could
+ever be too wide — the default fights the rule.
