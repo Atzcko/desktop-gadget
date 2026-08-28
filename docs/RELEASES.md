@@ -23,6 +23,11 @@ the drawer's height is computed from the live display instead of a
 landscape constant, so portrait also SHOWS a full extra row before
 scrolling at all.
 
+## v1.29.2 — 2026-08-28
+
+Trackpad: the Left/Right strip buttons are gone at the owner's request —
+taps on the pad are the clicks. The strip holds only the standard back chip.
+
 ## v1.29.0 — 2026-08-28
 
 **The clock is a Bluetooth trackpad.**

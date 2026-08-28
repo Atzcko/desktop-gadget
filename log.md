@@ -1615,3 +1615,10 @@ The cell now keeps the chain and loses everything else, and the drawer
 height computes from the live display (another landscape 332 hiding in a
 portrait world). Third row reachable, and portrait shows one more row
 before scrolling at all.
+
+## 2026-08-28 — Trackpad sheds its training wheels (v1.29.2)
+
+Owner: remove the Left and Right buttons. They were my hedge against the
+gesture layer not working; the gestures evidently work, so the hedge goes.
+The pad is the whole surface now, the strip is just the back chip, and D051's
+"explicit clicks" row exits the gesture table.

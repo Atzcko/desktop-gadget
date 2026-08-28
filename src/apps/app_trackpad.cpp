@@ -107,15 +107,6 @@ static void pad_cb(lv_event_t *e)
     }
 }
 
-static void left_cb(lv_event_t *)
-{
-    if (ble_mouse(0x01, 0, 0, 0)) { click_buttons = 0x01; click_release_at = millis() + 30; }
-}
-static void right_cb(lv_event_t *)
-{
-    if (ble_mouse(0x02, 0, 0, 0)) { click_buttons = 0x02; click_release_at = millis() + 30; }
-}
-
 static void tp_icon(lv_event_t *e)
 {
     lv_obj_t *o = lv_event_get_target(e);
@@ -174,28 +165,10 @@ static lv_obj_t *tp_create(void)
     lv_obj_center(lbl_state);
     state_paint();
 
+    /* The strip holds only the standard back chip now — the owner dropped
+     * the Left/Right buttons; taps on the pad are the clicks. The freed
+     * strip width goes to the pad. */
     app_host_std_back(scr, nullptr);
-
-    const int bw = (W - 156 - 12 - 8) / 2;
-    lv_obj_t *lb = lv_btn_create(scr);
-    lv_obj_set_size(lb, bw, 56);
-    lv_obj_align(lb, LV_ALIGN_BOTTOM_RIGHT, -12 - bw - 8, -10);
-    lv_obj_set_style_bg_color(lb, lv_color_hex(theme_get().chip), LV_PART_MAIN);
-    lv_obj_add_event_cb(lb, left_cb, LV_EVENT_CLICKED, nullptr);
-    lv_obj_t *ll = lv_label_create(lb);
-    lv_obj_set_style_text_font(ll, &lv_font_montserrat_20, LV_PART_MAIN);
-    lv_label_set_text(ll, "Left");
-    lv_obj_center(ll);
-
-    lv_obj_t *rb = lv_btn_create(scr);
-    lv_obj_set_size(rb, bw, 56);
-    lv_obj_align(rb, LV_ALIGN_BOTTOM_RIGHT, -12, -10);
-    lv_obj_set_style_bg_color(rb, lv_color_hex(theme_get().chip), LV_PART_MAIN);
-    lv_obj_add_event_cb(rb, right_cb, LV_EVENT_CLICKED, nullptr);
-    lv_obj_t *rl = lv_label_create(rb);
-    lv_obj_set_style_text_font(rl, &lv_font_montserrat_20, LV_PART_MAIN);
-    lv_label_set_text(rl, "Right");
-    lv_obj_center(rl);
 
     down = false; click_release_at = 0;
     return scr;
