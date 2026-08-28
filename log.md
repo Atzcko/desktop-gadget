@@ -1766,3 +1766,26 @@ being wrong FOR THE RIGHT REASONS is the vault working as designed.
 Also: index to v1.33 with the player in the screens table, HTTP API rows
 for play_here/stop/frames and ytserve's three endpoints, Module map's
 yt.cpp row, CLAUDE.md's drawer blurb. Zero dangling links.
+
+## 2026-08-28 — The arcade opens (v1.34.0)
+
+Owner: recreate 8-bit games, as an app - both native classics and the Game
+Boy idea. One Games app shipped with the two natives; the Game Boy card
+sits greyed and says why (its core is a download the owner approves, per
+the standing rule - not bundled silently).
+
+The design decision that matters: the games are not retro-skinned, they are
+THEMED - snake in the digit white (or Pop blue-red world), bricks cycling
+the tile palette, ball in colon yellow, scores in fliqlo_mid. Switching
+themes reskins the arcade, which is D049's cascade earning its keep in a
+place nobody planned for it.
+
+Two engine templates now exist for future games: the canvas path (Snake -
+grid redrawn per step into a PSRAM buffer, allocated on enter, freed on
+leave) and the object path (Breakout - float physics on ms-delta, paddle
+english, axis-picked bounce). Fields are computed from the live display, so
+portrait is just a taller game (D045 with no extra code).
+
+Awaiting the owner's word on two downloads for the Game Boy: peanut_gb.h
+(deltabeard/Peanut-GB, MIT, ~150 KB) and one libre homebrew ROM to ship as
+the built-in cartridge.

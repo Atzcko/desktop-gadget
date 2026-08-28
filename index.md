@@ -38,7 +38,7 @@ registry. The remote surface is one page: [[HTTP API]]. The physical side is
 | Clock *(home)* | resting state |
 | Line / activity | `POST /emotion`, BLE NUS, or the MCP tool |
 | App drawer | swipe up from the bottom edge |
-| Timer · Settings · Lab · Messages · Themes · YouTube · Trackpad · Keyboard | tap a tile (long-press moves it; order persists) |
+| Timer · Settings · Lab · Messages · Themes · YouTube · Trackpad · Keyboard · Games | tap a tile (long-press moves it; order persists) |
 | Video player | tapping a video in YouTube ([[D053 - The clock plays video after all, through the Mac]]) |
 | Text editor | tapping any field in Settings |
 | *back one level* | swipe in from the left edge, or the app's back button ([[D033 - Back goes one level, not home]]) |
@@ -101,6 +101,7 @@ bridge is the only way. See [[CLAUDE]].
 | [[D032 - Three gestures, one control]] | Drag coarse, tap exact, hold repeat — one card does all three |
 | [[D033 - Back goes one level, not home]] | app → drawer → clock; one function owns what back means |
 | [[D034 - Updates ship over the air]] | POST /update to the ota_1 slot that was always in the table |
+| [[D055 - Games wear the house style]] | Snake and Breakout from the theme table; canvas and object engines proven |
 | [[D054 - Home comes from the owner's own session]] | yt-dlp + browser cookies on the Mac; the clock sees ids and titles |
 | [[D053 - The clock plays video after all, through the Mac]] | Mac transcodes MJPEG; clock shows honest 320×180 pixels |
 | [[D052 - The gadget types, on request]] | Keyboard report joins the map; D022 revised, identity follows function |

@@ -23,6 +23,15 @@ the drawer's height is computed from the live display instead of a
 landscape constant, so portrait also SHOWS a full extra row before
 scrolling at all.
 
+## v1.34.0 — 2026-08-28
+
+**The arcade opens** ([[D055 - Games wear the house style]]). One Games app:
+Snake (swipe to steer, canvas grid computed from the display) and Breakout
+(finger paddle, float physics, english off the edge), both drawn from the
+theme table — Pop reskins them, scores in the mid digit font, best scores in
+NVS. Game Boy sits greyed on the chooser pending its core (a download for
+the owner to approve). Ninth native app.
+
 ## v1.33.0 — 2026-08-28
 
 **A real Home, and playback that actually plays.**
