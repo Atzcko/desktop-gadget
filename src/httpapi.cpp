@@ -682,6 +682,13 @@ void httpapi_begin(void)
 
     /* ROM cartridge for the Game Boy (D056): raw .gb body -> LittleFS.
      * Homebrew/owned ROMs only - same posture as every upload here. */
+    /* The lesson of 2026-08-28: a device that ships its own updates but has
+     * no remote reboot can wedge into a state only a finger can clear. */
+    server.on("/reboot", HTTP_POST, [](AsyncWebServerRequest *req) {
+        req->onDisconnect([]() { ESP.restart(); });
+        req->send(200, "application/json", "{\"ok\":true,\"rebooting\":true}");
+    });
+
     server.on("/games", HTTP_POST,
               [](AsyncWebServerRequest *) {}, nullptr,
               [](AsyncWebServerRequest *req, uint8_t *data, size_t len,
