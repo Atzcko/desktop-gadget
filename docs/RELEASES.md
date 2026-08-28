@@ -11,6 +11,16 @@ Semantic versioning; the scheme and the release procedure live in [[CLAUDE]].
 The version is reported by the boot log, `GET /health` and Settings ▸ Info,
 each with a compiler build stamp so a stale flash is detectable.
 
+## v1.27.4 — 2026-08-28
+
+**The tap overlay and the weather no longer print over each other in
+portrait.** Both claimed BOTTOM_MID; the overlay is a 5-second visitor, so
+the weather now YIELDS to it and returns when it leaves — the manners the
+emotion line has always had. Portrait-only (landscape's bottom strip is
+free; line mode parks weather in a corner), the owner's weather on/off
+setting is respected on return, and a yield cannot leak across a rotation
+rebuild.
+
 ## v1.27.3 — 2026-08-28
 
 **The Screen page has a layout system instead of a wrap.** Four row rules

@@ -156,6 +156,11 @@ static lv_obj_t *lbl_ampm;
 static lv_obj_t *dot_stale;
 static lv_obj_t *lbl_info;
 static lv_timer_t *info_timer;
+static bool wx_setting_visible = true;   /* the owner's Screen-page choice */
+static bool wx_yielded;                  /* hidden for the tap overlay      */
+static bool layout_small;                /* clock parked in the corner
+                                          * (defined here so the overlay code
+                                          * above the emotion section sees it) */
 
 /* Battery chip: body, nub, and the percentage inside. Hidden when no battery
  * is connected — the normal, USB-powered state of this object — and while the
@@ -302,9 +307,18 @@ static bool       press_active;
 static lv_point_t press_pt;
 static bool       press_moved;
 
+static void wx_unyield(void)
+{
+    if (!wx_yielded) return;
+    wx_yielded = false;
+    if (wx_setting_visible && weather_grp)
+        lv_obj_clear_flag(weather_grp, LV_OBJ_FLAG_HIDDEN);
+}
+
 static void hide_info_cb(lv_timer_t *t)
 {
     lv_obj_add_flag(lbl_info, LV_OBJ_FLAG_HIDDEN);
+    wx_unyield();
     info_timer = nullptr;
     lv_timer_del(t);
 }
@@ -607,6 +621,7 @@ void ui_init(uint16_t screen_w, uint16_t screen_h)
                                              * beside the statics it clears */
         zoom_canvas = nullptr;
         unread_badge = nullptr;
+        wx_yielded = false;      /* the rebuilt row starts un-yielded */
         if (zoom_buf)    { free(zoom_buf); zoom_buf = nullptr; }
         bat_line_mode = false;
     }
@@ -986,8 +1001,9 @@ void ui_show_humidity(bool visible)
 
 void ui_show_weather_block(bool visible)
 {
-    if (visible) lv_obj_clear_flag(weather_grp, LV_OBJ_FLAG_HIDDEN);
-    else         lv_obj_add_flag(weather_grp, LV_OBJ_FLAG_HIDDEN);
+    wx_setting_visible = visible;
+    if (visible && !wx_yielded) lv_obj_clear_flag(weather_grp, LV_OBJ_FLAG_HIDDEN);
+    else                        lv_obj_add_flag(weather_grp, LV_OBJ_FLAG_HIDDEN);
 }
 
 void ui_set_offset(int dx, int dy)
@@ -1000,6 +1016,18 @@ void ui_show_info(const char *date_line, const char *sync_line)
     char buf[96];
     snprintf(buf, sizeof(buf), "%s\n%s", date_line, sync_line);
     lv_label_set_text(lbl_info, buf);
+
+    /*
+     * Portrait puts the weather row exactly where this overlay lands
+     * (BOTTOM_MID), and the two printed over each other. The overlay is a
+     * 5-second visitor, so the weather YIELDS and returns when it leaves —
+     * the manners the emotion line has always had. Landscape's bottom strip
+     * is free, and line mode parks weather in a corner: neither yields.
+     */
+    if (portrait && !layout_small && wx_setting_visible && !wx_yielded) {
+        wx_yielded = true;
+        lv_obj_add_flag(weather_grp, LV_OBJ_FLAG_HIDDEN);
+    }
     lv_obj_clear_flag(lbl_info, LV_OBJ_FLAG_HIDDEN);
     if (info_timer) { lv_timer_del(info_timer); }
     info_timer = lv_timer_create(hide_info_cb, 5000, nullptr);
@@ -1048,7 +1076,6 @@ static bool        wave_out;
  */
 static lv_timer_t *enter_timer;          /* fires once, when the scale lands */
 
-static bool        layout_small;         /* is the clock currently in the corner? */
 
 /* Called from ui_init's re-entry prologue: the objects are dying with the old
  * screen, so kill the timers that drive them and NULL the lazy pointers. */

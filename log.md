@@ -1535,3 +1535,20 @@ Screen rebuilt: Brightness (2 slider rows) / Night (sunrise toggle, from,
 until) / Display (3 toggle rows) / Rotation. The "to" roller pair that shared
 a row became two rows - rule 2's "a row that would wrap is two settings" is
 the rule doing its job. Other pages adopt the helpers as they are touched.
+
+## 2026-08-28 — The overlay and the weather fought for the same corner (v1.27.4)
+
+Owner: tap the clock in portrait and the date/sync overlay is blocked by
+other information. Correct — both the overlay and the weather row claim
+BOTTOM_MID, and portrait has no second bottom. The fix is the device's own
+idiom: the overlay is a 5-second visitor, so the weather yields and comes
+back — exactly the manners the emotion line established in D023. Guarded so
+line mode (weather already in a corner) and landscape (bottom strip free)
+never yield, the Screen-page weather toggle is honoured on return, and the
+rebuild prologue clears a yield so rotation cannot strand a hidden row.
+
+Process note, at my own expense: mid-fix I aborted a bad edit with
+`git checkout -- src/ui.cpp`, which discarded the GOOD uncommitted work in
+the same file. Redone from scratch in declaration order. The command erases
+the file's whole uncommitted state, not the last edit — the log now says so
+where I will reread it.
