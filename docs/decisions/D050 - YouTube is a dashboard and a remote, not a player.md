@@ -11,6 +11,13 @@ tags:
 
 # D050 — YouTube is a dashboard and a remote, not a player
 
+> [!note] Title half-superseded
+> Since [[D053 - The clock plays video after all, through the Mac]] it IS a
+> player (companion-transcoded MJPEG), and since
+> [[D054 - Home comes from the owner's own session]] it has the real Home.
+> The assessment below was the honest map at the time and the seams it
+> predicted are the ones those features slotted into.
+
 ## Context
 
 The owner asked whether a YouTube app is possible. The honest assessment:

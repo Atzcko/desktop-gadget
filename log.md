@@ -1752,3 +1752,17 @@ on the Mac logged into YouTube, and possibly one keychain approval.
 The stack's most breakable link (cookie extraction) deliberately lives
 where brew upgrade fixes it - the same placement argument three decisions
 running.
+
+## 2026-08-28 — Sweep at v1.33: the title that stopped being true
+
+Small sweep, two releases after the big one. The interesting item is
+D050's TITLE — "not a player" — which D053 and D054 made false in the best
+way. The note now carries a half-superseded banner rather than a rewrite:
+the assessment was the honest map at the time, and the seams it predicted
+(the companion, gauge_update-style single entry points) are exactly where
+the player and the real Home slotted in. A decision note that aged into
+being wrong FOR THE RIGHT REASONS is the vault working as designed.
+
+Also: index to v1.33 with the player in the screens table, HTTP API rows
+for play_here/stop/frames and ytserve's three endpoints, Module map's
+yt.cpp row, CLAUDE.md's drawer blurb. Zero dangling links.

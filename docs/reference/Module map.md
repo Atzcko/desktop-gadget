@@ -29,7 +29,7 @@ do. The one rule is unchanged and unbroken:
 | `apps/app_lab.cpp` | GPIO/I²C/UART bench on the whitelist (D035/D036) |
 | `apps/app_messages.cpp` + `msg.cpp` | conversations, contacts, unread badge feed (D046/D047) |
 | `apps/app_themes.cpp` + `theme.cpp` | the color tables (D049) |
-| `apps/app_youtube.cpp` + `yt.cpp` | Data API dashboard, thumbnails via LVGL's tjpgd, modes (D050) |
+| `apps/app_youtube.cpp` + `yt.cpp` | Data API dashboard + on-clock MJPEG player + companion Home; thumbnails and frames via LVGL's tjpgd (D050, D053, D054) |
 | `apps/app_trackpad.cpp` | BLE mouse gestures, raw two-finger count (D051) |
 | `apps/app_keyboard.cpp` | BLE typing, ASCII→usage (D052) |
 | `script.cpp` + `lib/lua` | the Lua runtime, sandboxed bindings (D037, D040, D041) |

@@ -27,7 +27,7 @@ authentication — private-LAN posture, accepted in
 | `/msg` | POST | `{"from","text"}` — deliver a message TO this device ([[D046 - Gadgets message over HTTP and mDNS]]) |
 | `/messages` | GET | conversation history + `unread` ([[D047 - Messages are conversations, and the clock wears the badge]]) |
 | `/send` | POST | `{"ip","text"}` — make THIS device send |
-| `/youtube` | GET / POST | status / `{"key"}` `{"channels":"@a,@b"}` `{"host"}` `{"region"}` `{"mode":0-2}` `{"search":"q"}` ([[D050 - YouTube is a dashboard and a remote, not a player]]) |
+| `/youtube` | GET / POST | status (incl. `streaming`, `frames`) / `{"key"}` `{"channels"}` `{"host"}` `{"region"}` `{"mode":0-3}` `{"search":"q"}` `{"play_here":"id"}` `{"stop":true}` ([[D050 - YouTube is a dashboard and a remote, not a player]], [[D053 - The clock plays video after all, through the Mac]], [[D054 - Home comes from the owner's own session]]) |
 
 Bad input returns 4xx with a reason; nothing here reboots the device except
 a successful `/update`.
@@ -40,4 +40,4 @@ a successful `/update`.
 | `tools/ota` | build + push + verify a release |
 | `tools/crash` | fetch + addr2line the last panic |
 | `tools/app` | upload / list / remove Lua apps |
-| `tools/ytserve` | :8999 listener that opens tapped videos |
+| `tools/ytserve` | :8999 companion — `/play` opens in the browser, `/stream/<id>` transcodes to 320×180 MJPEG (yt-dlp + ffmpeg, D053), `/home` serves the owner's real recommendations from their browser session (D054) |

@@ -16,14 +16,16 @@ This vault is the project's memory: every decision, why it was made, and what ha
 
 ## Current state
 
-> [!success] v1.31.0 — running, online, and in daily use
+> [!success] v1.33.0 — running, online, and in daily use
 > Abu Dhabi. Clock and weather in four orientations (BOOT cycles 90°), two
 > themes, a battery gauge that counts coulombs where it can, eight native
 > apps plus Lua scripts, gadget-to-gadget messaging with an unread badge on
-> the clock, a YouTube dashboard with search, and a BLE trackpad + keyboard
-> for the Mac. **Releases ship over Wi-Fi**; crashes are read back the same
-> way. Forty-odd tagged releases, every one confirmed on the device via
-> `/health` before being called done.
+> the clock, a BLE trackpad + keyboard for the Mac — and a YouTube app that
+> shows the owner's REAL Home (their browser session, read on the Mac) and
+> **plays video on the clock** at 320×180 through the companion transcoder,
+> with "On Mac" one button away. **Releases ship over Wi-Fi**; crashes are
+> read back the same way. Fifty-odd tagged releases, every one confirmed on
+> the device via `/health` before being called done.
 
 **Apps** live in `src/apps/` (native) and `/apps/*.lua` in LittleFS
 (uploaded live, no reboot — [[D037 - Apps become Lua scripts]]);
@@ -37,6 +39,7 @@ registry. The remote surface is one page: [[HTTP API]]. The physical side is
 | Line / activity | `POST /emotion`, BLE NUS, or the MCP tool |
 | App drawer | swipe up from the bottom edge |
 | Timer · Settings · Lab · Messages · Themes · YouTube · Trackpad · Keyboard | tap a tile (long-press moves it; order persists) |
+| Video player | tapping a video in YouTube ([[D053 - The clock plays video after all, through the Mac]]) |
 | Text editor | tapping any field in Settings |
 | *back one level* | swipe in from the left edge, or the app's back button ([[D033 - Back goes one level, not home]]) |
 
