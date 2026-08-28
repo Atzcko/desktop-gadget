@@ -1348,3 +1348,25 @@ same shape as the first two.
 
 Verification below in the release entry; the composer, scan and a real
 two-device exchange need fingers and a second gadget respectively.
+
+## 2026-08-28 — Rotate in place (v1.24.1)
+
+Owner: Timer and Blink "not affected by rotation", and BOOT inside an app
+throws you to the clock. The second complaint explains half the first: the
+Timer HAS a portrait layout since v1.24.0, but rotating from inside it went
+home, so the layout was never seen. Blink genuinely was unaffected — it
+predates the portrait_ok tag.
+
+The v1.22.0 policy ("orientation is a device-level act, go home first") was
+my inference, and the owner's hands refuted it: you rotate the device while
+using it, and being thrown home reads as a crash, not a policy.
+`app_apply_rotation_live` now remembers what was open, tears it down through
+the host's own paths, rotates, rebuilds the clock, and relaunches the same
+app — which builds itself for the new shape because that is exactly what
+create-on-entry apps are for. The rebuild-on-entry model turned out to be
+the enabling design: rotation-in-place costs nothing because every app
+already knows how to be born into whatever shape the display is.
+
+Stated casualty: rotating inside Settings discards unsaved edits. Blink
+rewritten with the portrait_ok tag and SCREEN_W/H branching — the first
+script to use both.

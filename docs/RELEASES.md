@@ -11,6 +11,24 @@ Semantic versioning; the scheme and the release procedure live in [[CLAUDE]].
 The version is reported by the boot log, `GET /health` and Settings ▸ Info,
 each with a compiler build stamp so a stale flash is detectable.
 
+## v1.24.1 — 2026-08-28
+
+**Rotation happens IN the app now.** v1.22.0 sent you to the clock on every
+BOOT press, on the argument that orientation is a device-level act. The
+owner's hands disagreed — you rotate the thing while using the thing, and
+being thrown home reads as a crash. The live path now remembers what was
+open, rotates, rebuilds the clock for the new shape, and reopens the same
+app (or the drawer) — which lays itself out for the new shape, since that is
+what D045 made apps do. The one casualty, stated: rotating inside Settings
+discards unsaved edits, because create-on-entry apps cannot be rebuilt
+mid-edit.
+
+**blink.lua opted into portrait** — the first script to carry the
+`portrait_ok` first-line tag and branch on `SCREEN_W/H`. Its selector row
+fills the width, the state card drops below, and its Back/Start sit in the
+uniform strip. This is also why the Timer "wasn't affected by rotation":
+pressing BOOT inside it went home, so its portrait layout was never seen.
+
 ## v1.24.0 — 2026-08-28
 
 **Every shape, one chrome, and the gadgets can talk.**

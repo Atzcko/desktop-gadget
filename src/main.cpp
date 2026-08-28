@@ -16,6 +16,7 @@
 #include "ui.h"
 #include "gauge.h"
 #include "msg.h"
+#include "app_api.h"
 #include "ui_settings.h"
 #include "app.h"
 #include "app_host.h"
@@ -78,9 +79,22 @@ void app_panel_rotate(uint8_t rotation)
 
 void app_apply_rotation_live(uint8_t rotation)
 {
-    /* Orientation is a device-level act: leave whatever is open first, from
-     * a known screen, rather than rotating under an absolutely-laid app. */
-    if (app_host_is_open()) app_host_home();
+    /*
+     * Rotate IN PLACE (v1.24.1): remember what was open, tear it down through
+     * the host's own paths, rotate, rebuild the clock for the new shape, then
+     * reopen what was open — which lays itself out for the new shape too
+     * (or re-borrows landscape, if it is a script that never opted in).
+     *
+     * v1.22.0 just went home, on the argument that orientation is a
+     * device-level act. The owner's actual hands disagreed: you rotate the
+     * thing while USING the thing, and being thrown to the clock reads as a
+     * crash, not a policy. The one real casualty is unsaved Settings edits —
+     * create-on-entry apps cannot be rebuilt mid-edit — and rotating with the
+     * BOOT button mid-edit is judged rarer than rotating mid-timer.
+     */
+    const App *keep       = app_host_running();
+    const bool drawer_was = app_host_is_open() && !keep;
+    if (app_host_is_open()) app_host_home();    /* destroys + restores forced rot */
 
     app_panel_rotate(rotation);
     ui_init(amoled.width(), amoled.height());   /* re-entrant since D043 */
@@ -90,7 +104,12 @@ void app_apply_rotation_live(uint8_t rotation)
     ui_show_weather_block(s.show_weather);
     ui_show_humidity(s.show_humidity);
     ui_set_battery(g_batt.present, g_batt.pct, g_batt.charging);
-    Serial.printf("[rot] now %dx90, %ux%u\n", rotation, amoled.width(), amoled.height());
+
+    if      (keep)       app_host_launch(keep);      /* fresh, in the new shape */
+    else if (drawer_was) app_host_open_drawer();
+    Serial.printf("[rot] now %dx90, %ux%u, back in %s\n",
+                  rotation, amoled.width(), amoled.height(),
+                  keep ? keep->name : (drawer_was ? "drawer" : "clock"));
 }
 
 static volatile int pending_rot = -1;
