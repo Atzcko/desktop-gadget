@@ -43,6 +43,12 @@ briefly copied by mistake and removed, worth remembering as prior art.
   an enclosure that blocks it turns the bench-tool app into decoration.
 - USB-C is the only power. No battery logic exists in firmware.
 
+## Print files exist
+
+Seen in ~/Downloads on 2026-08-28: `DG_Case.stl`, `DG_Buttons.stl`,
+`DG_Switch.stl` (exported 08-26) — the case has left CAD and is headed for
+a printer. The BOOT-reachability constraint above is now load-bearing.
+
 ## Related
 
 - [[T4-S3]] — the board the case must fit

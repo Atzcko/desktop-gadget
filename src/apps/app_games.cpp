@@ -14,8 +14,16 @@
 
 #include <Arduino.h>
 #include <Preferences.h>
+#include <LittleFS.h>
+#include <esp_heap_caps.h>
 #include <stdio.h>
 #include <stdlib.h>
+
+#include "app.h"
+#define ENABLE_SOUND 0
+#define ENABLE_LCD   1
+#define PEANUT_GB_HIGH_LCD_ACCURACY 0
+#include "peanut_gb.h" 
 
 extern "C" { LV_FONT_DECLARE(fliqlo_mid); }
 
@@ -23,7 +31,7 @@ extern "C" { LV_FONT_DECLARE(fliqlo_mid); }
 #define COL_TEXT lv_color_hex(0xE8E8E8)
 #define COL_DIM  lv_color_hex(0x8A8A8A)
 
-enum GView { V_MENU, V_SNAKE, V_BREAKOUT };
+enum GView { V_MENU, V_SNAKE, V_BREAKOUT, V_GB };
 static GView     view;
 static lv_obj_t *scr, *game_view;
 static Preferences gprefs;
@@ -346,6 +354,222 @@ static void breakout_open(void)
     br_reset();
 }
 
+/* ============================================================ GAME BOY == */
+/*
+ * Peanut-GB (vendored, MIT) with the screen doubled to 320x288 on a canvas
+ * and the gamepad as TOUCH ZONES read raw from the CST226 — two points, so
+ * run+jump works, which single-point LVGL events can never do (D056).
+ * The ROM is /roms/boot.gb in LittleFS, uploaded with tools/rom.
+ */
+#define GB_SCALE 2
+#define GB_CW (LCD_WIDTH * GB_SCALE)
+#define GB_CH (LCD_HEIGHT * GB_SCALE)
+
+static struct gb_s  gb;
+static uint8_t     *gb_rom;
+static size_t       gb_rom_len;
+static uint8_t     *gb_cram;
+static lv_color_t  *gb_cbuf;
+static lv_obj_t    *gb_canvas, *gb_msg;
+static bool         gb_ok, gb_failed;
+static uint32_t     gb_next_frame;
+static uint16_t     gb_pal[4];
+/* zone rects, computed per orientation: {x1,y1,x2,y2,joypad_bit} */
+static int          gb_zones[8][5];
+static int          gb_zone_n;
+
+static uint8_t gb_rom_read_cb(struct gb_s *, const uint_fast32_t addr)
+{
+    return addr < gb_rom_len ? gb_rom[addr] : 0xFF;
+}
+static uint8_t gb_cram_read_cb(struct gb_s *, const uint_fast32_t addr)
+{
+    return gb_cram ? gb_cram[addr] : 0xFF;
+}
+static void gb_cram_write_cb(struct gb_s *, const uint_fast32_t addr, const uint8_t v)
+{
+    if (gb_cram) gb_cram[addr] = v;
+}
+static void gb_error_cb(struct gb_s *, const enum gb_error_e e, const uint16_t addr)
+{
+    gb_failed = true;
+    Serial.printf("[gb] error %d at 0x%04X\n", (int)e, addr);
+}
+
+static void gb_lcd_line(struct gb_s *, const uint8_t *pixels, const uint_fast8_t line)
+{
+    /* one GB line -> two canvas rows, each pixel doubled */
+    uint16_t *row = (uint16_t *)gb_cbuf + (line * GB_SCALE) * GB_CW;
+    for (int x = 0; x < LCD_WIDTH; x++) {
+        const uint16_t c = gb_pal[pixels[x] & 3];
+        row[x * 2] = c;
+        row[x * 2 + 1] = c;
+    }
+    memcpy(row + GB_CW, row, GB_CW * 2);
+}
+
+static void gb_layout_zones(int W, int H, int cx, int cy)
+{
+    /* D-pad as four zones around a center, A/B, Start/Select. Zones live
+     * wherever the canvas is NOT. */
+    gb_zone_n = 0;
+    auto Z = [&](int x1, int y1, int x2, int y2, int bit) {
+        gb_zones[gb_zone_n][0] = x1; gb_zones[gb_zone_n][1] = y1;
+        gb_zones[gb_zone_n][2] = x2; gb_zones[gb_zone_n][3] = y2;
+        gb_zones[gb_zone_n][4] = bit; gb_zone_n++;
+    };
+    if (W > H) {
+        /* landscape: canvas left, pad column right */
+        const int px = cx + GB_CW + 10, pw = W - px - 8;
+        const int dx = px + pw / 2, dy = 150;
+        Z(px, dy - 120, W, dy - 40, JOYPAD_UP);
+        Z(px, dy + 40,  W, dy + 120, JOYPAD_DOWN);
+        Z(px, dy - 40, dx, dy + 40, JOYPAD_LEFT);
+        Z(dx, dy - 40,  W, dy + 40, JOYPAD_RIGHT);
+        Z(px, 300, dx, 380, JOYPAD_B);
+        Z(dx, 300,  W, 380, JOYPAD_A);
+        Z(px, 388, dx, 440, JOYPAD_SELECT);
+        Z(dx, 388,  W, 440, JOYPAD_START);
+    } else {
+        /* portrait: canvas top, pad below */
+        const int py = cy + GB_CH + 8;
+        const int dcx = 110, dcy = py + 90;
+        Z(dcx - 90, dcy - 90, dcx + 90, dcy - 30, JOYPAD_UP);
+        Z(dcx - 90, dcy + 30, dcx + 90, dcy + 90, JOYPAD_DOWN);
+        Z(dcx - 90, dcy - 30, dcx,      dcy + 30, JOYPAD_LEFT);
+        Z(dcx,      dcy - 30, dcx + 90, dcy + 30, JOYPAD_RIGHT);
+        Z(W - 200, py + 20,  W - 105, py + 110, JOYPAD_B);
+        Z(W - 100, py,       W - 10,  py + 90,  JOYPAD_A);
+        Z(dcx - 90, dcy + 100, dcx + 40, dcy + 140, JOYPAD_SELECT);
+        Z(dcx + 50, dcy + 100, dcx + 180, dcy + 140, JOYPAD_START);
+    }
+}
+
+static void gb_open(void)
+{
+    const int W = lv_disp_get_hor_res(nullptr);
+    const int H = lv_disp_get_ver_res(nullptr);
+    gb_failed = false; gb_ok = false;
+
+    game_view = lv_obj_create(scr);
+    lv_obj_remove_style_all(game_view);
+    lv_obj_set_size(game_view, LV_PCT(100), LV_PCT(100));
+    lv_obj_set_style_bg_color(game_view, COL_BG, LV_PART_MAIN);
+    lv_obj_set_style_bg_opa(game_view, LV_OPA_COVER, LV_PART_MAIN);
+    lv_obj_clear_flag(game_view, LV_OBJ_FLAG_SCROLLABLE);
+
+    gb_msg = lv_label_create(game_view);
+    lv_obj_set_style_text_font(gb_msg, &lv_font_montserrat_18, LV_PART_MAIN);
+    lv_obj_set_style_text_color(gb_msg, COL_DIM, LV_PART_MAIN);
+    lv_obj_set_width(gb_msg, LV_PCT(90));
+    lv_label_set_long_mode(gb_msg, LV_LABEL_LONG_WRAP);
+    lv_obj_align(gb_msg, LV_ALIGN_TOP_MID, 0, 8);
+
+    File f = LittleFS.open("/roms/boot.gb", "r");
+    if (!f || f.size() < 0x150) {
+        lv_label_set_text(gb_msg, "No cartridge.\n\nUpload one from the Mac:\n"
+                                  "tools/rom <game.gb>\n\n"
+                                  "Homebrew ROMs only - Libbet ships with the repo.");
+        if (f) f.close();
+        return;
+    }
+    gb_rom_len = f.size();
+    gb_rom = (uint8_t *)heap_caps_malloc(gb_rom_len, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+    if (!gb_rom) { f.close(); lv_label_set_text(gb_msg, "out of PSRAM for the ROM"); return; }
+    f.read(gb_rom, gb_rom_len);
+    f.close();
+
+    const enum gb_init_error_e ie =
+        gb_init(&gb, gb_rom_read_cb, gb_cram_read_cb, gb_cram_write_cb,
+                gb_error_cb, nullptr);
+    if (ie != GB_INIT_NO_ERROR) {
+        char m[48]; snprintf(m, sizeof(m), "cartridge refused: init error %d", (int)ie);
+        lv_label_set_text(gb_msg, m);
+        return;
+    }
+    size_t save = 0;
+    gb_get_save_size_s(&gb, &save);
+    if (save) {
+        gb_cram = (uint8_t *)heap_caps_malloc(save, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+        if (gb_cram) {
+            memset(gb_cram, 0xFF, save);
+            File sf = LittleFS.open("/roms/boot.sav", "r");
+            if (sf) { sf.read(gb_cram, save); sf.close(); }
+        }
+    }
+
+    gb_cbuf = (lv_color_t *)heap_caps_malloc(
+        LV_CANVAS_BUF_SIZE_TRUE_COLOR(GB_CW, GB_CH),
+        MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+    if (!gb_cbuf) { lv_label_set_text(gb_msg, "out of PSRAM for the screen"); return; }
+
+    /* DMG greens, pre-swapped for LV_COLOR_16_SWAP (same lesson as the
+     * YouTube thumbnails). */
+    const uint16_t raw[4] = { 0xE7B9, 0x8E6D, 0x4C48, 0x21C4 };
+    for (int i = 0; i < 4; i++)
+#if LV_COLOR_16_SWAP
+        gb_pal[i] = (uint16_t)((raw[i] >> 8) | (raw[i] << 8));
+#else
+        gb_pal[i] = raw[i];
+#endif
+
+    const int cx = (W > H) ? 10 : (W - GB_CW) / 2;
+    const int cy = (W > H) ? (H - 66 - GB_CH) / 2 : 34;
+    gb_canvas = lv_canvas_create(game_view);
+    lv_canvas_set_buffer(gb_canvas, gb_cbuf, GB_CW, GB_CH, LV_IMG_CF_TRUE_COLOR);
+    lv_obj_set_pos(gb_canvas, cx, cy);
+    lv_obj_clear_flag(gb_canvas, LV_OBJ_FLAG_CLICKABLE);
+
+    char title[24] = "";
+    memcpy(title, gb_rom + 0x134, 15);
+    lv_label_set_text(gb_msg, title);
+    lv_obj_align(gb_msg, LV_ALIGN_TOP_LEFT, cx, 8);
+
+    gb_layout_zones(W, H, cx, cy);
+    gb_init_lcd(&gb, gb_lcd_line);
+    gb.direct.joypad = 0xFF;
+    gb_next_frame = millis();
+    gb_ok = true;
+}
+
+static void gb_close(void)
+{
+    if (gb_cram) {
+        size_t save = 0;
+        gb_get_save_size_s(&gb, &save);
+        if (save) {
+            File sf = LittleFS.open("/roms/boot.sav", "w");
+            if (sf) { sf.write(gb_cram, save); sf.close(); }
+        }
+        heap_caps_free(gb_cram); gb_cram = nullptr;
+    }
+    if (gb_rom)  { heap_caps_free(gb_rom);  gb_rom  = nullptr; }
+    if (gb_cbuf) { heap_caps_free(gb_cbuf); gb_cbuf = nullptr; }
+    gb_canvas = nullptr; gb_msg = nullptr; gb_ok = false;
+}
+
+static void gb_tick(void)
+{
+    if (!gb_ok || gb_failed) return;
+    const uint32_t now = millis();
+    if (now < gb_next_frame) return;
+    gb_next_frame = now + 16;
+
+    /* the gamepad: up to two raw fingers against the zone table */
+    int16_t xs[2], ys[2];
+    uint8_t pressed = 0;
+    const uint8_t n = app_touch_points(xs, ys, 2);
+    for (uint8_t i = 0; i < n; i++)
+        for (int z = 0; z < gb_zone_n; z++)
+            if (xs[i] >= gb_zones[z][0] && xs[i] < gb_zones[z][2] &&
+                ys[i] >= gb_zones[z][1] && ys[i] < gb_zones[z][3])
+                pressed |= (uint8_t)gb_zones[z][4];
+    gb.direct.joypad = (uint8_t)~pressed;
+
+    gb_run_frame(&gb);
+    lv_obj_invalidate(gb_canvas);
+}
+
 /* ============================================================== chooser == */
 
 static void game_close(void);
@@ -362,7 +586,7 @@ static void menu_pick_cb(lv_event_t *e)
     app_host_std_back(scr, nullptr);
     if (which == 0) { view = V_SNAKE;    snake_open(); }
     if (which == 1) { view = V_BREAKOUT; breakout_open(); }
-    if (which == 2) { view = V_MENU;     menu_build();  }   /* placeholder */
+    if (which == 2) { view = V_GB;       gb_open();     }
     if (game_view) lv_obj_move_foreground(game_view);
     /* the strip chip must stay on top of the game surface */
     app_host_std_back(scr, nullptr);
@@ -386,7 +610,7 @@ static void menu_build(void)
 
     static const char *names[3] = { "Snake", "Breakout", "Game Boy" };
     static const char *subs[3]  = { "swipe to turn", "drag the paddle",
-                                    "coming - needs its core (ask Claude)" };
+                                    "Peanut-GB  ·  touch pad + A/B" };
     for (int i = 0; i < 3; i++) {
         lv_obj_t *card = lv_btn_create(scr);
         if (portrait) {
@@ -398,7 +622,7 @@ static void menu_build(void)
         }
         lv_obj_set_style_bg_color(card, lv_color_hex(0x161616), LV_PART_MAIN);
         lv_obj_set_style_radius(card, 18 + theme_get().radius_add, LV_PART_MAIN);
-        if (i == 2) lv_obj_set_style_bg_color(card, lv_color_hex(0x0E0E0E), LV_PART_MAIN);
+
         lv_obj_add_event_cb(card, menu_pick_cb, LV_EVENT_CLICKED, (void *)(intptr_t)i);
 
         lv_obj_t *n = lv_label_create(card);
@@ -418,6 +642,7 @@ static void menu_build(void)
 
 static void game_close(void)
 {
+    if (view == V_GB) gb_close();
     if (view == V_SNAKE) {
         if (sn_buf)  { heap_caps_free(sn_buf);  sn_buf = nullptr; }
         if (sn_body) { heap_caps_free(sn_body); sn_body = nullptr; }
@@ -482,6 +707,7 @@ static lv_obj_t *games_create(void)
 
 static void games_destroy(void)
 {
+    if (view == V_GB) gb_close();
     if (view == V_SNAKE) {
         if (sn_buf)  { heap_caps_free(sn_buf);  sn_buf  = nullptr; }
         if (sn_body) { heap_caps_free(sn_body); sn_body = nullptr; }
@@ -497,6 +723,7 @@ static void games_tick(void)
     if (!scr) return;
     if (view == V_SNAKE)    sn_tick();
     if (view == V_BREAKOUT) br_tick();
+    if (view == V_GB)       gb_tick();
 }
 
 static bool games_back(void)

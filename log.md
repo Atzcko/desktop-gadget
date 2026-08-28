@@ -1789,3 +1789,25 @@ portrait is just a taller game (D045 with no extra code).
 Awaiting the owner's word on two downloads for the Game Boy: peanut_gb.h
 (deltabeard/Peanut-GB, MIT, ~150 KB) and one libre homebrew ROM to ship as
 the built-in cartridge.
+
+## 2026-08-28 — A real Game Boy lives in the arcade (v1.35.0)
+
+The owner downloaded Peanut-GB themselves ("zip is in the download folder"
+- found already extracted) and said go. The core is vendored verbatim, MIT
+notice kept; the first cartridge hunt had a wrinkle worth recording: Tobu
+Tobu Girl, the poster child of libre GB homebrew, ships NO prebuilt ROM in
+its repo (source + RGBDS only), so the shipped cart is Libbet (pinobatch,
+zlib, 32 KB, real release binary, delightful game).
+
+Three implementation notes:
+
+- The gamepad reads TWO raw touch points against a zone table each frame -
+  D-pad plus jump is two fingers, LVGL's indev reports one, and the
+  trackpad's raw-read precedent (D051) extended to app_touch_points().
+- The DMG palette is pre-swapped for LV_COLOR_16_SWAP at init - the exact
+  bug the YouTube thumbnails shipped with, caught this time at design.
+- Sound is compiled out (ENABLE_SOUND 0) because the silence is hardware;
+  pretending otherwise would just burn cycles mixing samples nobody hears.
+
+Also spotted in ~/Downloads and recorded in [[Enclosure]]: DG_Case.stl,
+DG_Buttons.stl, DG_Switch.stl - the owner is printing the case.

@@ -50,3 +50,8 @@ void app_request_rebuild(void);
  * the same CST226 state the indev polls; count-only, positions untouched.
  */
 uint8_t app_touch_count(void);
+
+/* Both touch points, for the Game Boy's gamepad zones (D056): D-pad and a
+ * button pressed TOGETHER is two fingers, which LVGL's single-point indev
+ * can never report. Returns the count; fills up to n points. */
+uint8_t app_touch_points(int16_t *xs, int16_t *ys, uint8_t n);

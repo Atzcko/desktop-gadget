@@ -23,6 +23,14 @@ the drawer's height is computed from the live display instead of a
 landscape constant, so portrait also SHOWS a full extra row before
 scrolling at all.
 
+## v1.35.0 — 2026-08-28
+
+**The Game Boy is real** ([[D056 - A real Game Boy lives in the arcade]]).
+Peanut-GB vendored from the owner's download, screen doubled to 320×288 in
+DMG greens, gamepad as raw two-point touch zones (D-pad + jump works),
+cartridges via `tools/rom` with battery saves persisted. Libbet (zlib
+license) rides along as the first cartridge. ~60 fps, silent by hardware.
+
 ## v1.34.0 — 2026-08-28
 
 **The arcade opens** ([[D055 - Games wear the house style]]). One Games app:

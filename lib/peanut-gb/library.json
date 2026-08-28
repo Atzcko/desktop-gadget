@@ -1,0 +1,8 @@
+{
+  "name": "peanut-gb",
+  "version": "1.0.0",
+  "description": "Peanut-GB by Mahyar Koshkouei, vendored verbatim from the owner's download of deltabeard/Peanut-GB (MIT). Single-header Game Boy emulator.",
+  "license": "MIT",
+  "frameworks": "arduino",
+  "platforms": "espressif32"
+}

@@ -27,6 +27,7 @@ authentication — private-LAN posture, accepted in
 | `/msg` | POST | `{"from","text"}` — deliver a message TO this device ([[D046 - Gadgets message over HTTP and mDNS]]) |
 | `/messages` | GET | conversation history + `unread` ([[D047 - Messages are conversations, and the clock wears the badge]]) |
 | `/send` | POST | `{"ip","text"}` — make THIS device send |
+| `/rom` | POST | raw `.gb` body → the Game Boy's cartridge slot ([[D056 - A real Game Boy lives in the arcade]]) |
 | `/youtube` | GET / POST | status (incl. `streaming`, `frames`) / `{"key"}` `{"channels"}` `{"host"}` `{"region"}` `{"mode":0-3}` `{"search":"q"}` `{"play_here":"id"}` `{"stop":true}` ([[D050 - YouTube is a dashboard and a remote, not a player]], [[D053 - The clock plays video after all, through the Mac]], [[D054 - Home comes from the owner's own session]]) |
 
 Bad input returns 4xx with a reason; nothing here reboots the device except

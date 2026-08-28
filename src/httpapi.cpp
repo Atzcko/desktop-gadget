@@ -6,6 +6,7 @@
 #include "msg.h"
 #include "theme.h"
 #include "yt.h"
+#include <LittleFS.h>
 #include "app.h"
 #include "app.h"
 #include "net.h"
@@ -675,6 +676,24 @@ void httpapi_begin(void)
         char body[64];
         snprintf(body, sizeof(body), "{\"ok\":true,\"theme\":\"%s\"}", theme_at(n).name);
         req->send(200, "application/json", body);
+    });
+
+    /* ROM cartridge for the Game Boy (D056): raw .gb body -> LittleFS.
+     * Homebrew/owned ROMs only - same posture as every upload here. */
+    server.on("/rom", HTTP_POST,
+              [](AsyncWebServerRequest *req) {
+        req->send(200, "application/json", "{\"ok\":true,\"cartridge\":\"loaded\"}");
+    }, nullptr,
+              [](AsyncWebServerRequest *req, uint8_t *data, size_t len,
+                 size_t index, size_t total) {
+        static File rf;
+        if (index == 0) {
+            LittleFS.mkdir("/roms");
+            rf = LittleFS.open("/roms/boot.gb", "w");
+            LittleFS.remove("/roms/boot.sav");   /* new cart, fresh save */
+        }
+        if (rf) rf.write(data, len);
+        if (index + len == total && rf) { rf.close(); Serial.printf("[gb] cart %u bytes\n", (unsigned)total); }
     });
 
     server.on("/msg", HTTP_POST,

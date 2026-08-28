@@ -1,0 +1,18 @@
+#!/bin/zsh
+# tools/rom — load a Game Boy cartridge into the clock (D056).
+#   tools/rom path/to/game.gb
+# Homebrew or ROMs you own. The previous save file is cleared.
+set -e
+[ -f "$1" ] || { echo "rom: no such file: $1"; exit 1; }
+HOSTS=()
+[ -r "$HOME/.cache/flipclock-host" ] && HOSTS+=("$(cat "$HOME/.cache/flipclock-host")")
+HOSTS+=("flipclock.local")
+for h in "${HOSTS[@]}"; do
+    [ -z "$h" ] && continue
+    if curl -sf --max-time 20 -X POST -H "Content-Type: application/octet-stream" \
+            --data-binary @"$1" "http://$h/rom" >/dev/null; then
+        echo "rom: $(basename "$1") ($(stat -f %z "$1") bytes) loaded - open Games > Game Boy"
+        exit 0
+    fi
+done
+echo "rom: device not reachable"; exit 1

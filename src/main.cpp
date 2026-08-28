@@ -124,6 +124,11 @@ uint8_t app_touch_count(void)
     return amoled.getPoint(xs, ys, 2);
 }
 
+uint8_t app_touch_points(int16_t *xs, int16_t *ys, uint8_t n)
+{
+    return amoled.getPoint(xs, ys, n);
+}
+
 void app_refresh_clock(bool animate)
 {
     struct tm tm_now;
