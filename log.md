@@ -1642,3 +1642,24 @@ with the on-screen discretion caveat stated in the header.
 
 Third descriptor change, third re-pair. After this the HID surface is
 complete - vendor + mouse + keyboard - so this dance should be done.
+
+## 2026-08-28 — The map with two keyboards (v1.30.1)
+
+Owner: the keyboard types nothing, and some buttons misbehave. Found by
+reading before asking them to re-pair yet again: v1.30.0 appended the ID3
+keyboard collection to BOTH maps — but the fallback identity already IS a
+keyboard on ID1, so that map carried two keyboard collections. A malformed
+map is rejected whole by some hosts, and silence was the symptom.
+
+Two changes. The fallback identity now types on its NATIVE ID1 report and
+only the gadget identity carries ID3. And /health's ble object gained
+subs{mouse,key} via NimBLE's getSubscribedCount(), because a bonded host
+that paired against an older map subscribes to nothing new — a failure mode
+this project has now hit twice while being unable to see it. After the fix:
+subs {mouse:1, key:1}, and the owner's "now it works" arrived before the
+diagnostics did.
+
+The meta-lesson joins D045's flag collection: every HID surface change since
+v1.29.0 has had the same failure shape (host-side cache, device-side
+silence). subs{} is the /crash of pairing — the observability arrives with
+the second bug, as usual.
