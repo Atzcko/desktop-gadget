@@ -11,6 +11,25 @@ Semantic versioning; the scheme and the release procedure live in [[CLAUDE]].
 The version is reported by the boot log, `GET /health` and Settings ▸ Info,
 each with a compiler build stamp so a stale flash is detectable.
 
+## v1.23.0 — 2026-08-26
+
+**The battery gauge counts coulombs where the hardware can measure them.**
+([[D044 - Coulombs where measurable, model where not]])
+
+The SY6970 measures charge current but cannot see discharge current, so:
+charging integrates the **measured** mA (real coulomb counting), charge-done
+snaps to 100 %, and discharge integrates a brightness-aware **model** tethered
+to the voltage curve (~50 min time constant) so error cannot accumulate. State
+survives reboot via NVS; `batt_mah` (default 5000) scales it; `/health` gains
+`gauge`, signed `ma`, and `mah_used` since last full.
+
+Also fixes the chip showing green on a full battery: the library's
+`isCharging()` counts DONE as charging (and `isChargeDone()` returns the
+opposite of its name — two more of the D042 genre).
+
+A true counter remains a ~3 € INA226 on the battery lead via the Lab's I²C
+pins; `gauge_update()` is the seam where it would slot in.
+
 ## v1.22.1 — 2026-08-25
 
 **BOOT uses the internal pull-up.** The first remote rotation test caught a

@@ -310,7 +310,8 @@ curl http://flipclock.local/health
 ```
 
 `/health` returns uptime, RSSI, IP, SSID, NTP state, weather age, battery
-(present/mv/pct/charging), BLE state and free PSRAM/heap.
+(present/mv/pct/charging, hybrid-gauge `ma` and `mah_used` — D044), BLE state
+and free PSRAM/heap.
 
 ### Python (HTTP **or** BLE)
 

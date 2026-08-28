@@ -14,6 +14,7 @@
 #include "settings.h"
 #include "net.h"
 #include "ui.h"
+#include "gauge.h"
 #include "ui_settings.h"
 #include "app.h"
 #include "app_host.h"
@@ -40,24 +41,6 @@ BatteryState app_battery(void) { return g_batt; }
  * what it is: under load it reads low, on the charger it reads high (the CV
  * phase holds the cell at 4.2 V long before it is full). D042.
  */
-static int batt_percent(uint16_t mv)
-{
-    static const struct { uint16_t mv; uint8_t pct; } C[] = {
-        {4200,100},{4060,90},{3980,80},{3920,70},{3870,60},
-        {3820,50},{3790,40},{3770,30},{3740,20},{3680,10},{3450,0},
-    };
-    const unsigned N = sizeof(C) / sizeof(C[0]);
-    if (mv >= C[0].mv) return 100;
-    for (unsigned i = 1; i < N; i++) {
-        if (mv >= C[i].mv) {
-            const int span_mv  = C[i-1].mv - C[i].mv;
-            const int span_pct = C[i-1].pct - C[i].pct;
-            return C[i].pct + (int)(mv - C[i].mv) * span_pct / span_mv;
-        }
-    }
-    return 0;
-}
-
 void app_apply_brightness(uint8_t level)
 {
     if (level == applied_brightness) return;
@@ -243,6 +226,8 @@ void setup()
      * note, now corrected. The library's own examples use INPUT_PULLUP. */
     pinMode(0, INPUT_PULLUP);
 
+    gauge_begin(amoled.getBattVoltage());
+
     ui_init(amoled.width(), amoled.height());
     ui_show_weather_block(s.show_weather);
     ui_show_humidity(s.show_humidity);
@@ -365,8 +350,26 @@ void loop()
         g_batt.mv       = mv;
         g_batt.present  = in_window || absent_reads < 2;
         g_batt.vbus     = amoled.isVbusIn();
-        g_batt.charging = g_batt.present && g_batt.vbus && amoled.isCharging();
-        g_batt.pct      = g_batt.present ? batt_percent(mv) : -1;
+
+        /* chargeStatus() read directly: the library's isChargeDone() helper
+         * returns the OPPOSITE of its name (!= where == belongs) and its
+         * isCharging() counts DONE as charging. Same genre as
+         * isBatteryConnect() answering a different question (D042). */
+        const auto cs = amoled.SY.chargeStatus();
+        const bool chg_done = (cs == PowersSY6970::CHARGE_STATE_DONE);
+        g_batt.charging = g_batt.present && g_batt.vbus &&
+                          (cs == PowersSY6970::CHARGE_STATE_PRE_CHARGE ||
+                           cs == PowersSY6970::CHARGE_STATE_FAST_CHARGE);
+
+        static uint32_t last_gauge_ms = 0;
+        const uint32_t g_dt = last_gauge_ms ? (now - last_gauge_ms) : 0;
+        last_gauge_ms = now;
+        if (g_dt > 0)
+            gauge_update(mv, g_batt.present, g_batt.charging, chg_done,
+                         g_batt.charging ? amoled.SY.getChargeCurrent() : 0,
+                         applied_brightness, g_dt);
+
+        g_batt.pct = g_batt.present ? gauge_pct() : -1;
         ui_set_battery(g_batt.present, g_batt.pct, g_batt.charging);
     }
 

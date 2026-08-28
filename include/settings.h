@@ -35,6 +35,7 @@ struct Settings {
     bool    show_weather;
     bool    show_humidity;
     bool    burnin_guard;
+    uint16_t batt_mah;          /* pack capacity for the gauge (D044)     */
     uint8_t rotation;           /* panel rotation 0-3: 0/2 landscape 600x450,
                                    1/3 portrait 450x600. Replaces rotate_180;
                                    old NVS bool migrates on first load. */

@@ -1281,3 +1281,33 @@ What the fingers still have to check: that the portrait layouts *look* right
 (stacked cards, weather row, wrapped drawer), that a physical BOOT press
 cycles once and only once, and that the line display's portrait fade reads
 acceptably from across the desk.
+
+## 2026-08-26 — Coulombs where measurable (v1.23.0)
+
+Owner asked for a real coulomb counter instead of the voltage gauge. The
+register map says no: the SY6970 measures charge current (REG 0x12) but has
+no discharge ADC and no accumulator — current leaving the battery is
+invisible to this silicon, full stop. What shipped is the honest hybrid:
+charging integrates MEASURED current (that half genuinely counts coulombs),
+charge-done snaps to 100 (the one absolute anchor), discharge integrates a
+brightness-aware model tethered to the voltage curve with a ~50 min time
+constant so error cannot accumulate. `gauge.cpp` owns all of it; SoC persists
+in NVS and survives reboots; a stored value >25 points from the curve at boot
+is discarded as a swapped battery.
+
+Two more XPowersLib traps joined the collection while wiring it:
+`isChargeDone()` returns the opposite of its name, and `isCharging()` counts
+DONE as charging — which explains the chip showing charging-green on a full
+battery. Both bypassed with chargeStatus() read directly. That is four
+misleading APIs from one library in one week; the gauge module now talks to
+the chip through exactly one function.
+
+The real counter stays on the table as hardware: INA226 on the battery lead,
+riding the Lab's free I²C. gauge_update() is the seam — detected hardware
+replaces the model, nothing above it changes.
+
+Caught mid-implementation: a format-string patch applied while its argument
+patch silently failed — snprintf with two %d and no args, and the build
+SUCCEEDED because DISABLE_ALL_LIBRARY_WARNINGS eats -Wformat. Garbage JSON at
+runtime, zero compile noise. The assert-every-patch rule exists for exactly
+this; the arg patch got its own verified pass.

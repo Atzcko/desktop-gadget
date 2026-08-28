@@ -2,6 +2,7 @@
 #include "emotion.h"
 #include "settings.h"
 #include "app_host.h"
+#include "gauge.h"
 #include "app.h"
 #include "net.h"
 #include "version.h"
@@ -73,7 +74,8 @@ static void handle_health(AsyncWebServerRequest *req)
              "\"humidity_pct\":%.0f,"
              "\"weather_code\":%d,"
              "\"is_day\":%s,"
-             "\"battery\":{\"present\":%s,\"mv\":%u,\"pct\":%d,\"charging\":%s,\"vbus\":%s},"
+             "\"battery\":{\"present\":%s,\"mv\":%u,\"pct\":%d,\"charging\":%s,\"vbus\":%s,"
+             "\"gauge\":\"hybrid\",\"ma\":%d,\"mah_used\":%d},"
              "\"brightness\":{\"day\":%u,\"night\":%u,\"follows_sun\":%s},"
              "\"city\":\"%s\","
              "\"emotion\":{\"active\":%s,\"state\":\"%s\",\"remaining_s\":%u},"
@@ -101,6 +103,8 @@ static void handle_health(AsyncWebServerRequest *req)
              bat.pct,
              bat.charging ? "true" : "false",
              bat.vbus     ? "true" : "false",
+             gauge_ma(),
+             gauge_mah_used(),
              s.brightness_day, s.brightness_night,
              s.night_follows_sun ? "true" : "false",
              s.city,
