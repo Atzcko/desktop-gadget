@@ -680,6 +680,24 @@ void httpapi_begin(void)
 
     /* ROM cartridge for the Game Boy (D056): raw .gb body -> LittleFS.
      * Homebrew/owned ROMs only - same posture as every upload here. */
+    server.on("/games", HTTP_POST,
+              [](AsyncWebServerRequest *) {}, nullptr,
+              [](AsyncWebServerRequest *req, uint8_t *data, size_t len,
+                 size_t index, size_t total) {
+        static String buf;
+        if (index == 0) buf = "";
+        buf.concat((const char *)data, len);
+        if (index + len != total) return;
+        extern void games_request_open(int);
+        int w = -1;
+        if      (strstr(buf.c_str(), "snake"))    w = 0;
+        else if (strstr(buf.c_str(), "breakout")) w = 1;
+        else if (strstr(buf.c_str(), "gameboy"))  w = 2;
+        if (w < 0) { send_err(req, 400, "expected snake|breakout|gameboy"); return; }
+        games_request_open(w);
+        req->send(200, "application/json", "{\"ok\":true}");
+    });
+
     server.on("/rom", HTTP_POST,
               [](AsyncWebServerRequest *req) {
         req->send(200, "application/json", "{\"ok\":true,\"cartridge\":\"loaded\"}");

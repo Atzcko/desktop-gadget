@@ -408,6 +408,37 @@ static void gb_lcd_line(struct gb_s *, const uint8_t *pixels, const uint_fast8_t
     memcpy(row + GB_CW, row, GB_CW * 2);
 }
 
+/* The controls the owner could not see (v1.35.1): every zone gets a dim
+ * outline and label drawn FROM the same table the hit-test reads, so what
+ * you see is exactly where it works. Dim on purpose - chrome, not game. */
+static void gb_draw_pad(void)
+{
+    static const char *names[8] = { LV_SYMBOL_UP, LV_SYMBOL_DOWN, LV_SYMBOL_LEFT,
+                                    LV_SYMBOL_RIGHT, "B", "A", "SEL", "STA" };
+    for (int z = 0; z < gb_zone_n; z++) {
+        lv_obj_t *o = lv_obj_create(game_view);
+        lv_obj_remove_style_all(o);
+        lv_obj_clear_flag(o, LV_OBJ_FLAG_CLICKABLE);
+        lv_obj_set_pos(o, gb_zones[z][0], gb_zones[z][1]);
+        lv_obj_set_size(o, gb_zones[z][2] - gb_zones[z][0],
+                        gb_zones[z][3] - gb_zones[z][1]);
+        lv_obj_set_style_border_width(o, 2, LV_PART_MAIN);
+        lv_obj_set_style_border_color(o, lv_color_hex(0x333333), LV_PART_MAIN);
+        const int bit = gb_zones[z][4];
+        lv_obj_set_style_radius(o, (bit == JOYPAD_A || bit == JOYPAD_B) ? 40 : 10,
+                                LV_PART_MAIN);
+        int name_i = bit == JOYPAD_UP ? 0 : bit == JOYPAD_DOWN ? 1 :
+                     bit == JOYPAD_LEFT ? 2 : bit == JOYPAD_RIGHT ? 3 :
+                     bit == JOYPAD_B ? 4 : bit == JOYPAD_A ? 5 :
+                     bit == JOYPAD_SELECT ? 6 : 7;
+        lv_obj_t *l = lv_label_create(o);
+        lv_obj_set_style_text_font(l, &lv_font_montserrat_18, LV_PART_MAIN);
+        lv_obj_set_style_text_color(l, lv_color_hex(0x5A5A5A), LV_PART_MAIN);
+        lv_label_set_text(l, names[name_i]);
+        lv_obj_center(l);
+    }
+}
+
 static void gb_layout_zones(int W, int H, int cx, int cy)
 {
     /* D-pad as four zones around a center, A/B, Start/Select. Zones live
@@ -526,6 +557,7 @@ static void gb_open(void)
     lv_obj_align(gb_msg, LV_ALIGN_TOP_LEFT, cx, 8);
 
     gb_layout_zones(W, H, cx, cy);
+    gb_draw_pad();
     gb_init_lcd(&gb, gb_lcd_line);
     gb.direct.joypad = 0xFF;
     gb_next_frame = millis();
@@ -583,12 +615,10 @@ static void menu_pick_cb(lv_event_t *e)
     /* clear the menu, open the game */
     lv_obj_clean(scr);
     game_view = nullptr;
-    app_host_std_back(scr, nullptr);
     if (which == 0) { view = V_SNAKE;    snake_open(); }
     if (which == 1) { view = V_BREAKOUT; breakout_open(); }
     if (which == 2) { view = V_GB;       gb_open();     }
-    if (game_view) lv_obj_move_foreground(game_view);
-    /* the strip chip must stay on top of the game surface */
+    /* ONE chip, added after the game surface so it stays tappable */
     app_host_std_back(scr, nullptr);
 }
 
@@ -718,9 +748,25 @@ static void games_destroy(void)
     view = V_MENU;
 }
 
+/* Remote pick, for shell-driven verification (D039): the same entry the
+ * chooser cards use, consumed on the app's own tick. */
+static volatile int games_pending_pick = -1;
+void games_request_open(int which) { games_pending_pick = which; }
+
 static void games_tick(void)
 {
     if (!scr) return;
+    if (games_pending_pick >= 0) {
+        const int w = games_pending_pick;
+        games_pending_pick = -1;
+        if (view != V_MENU) game_close();
+        lv_obj_clean(scr);
+        game_view = nullptr;
+        if (w == 0) { view = V_SNAKE;    snake_open(); }
+        if (w == 1) { view = V_BREAKOUT; breakout_open(); }
+        if (w == 2) { view = V_GB;       gb_open();     }
+        app_host_std_back(scr, nullptr);
+    }
     if (view == V_SNAKE)    sn_tick();
     if (view == V_BREAKOUT) br_tick();
     if (view == V_GB)       gb_tick();
