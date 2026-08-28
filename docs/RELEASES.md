@@ -11,6 +11,16 @@ Semantic versioning; the scheme and the release procedure live in [[CLAUDE]].
 The version is reported by the boot log, `GET /health` and Settings ▸ Info,
 each with a compiler build stamp so a stale flash is detectable.
 
+## v1.26.0 — 2026-08-28
+
+**Settings navigates like Apple's** ([[D048 - Settings navigates like Apple's]]).
+The tabview is gone: landscape shows a macOS-style sidebar (vertical section
+list + pane), portrait shows an iOS-style stack (full-width list, tap pushes
+the page, back pops it). Everything scrolls vertically; no horizontal gesture
+survives in Settings, so nothing competes with the left-edge back swipe. The
+560-px lists went percentage-width — they had been silently clipping in
+portrait. Content code untouched; only the plumbing changed.
+
 ## v1.25.0 — 2026-08-28
 
 **Messages looks like a messenger now.**

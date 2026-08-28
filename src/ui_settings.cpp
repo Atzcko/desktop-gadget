@@ -23,6 +23,51 @@
 #define MAX_GEO  6
 
 static lv_obj_t *scr_set;
+
+/* ---- navigation (D048): macOS sidebar in landscape, iOS stack in portrait */
+static lv_obj_t *nav_sidebar, *nav_content, *nav_pages[6], *nav_rows[6];
+static lv_obj_t *nav_title;
+static int       nav_cur;
+static bool      nav_portrait;
+
+static const char *SEC_NAME[6] = { "Wi-Fi", "Time", "Place", "Screen", "BLE", "Info" };
+static const char *SEC_ICON[6] = { LV_SYMBOL_WIFI, LV_SYMBOL_BELL, LV_SYMBOL_GPS,
+                                   LV_SYMBOL_TINT, LV_SYMBOL_BLUETOOTH, LV_SYMBOL_LIST };
+
+static void nav_show(int i)
+{
+    if (i < 0 || i > 5) return;
+    lv_obj_add_flag(nav_pages[nav_cur], LV_OBJ_FLAG_HIDDEN);
+    nav_cur = i;
+    lv_obj_clear_flag(nav_pages[i], LV_OBJ_FLAG_HIDDEN);
+
+    for (int k = 0; k < 6; k++)
+        lv_obj_set_style_bg_color(nav_rows[k],
+            lv_color_hex(k == i && !nav_portrait ? 0x2A2A2A : 0x161616),
+            LV_PART_MAIN);
+
+    if (nav_portrait) {
+        lv_obj_add_flag(nav_sidebar, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_clear_flag(nav_content, LV_OBJ_FLAG_HIDDEN);
+        if (nav_title) lv_label_set_text(nav_title, SEC_NAME[i]);
+    }
+}
+
+/* Portrait: pop the pushed page back to the list. False in landscape, where
+ * the sidebar never leaves and there is nothing to pop. */
+static bool nav_pop(void)
+{
+    if (!nav_portrait || !nav_content) return false;
+    if (lv_obj_has_flag(nav_content, LV_OBJ_FLAG_HIDDEN)) return false;
+    lv_obj_add_flag(nav_content, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_clear_flag(nav_sidebar, LV_OBJ_FLAG_HIDDEN);
+    return true;
+}
+
+static void nav_row_cb(lv_event_t *e)
+{
+    nav_show((int)(intptr_t)lv_event_get_user_data(e));
+}
 static bool      is_open;
 
 /* Wi-Fi tab */
@@ -140,9 +185,9 @@ static void editor_close(bool commit)
  */
 bool ui_settings_back(void)
 {
-    if (!editor) return false;
-    editor_close(true);
-    return true;
+    if (editor) { editor_close(true); return true; }
+    if (nav_pop()) return true;          /* portrait: page back to the list */
+    return false;
 }
 
 static void editor_kb_event(lv_event_t *e)
@@ -573,6 +618,8 @@ void ui_settings_destroy(void)
     lbl_status     = nullptr;
     btn_save       = nullptr;
     scr_set        = nullptr;
+    nav_sidebar = nav_content = nav_title = nullptr;
+    for (int i = 0; i < 6; i++) { nav_pages[i] = nullptr; nav_rows[i] = nullptr; }
     is_open        = false;
 }
 
@@ -621,19 +668,115 @@ lv_obj_t *ui_settings_create(void)
     scr_set = lv_obj_create(nullptr);
     lv_obj_set_style_bg_color(scr_set, lv_color_hex(0x0A0A0A), LV_PART_MAIN);
 
-    lv_obj_t *tv = lv_tabview_create(scr_set, LV_DIR_TOP, 46);
-    lv_obj_set_size(tv, LV_PCT(100), lv_disp_get_ver_res(nullptr) - 76);
-    lv_obj_set_pos(tv, 0, 0);
-    lv_obj_set_style_bg_color(tv, lv_color_hex(0x0A0A0A), LV_PART_MAIN);
-    lv_obj_set_style_text_font(lv_tabview_get_tab_btns(tv),
-                               &lv_font_montserrat_18, LV_PART_MAIN);
+    /*
+     * No tabview (D048). Horizontal tab-swiping is gone: the section list is
+     * VERTICAL and every page scrolls VERTICALLY — Apple's two Settings
+     * layouts, chosen by shape: landscape gets macOS (sidebar + pane),
+     * portrait gets iOS (full-width list, tap pushes the page).
+     */
+    const int W = lv_disp_get_hor_res(nullptr);
+    const int H = lv_disp_get_ver_res(nullptr);
+    const int body_h = H - 76;
+    nav_portrait = H > W;
+    nav_cur = 0;
 
-    lv_obj_t *t_wifi   = lv_tabview_add_tab(tv, "Wi-Fi");
-    lv_obj_t *t_time   = lv_tabview_add_tab(tv, "Time");
-    lv_obj_t *t_place  = lv_tabview_add_tab(tv, "Place");
-    lv_obj_t *t_screen = lv_tabview_add_tab(tv, "Screen");
-    lv_obj_t *t_ble    = lv_tabview_add_tab(tv, "BLE");
-    lv_obj_t *t_info   = lv_tabview_add_tab(tv, "Info");
+    const int side_w = nav_portrait ? W : 190;
+
+    nav_sidebar = lv_obj_create(scr_set);
+    lv_obj_remove_style_all(nav_sidebar);
+    lv_obj_set_size(nav_sidebar, side_w, body_h);
+    lv_obj_set_pos(nav_sidebar, 0, 0);
+    lv_obj_set_style_bg_color(nav_sidebar, lv_color_hex(0x0F0F0F), LV_PART_MAIN);
+    lv_obj_set_style_bg_opa(nav_sidebar, LV_OPA_COVER, LV_PART_MAIN);
+    lv_obj_set_flex_flow(nav_sidebar, LV_FLEX_FLOW_COLUMN);
+    lv_obj_set_style_pad_all(nav_sidebar, 10, LV_PART_MAIN);
+    lv_obj_set_style_pad_row(nav_sidebar, 8, LV_PART_MAIN);
+    lv_obj_set_scroll_dir(nav_sidebar, LV_DIR_VER);
+    lv_obj_clear_flag(nav_sidebar, LV_OBJ_FLAG_SCROLL_CHAIN);
+
+    for (int i = 0; i < 6; i++) {
+        lv_obj_t *row = lv_obj_create(nav_sidebar);
+        lv_obj_remove_style_all(row);
+        lv_obj_set_size(row, LV_PCT(100), nav_portrait ? 64 : 54);
+        lv_obj_set_style_bg_color(row, lv_color_hex(0x161616), LV_PART_MAIN);
+        lv_obj_set_style_bg_opa(row, LV_OPA_COVER, LV_PART_MAIN);
+        lv_obj_set_style_radius(row, 12, LV_PART_MAIN);
+        lv_obj_add_flag(row, LV_OBJ_FLAG_CLICKABLE);
+        lv_obj_clear_flag(row, LV_OBJ_FLAG_SCROLLABLE);
+        lv_obj_add_event_cb(row, nav_row_cb, LV_EVENT_CLICKED, (void *)(intptr_t)i);
+        nav_rows[i] = row;
+
+        lv_obj_t *ic = lv_label_create(row);
+        lv_obj_set_style_text_font(ic, &lv_font_montserrat_18, LV_PART_MAIN);
+        lv_obj_set_style_text_color(ic, lv_color_hex(0x8A8A8A), LV_PART_MAIN);
+        lv_label_set_text(ic, SEC_ICON[i]);
+        lv_obj_align(ic, LV_ALIGN_LEFT_MID, 12, 0);
+
+        lv_obj_t *nm = lv_label_create(row);
+        lv_obj_set_style_text_font(nm, &lv_font_montserrat_20, LV_PART_MAIN);
+        lv_obj_set_style_text_color(nm, lv_color_hex(0xE8E8E8), LV_PART_MAIN);
+        lv_label_set_text(nm, SEC_NAME[i]);
+        lv_obj_align(nm, LV_ALIGN_LEFT_MID, 44, 0);
+
+        if (nav_portrait) {           /* iOS rows carry a chevron */
+            lv_obj_t *ch = lv_label_create(row);
+            lv_obj_set_style_text_font(ch, &lv_font_montserrat_18, LV_PART_MAIN);
+            lv_obj_set_style_text_color(ch, lv_color_hex(0x5A5A5A), LV_PART_MAIN);
+            lv_label_set_text(ch, LV_SYMBOL_RIGHT);
+            lv_obj_align(ch, LV_ALIGN_RIGHT_MID, -12, 0);
+        }
+    }
+
+    nav_content = lv_obj_create(scr_set);
+    lv_obj_remove_style_all(nav_content);
+    if (nav_portrait) {
+        lv_obj_set_size(nav_content, W, body_h);
+        lv_obj_set_pos(nav_content, 0, 0);
+        lv_obj_add_flag(nav_content, LV_OBJ_FLAG_HIDDEN);
+    } else {
+        lv_obj_set_size(nav_content, W - side_w, body_h);
+        lv_obj_set_pos(nav_content, side_w, 0);
+    }
+    lv_obj_set_style_bg_color(nav_content, lv_color_hex(0x0A0A0A), LV_PART_MAIN);
+    lv_obj_set_style_bg_opa(nav_content, LV_OPA_COVER, LV_PART_MAIN);
+    lv_obj_clear_flag(nav_content, LV_OBJ_FLAG_SCROLLABLE);
+
+    int page_y = 0;
+    if (nav_portrait) {
+        nav_title = lv_label_create(nav_content);
+        lv_obj_set_style_text_font(nav_title, &lv_font_montserrat_20, LV_PART_MAIN);
+        lv_obj_set_style_text_color(nav_title, lv_color_hex(0xE8E8E8), LV_PART_MAIN);
+        lv_label_set_text(nav_title, SEC_NAME[0]);
+        lv_obj_set_pos(nav_title, 14, 10);
+        page_y = 42;
+    } else {
+        nav_title = nullptr;
+    }
+
+    for (int i = 0; i < 6; i++) {
+        nav_pages[i] = lv_obj_create(nav_content);
+        lv_obj_remove_style_all(nav_pages[i]);
+        lv_obj_set_size(nav_pages[i], LV_PCT(100), body_h - page_y);
+        lv_obj_set_pos(nav_pages[i], 0, page_y);
+        lv_obj_set_style_pad_all(nav_pages[i], 12, LV_PART_MAIN);
+        lv_obj_set_scroll_dir(nav_pages[i], LV_DIR_VER);   /* vertical, only */
+        lv_obj_set_scrollbar_mode(nav_pages[i], LV_SCROLLBAR_MODE_AUTO);
+        lv_obj_clear_flag(nav_pages[i], LV_OBJ_FLAG_SCROLL_CHAIN);
+        lv_obj_add_flag(nav_pages[i], LV_OBJ_FLAG_HIDDEN);
+    }
+    if (!nav_portrait) lv_obj_clear_flag(nav_pages[0], LV_OBJ_FLAG_HIDDEN);
+    nav_show(nav_portrait ? nav_cur : 0);
+    if (nav_portrait) {               /* start on the LIST, not a page */
+        lv_obj_add_flag(nav_content, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_clear_flag(nav_sidebar, LV_OBJ_FLAG_HIDDEN);
+    }
+
+    lv_obj_t *t_wifi   = nav_pages[0];
+    lv_obj_t *t_time   = nav_pages[1];
+    lv_obj_t *t_place  = nav_pages[2];
+    lv_obj_t *t_screen = nav_pages[3];
+    lv_obj_t *t_ble    = nav_pages[4];
+    lv_obj_t *t_info   = nav_pages[5];
 
     /* ---- Wi-Fi ---- */
     lv_obj_set_flex_flow(t_wifi, LV_FLEX_FLOW_COLUMN);
@@ -650,7 +793,7 @@ lv_obj_t *ui_settings_create(void)
     make_button(t_wifi, LV_SYMBOL_REFRESH "  Scan", wifi_scan_cb, nullptr);
 
     list_wifi = lv_list_create(t_wifi);
-    lv_obj_set_size(list_wifi, 560, 140);
+    lv_obj_set_size(list_wifi, LV_PCT(100), 140);
     lv_obj_set_style_bg_color(list_wifi, lv_color_hex(0x141414), LV_PART_MAIN);
 
     ta_pass = lv_textarea_create(t_wifi);
@@ -718,7 +861,7 @@ lv_obj_t *ui_settings_create(void)
     make_button(t_place, LV_SYMBOL_GPS "  Search", geo_search_cb, nullptr);
 
     list_geo = lv_list_create(t_place);
-    lv_obj_set_size(list_geo, 560, 150);
+    lv_obj_set_size(list_geo, LV_PCT(100), 150);
     lv_obj_set_style_bg_color(list_geo, lv_color_hex(0x141414), LV_PART_MAIN);
 
     /* ---- Screen ---- */
@@ -939,9 +1082,12 @@ lv_obj_t *ui_settings_create(void)
 
     lv_obj_t *bar = scr_set;   /* buttons parent straight onto the screen */
 
-    /* Back through the STANDARD chip but with Settings' own guard: leaving
-     * with unsaved changes must still ask (close_cb owns that dialog). */
-    app_host_std_back(bar, close_cb);
+    /* The chip walks the SAME stack as the edge swipe — editor, then the
+     * portrait page-pop — and only then close_cb's unsaved-changes guard. */
+    app_host_std_back(bar, [](lv_event_t *e) {
+        if (ui_settings_back()) return;
+        close_cb(e);
+    });
 
     btn_save = make_button(bar, LV_SYMBOL_SAVE "  Save", save_cb, nullptr);
     lv_obj_set_size(btn_save, 160, 56);

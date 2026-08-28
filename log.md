@@ -1428,3 +1428,27 @@ Sent bubbles render before delivery confirms (the worker is seconds slow on
 a cold peer; un-sending a bubble on failure would be worse than a "delivery
 failed" line under the thread). History stays RAM per D046's ephemera
 stance; the day that stops feeling right, LittleFS is sitting there.
+
+## 2026-08-28 — Settings goes vertical (v1.26.0)
+
+Owner: tabs and content should scroll up/down, never left/right — copy
+Apple's macOS and iOS Settings. Apple ships TWO layouts for the same content,
+chosen by shape, and this device has shapes now, so the mapping wrote itself:
+landscape = macOS (sidebar + pane), portrait = iOS (list, push, pop).
+[[D048 - Settings navigates like Apple's]].
+
+The satisfying part: the six section pages did not change at all. They were
+always flex columns that scroll vertically; the tabview around them was what
+swiped sideways. Replacing the container cost ~120 lines of navigation and
+deleted a gesture conflict that had been there since D029 shipped — the
+tabview's horizontal swipe always competed with the left-edge back gesture,
+and now nothing in Settings moves sideways.
+
+Found while converting: the Wi-Fi and city lists were hard-coded 560 px wide
+— which means they had been silently clipping in portrait since D045 made
+Settings portrait-capable. Nobody reported it; the vault's silent-failure
+collection grows by one more genre entry (a layout that clips is invisible
+in exactly the way an unmatched str.replace is).
+
+Back stack gained a level and stayed one implementation: chip and edge swipe
+both walk editor -> page-pop -> unsaved guard -> host.
