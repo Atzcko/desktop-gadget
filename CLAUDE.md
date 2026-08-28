@@ -155,9 +155,11 @@ a layer above it. See [[Module map]] for what every file owns.
 ## Using the device
 
 **Swipe up from the bottom edge** for the app drawer — Timer, Settings, the
-Lab (GPIO / I2C scan / UART monitor) and Messages (gadget-to-gadget over
-Wi-Fi, D046) live there. Every screen's back button is the same chip in the
-same corner: bottom-left (D045).
+Lab (GPIO / I2C / UART), Messages (gadget-to-gadget, D046), Themes (D049),
+YouTube (dashboard + Mac remote, D050), Trackpad and Keyboard (real BLE HID
+into the Mac, D051/D052) plus any Lua apps. The drawer wraps and scrolls;
+every screen's back button is the same chip bottom-left (D045). The full
+remote surface is docs/reference/HTTP API.md.
 Long-press a tile to move it one place left; the order persists.
 
 **Swipe in from the left edge** (or tap an app's back button) to go back one

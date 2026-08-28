@@ -16,17 +16,20 @@ This vault is the project's memory: every decision, why it was made, and what ha
 
 ## Current state
 
-> [!success] v1.17.0 — running, online, and in daily use
-> Abu Dhabi. Clock, weather, the 32-state line display over HTTP / BLE / MCP,
-> an app platform with three apps (Timer, Settings, Lab), stack navigation,
-> and **OTA — releases ship over Wi-Fi**; the cable is rescue-only. Eighteen
-> tagged releases; every one confirmed on the device via `/health` before
-> being called done.
+> [!success] v1.31.0 — running, online, and in daily use
+> Abu Dhabi. Clock and weather in four orientations (BOOT cycles 90°), two
+> themes, a battery gauge that counts coulombs where it can, eight native
+> apps plus Lua scripts, gadget-to-gadget messaging with an unread badge on
+> the clock, a YouTube dashboard with search, and a BLE trackpad + keyboard
+> for the Mac. **Releases ship over Wi-Fi**; crashes are read back the same
+> way. Forty-odd tagged releases, every one confirmed on the device via
+> `/health` before being called done.
 
-**Apps** live in `src/apps/`; adding one is a file and a line —
-[[D026 - Apps are a platform, not a special case]]. The bigger arc is
-[[The OS direction]]: OTA done, scripted apps next. The physical side is
-[[Enclosure]].
+**Apps** live in `src/apps/` (native) and `/apps/*.lua` in LittleFS
+(uploaded live, no reboot — [[D037 - Apps become Lua scripts]]);
+[[D026 - Apps are a platform, not a special case]] is why both are one
+registry. The remote surface is one page: [[HTTP API]]. The physical side is
+[[Enclosure]]; the arc is [[The OS direction]].
 
 | Screen | Reached by |
 |---|---|
@@ -125,14 +128,18 @@ bridge is the only way. See [[CLAUDE]].
 - [[T4-S3]] — the board: pin ownership map, header whitelist, BOOT button
 - [[LilyGo AMOLED library]] — the API surface we actually depend on
 - [[CLAUDE]] — build/flash commands and working agreements
-- [[The OS direction]] — OTA done, scripting next, ELF rejected
+- [[HTTP API]] — every endpoint and companion tool, one table
+- [[The OS direction]] — OTA and scripting done, ELF rejected
 - [[Enclosure]] — the Fusion 360 side
 - [log.md](log.md) — chronological project lifecycle
 
 ## Scope boundaries
 
 > [!warning] Explicitly out of scope for v1
-> - **BLE HID input** (actually sending keystrokes/media keys) — still a later phase. The device now *presents* a HID keyboard service so macOS will pair with it, but sends no reports: [[D021 - BLE HID, for discoverability not typing]].
+> - ~~BLE HID input — a later phase~~ **Arrived** (v1.29–v1.30): the device
+>   is a real BLE mouse and keyboard — [[D051 - The clock is a trackpad; the mouse is real HID]],
+>   [[D052 - The gadget types, on request]]. D021's original
+>   discoverability-only stance is history, kept for the reasoning.
 > - **Battery management / deep sleep** — USB-powered always-on. Battery
 >   *telemetry* exists since v1.21.0 (a chip on the clock, `battery` in
 >   `/health` — [[D042 - The battery gauge is a voltage estimate]]); reacting

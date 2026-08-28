@@ -21,7 +21,7 @@ reflashing the whole image**. Three routes were assessed:
 | **Dynamically loaded native ELF** | ❌ Rejected. No MMU → no isolation: a bad pointer in a downloaded app reboots the clock. ABI pain on every host change. All of the fragility, none of the safety. |
 | **Embedded scripting runtime** | ✅ **Done** — v1.19.0, [[D037 - Apps become Lua scripts]]. Lua 5.4, apps as text files, no reboot. |
 
-## The scripting stage, when it comes
+## The scripting stage — as built (v1.19.0)
 
 Embed a small interpreter and expose the platform as its API — cards, the
 digit fonts, the fold, `tick()`, `back()`, HTTP fetch, NVS. Apps become

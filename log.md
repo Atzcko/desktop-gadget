@@ -1683,3 +1683,30 @@ from the on-screen keyboard.
 The pattern worth keeping: when the platform refuses a feature, ship the
 nearest true thing under its own name instead of the asked-for thing as a
 lie. D050 addendum holds the reasoning.
+
+## 2026-08-28 — Documentation sweep at v1.31 (fourteen releases later)
+
+Second full sweep. The per-release discipline held — D036 through D052 all
+landed with their versions, RELEASES and this log stayed current — and the
+drift was once again all in the SYNTHESIS notes, same as the first sweep
+found, which is apparently just what synthesis notes do:
+
+- index.md claimed v1.17 and "three apps"; the scope note still said BLE
+  input was "a later phase" months after the device became a mouse and a
+  keyboard. Both now tell the truth, with the dead claim struck through
+  rather than erased.
+- The Module map grew from 16 files to the real 24, organized around the
+  one unbroken rule (only the LVGL task draws) and pointing at the decision
+  that governs each file.
+- NEW: [[HTTP API]] — thirteen endpoints and five companion tools had
+  accumulated with their docs scattered across ten decision notes. One
+  reference table now; CLAUDE.md and index point at it.
+- T4-S3 and Enclosure caught up with BOOT's promotion from rescue pin to
+  daily orientation control.
+- The OS direction marked scripting DONE (it shipped in v1.19; the note
+  still said "when it comes").
+
+75 notes, zero dangling links. The lesson from sweep one stands refined:
+decisions write themselves at release time because the workflow demands it;
+synthesis rots at the speed of progress, so the sweep IS the maintenance
+schedule for exactly that layer.

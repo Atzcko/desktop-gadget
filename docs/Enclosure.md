@@ -35,9 +35,10 @@ briefly copied by mistake and removed, worth remembering as prior art.
 
 ## Constraints the case inherits from the firmware
 
-- **BOOT must be pressable at plug-in time** — it is the flash rescue path,
-  and the only recovery if an OTA image crash-loops
-  ([[T4-S3#The BOOT button (GPIO0)]], [[D034 - Updates ship over the air]]).
+- **BOOT must be pressable in DAILY USE, not just at plug-in** — since
+  v1.22.0 it is the orientation button (90° per press, D043), on top of
+  being the flash rescue path if an OTA image crash-loops
+  ([[D034 - Updates ship over the air]]).
 - The 2×15 header carries the [[D035 - The Lab may only touch pins the firmware does not own|Lab whitelist pins]];
   an enclosure that blocks it turns the bench-tool app into decoration.
 - USB-C is the only power. No battery logic exists in firmware.
