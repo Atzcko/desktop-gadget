@@ -31,7 +31,7 @@ extern "C" { LV_FONT_DECLARE(fliqlo_mid); }
 #define COL_TEXT lv_color_hex(0xE8E8E8)
 #define COL_DIM  lv_color_hex(0x8A8A8A)
 
-enum GView { V_MENU, V_SNAKE, V_BREAKOUT, V_GB };
+enum GView { V_MENU, V_SNAKE, V_BREAKOUT, V_GB, V_JUMP };
 static GView     view;
 static lv_obj_t *scr, *game_view;
 static Preferences gprefs;
@@ -352,6 +352,277 @@ static void breakout_open(void)
     br_hi = gprefs.getInt("brk_hi", 0);
     br_last = millis();
     br_reset();
+}
+
+/* ================================================================ JUMP == */
+/*
+ * An original side-scrolling platformer — run, jump, stomp, collect, reach
+ * the flag. Not anyone's plumber: our shapes, our theme table, our fonts.
+ * Canvas-rendered tiles with a scrolling camera; controls are the visible
+ * two-finger zones the Game Boy pad established (left/right + A to jump,
+ * run and jump TOGETHER because app_touch_points reads two fingers).
+ */
+#define JT 15                      /* tile size, like snake's cell */
+static const char *JUMP_LVL[14] = {
+    "                                                            ",
+    "                                                            ",
+    "          o                        o o                      ",
+    "                    o    ####                        F      ",
+    "        ####       ###              ####            ###     ",
+    "   o                                        o o    #####    ",
+    "  ###        e         ####   e            ####   ######    ",
+    "                      ######        e            #######    ",
+    "###### ####  #############################  ###############",
+    "###### ####  #############################  ###############",
+    "                                                            ",
+    "                                                            ",
+    "                                                            ",
+    "                                                            ",
+};
+#define JW 60
+#define JH 10
+
+static lv_obj_t   *j_canvas, *j_lbl;
+static lv_color_t *j_buf;
+static int         j_cw, j_ch;          /* canvas px */
+static float       jx, jy, jvx, jvy;    /* player, px units */
+static bool        j_ground, j_dead, j_won;
+static int         j_score, j_hi, j_cam;
+static uint32_t    j_last;
+static uint8_t     j_coins[JW * JH / 8 + 1];
+static struct { float x, y, vx; bool alive; } j_en[8];
+static int         j_en_n;
+static int         j_zone[3][5];        /* <-, ->, A  (x1,y1,x2,y2,id) */
+
+static char j_at(int tx, int ty)
+{
+    if (tx < 0 || tx >= JW || ty < 0 || ty >= JH) return (ty >= JH) ? '#' : ' ';
+    return JUMP_LVL[ty][tx];
+}
+static bool j_solid(int tx, int ty) { return j_at(tx, ty) == '#'; }
+static bool j_coin_taken(int i)     { return j_coins[i >> 3] & (1 << (i & 7)); }
+static void j_coin_take(int i)      { j_coins[i >> 3] |= (1 << (i & 7)); }
+
+static void j_reset(void)
+{
+    jx = 2 * JT; jy = 6 * JT; jvx = jvy = 0;
+    j_ground = false; j_dead = false; j_won = false;
+    j_score = 0; j_cam = 0; j_last = millis();
+    memset(j_coins, 0, sizeof(j_coins));
+    j_en_n = 0;
+    for (int ty = 0; ty < JH; ty++)
+        for (int tx = 0; tx < JW && j_en_n < 8; tx++)
+            if (j_at(tx, ty) == 'e') {
+                j_en[j_en_n].x = tx * JT; j_en[j_en_n].y = ty * JT;
+                j_en[j_en_n].vx = -0.6f; j_en[j_en_n].alive = true;
+                j_en_n++;
+            }
+    char b[24]; snprintf(b, sizeof(b), "%d", j_score);
+    lv_label_set_text(j_lbl, b);
+}
+
+static void j_draw(void)
+{
+    const Theme &t = theme_get();
+    lv_canvas_fill_bg(j_canvas, COL_BG, LV_OPA_COVER);
+    lv_draw_rect_dsc_t d;
+    lv_draw_rect_dsc_init(&d);
+
+    const int t0 = j_cam / JT, t1 = (j_cam + j_cw) / JT + 1;
+    for (int ty = 0; ty < JH; ty++)
+        for (int tx = t0; tx <= t1; tx++) {
+            const char c = j_at(tx, ty);
+            const int px = tx * JT - j_cam, py = ty * JT;
+            if (c == '#') {
+                d.radius = 3; d.bg_color = lv_color_hex(t.card);
+                lv_canvas_draw_rect(j_canvas, px, py, JT - 1, JT - 1, &d);
+            } else if (c == 'o' && !j_coin_taken(ty * JW + tx)) {
+                d.radius = 5; d.bg_color = lv_color_hex(t.colon);
+                lv_canvas_draw_rect(j_canvas, px + 3, py + 3, 9, 9, &d);
+            } else if (c == 'F') {
+                d.radius = 1; d.bg_color = lv_color_hex(t.chip);
+                lv_canvas_draw_rect(j_canvas, px + 6, py - 2 * JT, 3, 3 * JT, &d);
+                d.bg_color = lv_color_hex(t.card2);
+                lv_canvas_draw_rect(j_canvas, px + 9, py - 2 * JT, 12, 9, &d);
+            }
+        }
+    for (int i = 0; i < j_en_n; i++) {
+        if (!j_en[i].alive) continue;
+        d.radius = 6; d.bg_color = lv_color_hex(t.card2);
+        lv_canvas_draw_rect(j_canvas, (int)j_en[i].x - j_cam, (int)j_en[i].y + 2,
+                            JT - 2, JT - 3, &d);
+    }
+    d.radius = 4;
+    d.bg_color = j_dead ? lv_color_hex(0xE0483B) : lv_color_hex(t.digit);
+    lv_canvas_draw_rect(j_canvas, (int)jx - j_cam, (int)jy - 6, JT - 3, JT + 5, &d);
+}
+
+static void j_open(void)
+{
+    const int W = lv_disp_get_hor_res(nullptr);
+    const int H = lv_disp_get_ver_res(nullptr);
+
+    game_view = lv_obj_create(scr);
+    lv_obj_remove_style_all(game_view);
+    lv_obj_set_size(game_view, LV_PCT(100), LV_PCT(100));
+    lv_obj_set_style_bg_color(game_view, COL_BG, LV_PART_MAIN);
+    lv_obj_set_style_bg_opa(game_view, LV_OPA_COVER, LV_PART_MAIN);
+    lv_obj_clear_flag(game_view, LV_OBJ_FLAG_SCROLLABLE);
+
+    j_lbl = lv_label_create(game_view);
+    lv_obj_set_style_text_font(j_lbl, &fliqlo_mid, LV_PART_MAIN);
+    lv_obj_set_style_text_color(j_lbl, COL_DIM, LV_PART_MAIN);
+    lv_obj_align(j_lbl, LV_ALIGN_TOP_MID, 0, 2);
+
+    const int pad_h = 96;                        /* control strip height */
+    j_cw = W - 16;
+    j_ch = JH * JT;
+    if (j_ch > H - 46 - pad_h - 76) j_ch = H - 46 - pad_h - 76;
+
+    j_buf = (lv_color_t *)heap_caps_malloc(
+        LV_CANVAS_BUF_SIZE_TRUE_COLOR(j_cw, j_ch),
+        MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+    j_canvas = lv_canvas_create(game_view);
+    lv_canvas_set_buffer(j_canvas, j_buf, j_cw, j_ch, LV_IMG_CF_TRUE_COLOR);
+    lv_obj_align(j_canvas, LV_ALIGN_TOP_MID, 0, 46);
+    lv_obj_clear_flag(j_canvas, LV_OBJ_FLAG_CLICKABLE);
+
+    /* visible control zones, GB-pad style: ◀ ▶ left, A right */
+    const int zy = 46 + j_ch + 6, zh = pad_h - 10;
+    const int bw2 = (W - 16 - 8) / 4;
+    int zx = 8;
+    const struct { const char *n; } zn[3] = { {LV_SYMBOL_LEFT}, {LV_SYMBOL_RIGHT}, {"A"} };
+    for (int i = 0; i < 3; i++) {
+        const int w = (i == 2) ? bw2 * 2 - 60 : bw2;
+        if (i == 2) zx = W - 8 - w;
+        j_zone[i][0] = zx; j_zone[i][1] = zy;
+        j_zone[i][2] = zx + w; j_zone[i][3] = zy + zh; j_zone[i][4] = i;
+        lv_obj_t *o = lv_obj_create(game_view);
+        lv_obj_remove_style_all(o);
+        lv_obj_clear_flag(o, LV_OBJ_FLAG_CLICKABLE);
+        lv_obj_set_pos(o, zx, zy);
+        lv_obj_set_size(o, w, zh);
+        lv_obj_set_style_border_width(o, 2, LV_PART_MAIN);
+        lv_obj_set_style_border_color(o, lv_color_hex(0x333333), LV_PART_MAIN);
+        lv_obj_set_style_radius(o, i == 2 ? 40 : 12, LV_PART_MAIN);
+        lv_obj_t *l = lv_label_create(o);
+        lv_obj_set_style_text_font(l, &lv_font_montserrat_18, LV_PART_MAIN);
+        lv_obj_set_style_text_color(l, lv_color_hex(0x5A5A5A), LV_PART_MAIN);
+        lv_label_set_text(l, zn[i].n);
+        lv_obj_center(l);
+        zx += bw2 + 4;
+    }
+
+    j_hi = gprefs.getInt("jump_hi", 0);
+    j_reset();
+    j_draw();
+}
+
+static void j_close(void)
+{
+    if (j_buf) { heap_caps_free(j_buf); j_buf = nullptr; }
+    j_canvas = nullptr; j_lbl = nullptr;
+}
+
+static void j_tick(void)
+{
+    if (!j_canvas) return;
+    const uint32_t now = millis();
+    if (now - j_last < 25) return;               /* ~40 fps physics */
+    float dt = (now - j_last) / 25.0f;
+    if (dt > 3) dt = 3;
+    j_last = now;
+
+    int16_t xs[2], ys[2];
+    const uint8_t n = app_touch_points(xs, ys, 2);
+    bool left = false, right = false, jump = false;
+    for (uint8_t i = 0; i < n; i++)
+        for (int z = 0; z < 3; z++)
+            if (xs[i] >= j_zone[z][0] && xs[i] < j_zone[z][2] &&
+                ys[i] >= j_zone[z][1] && ys[i] < j_zone[z][3]) {
+                if (z == 0) left = true;
+                if (z == 1) right = true;
+                if (z == 2) jump = true;
+            }
+
+    if (j_dead || j_won) {
+        if (jump || n) { j_reset(); }
+        return;
+    }
+
+    jvx = left ? -2.6f : right ? 2.6f : jvx * 0.7f;
+    if (jump && j_ground) { jvy = -6.4f; j_ground = false; }
+    jvy += 0.38f * dt;
+    if (jvy > 6) jvy = 6;
+
+    /* horizontal then vertical, tile-resolved */
+    jx += jvx * dt;
+    int txl = (int)(jx) / JT, txr = (int)(jx + JT - 4) / JT;
+    int tyt = (int)(jy - 5) / JT, tyb = (int)(jy + JT + 4) / JT - 0;
+    if (jvx < 0 && (j_solid(txl, (int)(jy) / JT) || j_solid(txl, (int)(jy + JT) / JT)))
+        jx = (txl + 1) * JT;
+    if (jvx > 0 && (j_solid(txr, (int)(jy) / JT) || j_solid(txr, (int)(jy + JT) / JT)))
+        jx = txr * JT - (JT - 3);
+    if (jx < 0) jx = 0;
+
+    jy += jvy * dt;
+    j_ground = false;
+    txl = (int)(jx + 2) / JT; txr = (int)(jx + JT - 5) / JT;
+    if (jvy > 0) {
+        const int ty = (int)(jy + JT + 4) / JT;
+        if (j_solid(txl, ty) || j_solid(txr, ty)) {
+            jy = ty * JT - JT - 4;
+            jvy = 0; j_ground = true;
+        }
+    } else if (jvy < 0) {
+        const int ty = (int)(jy - 5) / JT;
+        if (j_solid(txl, ty) || j_solid(txr, ty)) { jy = (ty + 1) * JT + 5; jvy = 0; }
+    }
+    if (jy > JH * JT + 40) j_dead = true;        /* fell off the world */
+
+    /* coins + flag */
+    const int ptx = (int)(jx + JT / 2) / JT, pty = (int)(jy + JT / 2) / JT;
+    if (j_at(ptx, pty) == 'o' && !j_coin_taken(pty * JW + ptx)) {
+        j_coin_take(pty * JW + ptx);
+        j_score += 10;
+        char b[24]; snprintf(b, sizeof(b), "%d", j_score);
+        lv_label_set_text(j_lbl, b);
+    }
+    if (j_at(ptx, pty) == 'F' || j_at(ptx, pty - 1) == 'F') {
+        j_won = true; j_score += 50;
+        if (j_score > j_hi) { j_hi = j_score; gprefs.putInt("jump_hi", j_hi); }
+        char b[48]; snprintf(b, sizeof(b), "%d   best %d   flag! tap to replay", j_score, j_hi);
+        lv_label_set_text(j_lbl, b);
+    }
+
+    /* enemies: patrol, turn at walls/edges; stomp kills, touch kills you */
+    for (int i = 0; i < j_en_n; i++) {
+        if (!j_en[i].alive) continue;
+        j_en[i].x += j_en[i].vx * dt;
+        const int etx = (int)(j_en[i].x + (j_en[i].vx < 0 ? 0 : JT)) / JT;
+        const int ety = (int)(j_en[i].y) / JT;
+        if (j_solid(etx, ety) || !j_solid(etx, ety + 1)) j_en[i].vx = -j_en[i].vx;
+        if (fabsf(j_en[i].x - jx) < JT - 3 && fabsf(j_en[i].y - jy) < JT) {
+            if (jvy > 1.0f && jy < j_en[i].y) {
+                j_en[i].alive = false; j_score += 20; jvy = -4.0f;
+                char b[24]; snprintf(b, sizeof(b), "%d", j_score);
+                lv_label_set_text(j_lbl, b);
+            } else {
+                j_dead = true;
+                if (j_score > j_hi) { j_hi = j_score; gprefs.putInt("jump_hi", j_hi); }
+                char b[48]; snprintf(b, sizeof(b), "%d   best %d   tap to retry", j_score, j_hi);
+                lv_label_set_text(j_lbl, b);
+            }
+        }
+    }
+
+    /* camera follows, clamped to the level */
+    j_cam = (int)jx - j_cw / 3;
+    if (j_cam < 0) j_cam = 0;
+    if (j_cam > JW * JT - j_cw) j_cam = JW * JT - j_cw;
+
+    j_draw();
+    lv_obj_invalidate(j_canvas);
 }
 
 /* ============================================================ GAME BOY == */
@@ -675,7 +946,8 @@ static void menu_pick_cb(lv_event_t *e)
     game_view = nullptr;
     if (which == 0) { view = V_SNAKE;    snake_open(); }
     if (which == 1) { view = V_BREAKOUT; breakout_open(); }
-    if (which == 2) { view = V_GB;       gb_open();     }
+    if (which == 2) { view = V_JUMP;     j_open();      }
+    if (which == 3) { view = V_GB;       gb_open();     }
     /* ONE chip, added after the game surface so it stays tappable */
     app_host_std_back(scr, nullptr);
 }
@@ -696,17 +968,21 @@ static void menu_build(void)
     lv_label_set_text(t, "Games   ·   swipe to steer, tap to launch");
     lv_obj_set_pos(t, 14, 10);
 
-    static const char *names[3] = { "Snake", "Breakout", "Game Boy" };
-    static const char *subs[3]  = { "swipe to turn", "drag the paddle",
+    static const char *names[4] = { "Snake", "Breakout", "Jump", "Game Boy" };
+    static const char *subs[4]  = { "swipe to turn", "drag the paddle",
+                                    "run, stomp, reach the flag",
                                     "Peanut-GB  ·  touch pad + A/B" };
-    for (int i = 0; i < 3; i++) {
+    const int NCARD = 4;
+    for (int i = 0; i < NCARD; i++) {
         lv_obj_t *card = lv_btn_create(scr);
         if (portrait) {
-            lv_obj_set_size(card, W - 28, (H - 44 - 76 - 2 * 12 - 10) / 3);
-            lv_obj_set_pos(card, 14, 44 + i * ((H - 44 - 76 - 2 * 12 - 10) / 3 + 12));
+            const int ch = (H - 44 - 76 - (NCARD - 1) * 10 - 10) / NCARD;
+            lv_obj_set_size(card, W - 28, ch);
+            lv_obj_set_pos(card, 14, 44 + i * (ch + 10));
         } else {
-            lv_obj_set_size(card, (W - 28 - 2 * 12) / 3, H - 44 - 76 - 10);
-            lv_obj_set_pos(card, 14 + i * ((W - 28 - 2 * 12) / 3 + 12), 44);
+            const int cw2 = (W - 28 - (NCARD - 1) * 10) / NCARD;
+            lv_obj_set_size(card, cw2, H - 44 - 76 - 10);
+            lv_obj_set_pos(card, 14 + i * (cw2 + 10), 44);
         }
         lv_obj_set_style_bg_color(card, lv_color_hex(0x161616), LV_PART_MAIN);
         lv_obj_set_style_radius(card, 18 + theme_get().radius_add, LV_PART_MAIN);
@@ -737,6 +1013,7 @@ static void menu_build(void)
 static void game_close(bool forget_cart)
 {
     if (view == V_GB) { gb_close(); if (forget_cart) gb_cart_path[0] = '\0'; }
+    if (view == V_JUMP) j_close();
     if (view == V_SNAKE) {
         if (sn_buf)  { heap_caps_free(sn_buf);  sn_buf = nullptr; }
         if (sn_body) { heap_caps_free(sn_body); sn_body = nullptr; }
@@ -802,6 +1079,7 @@ static lv_obj_t *games_create(void)
 static void games_destroy(void)
 {
     if (view == V_GB) gb_close();
+    if (view == V_JUMP) j_close();
     if (view == V_SNAKE) {
         if (sn_buf)  { heap_caps_free(sn_buf);  sn_buf  = nullptr; }
         if (sn_body) { heap_caps_free(sn_body); sn_body = nullptr; }
@@ -829,12 +1107,14 @@ static void games_tick(void)
         game_view = nullptr;
         if (w == 0) { view = V_SNAKE;    snake_open(); }
         if (w == 1) { view = V_BREAKOUT; breakout_open(); }
-        if (w == 2) { view = V_GB;       gb_open();     }
+        if (w == 2) { view = V_JUMP;     j_open();      }
+        if (w == 3) { view = V_GB;       gb_open();     }
         app_host_std_back(scr, nullptr);
     }
     if (view == V_SNAKE)    sn_tick();
     if (view == V_BREAKOUT) br_tick();
     if (view == V_GB)       gb_tick();
+    if (view == V_JUMP)     j_tick();
 }
 
 static bool games_back(void)

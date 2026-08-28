@@ -1845,3 +1845,19 @@ dropped free PSRAM by the ROM-plus-canvas footprint and uptime kept
 climbing - the emulator is demonstrably executing. The pattern of the day,
 third occurrence: state cleared by a common path that one caller needed
 preserved (Settings edits at rotation, the theme rebuild, now this).
+
+## 2026-08-28 — "Put a Super Mario on it" (v1.37.0)
+
+The honest no and the better yes, in one release. No: an actual Super Mario
+ROM is Nintendo's property and the shelf's homebrew-or-owned rule is not
+bending. Yes: an ORIGINAL platformer, Jump - run, jump, stomp enemies,
+collect coins, reach the flag - built in an afternoon because every engine
+piece already existed: snake's canvas rendering, Breakout's ms-delta
+physics, the Game Boy pad's visible two-finger zones. Level as a char-array
+tilemap with a clamped camera; theme table for every color, so Pop gives it
+the vivid world; best score in NVS.
+
+The two legitimate Mario paths are the owner's, stated plainly: Super Mario
+Land DMG carts they own run fine on Peanut-GB via tools/rom (their upload,
+their right), and Tobu Tobu Girl builds from source the day they approve an
+rgbds install.

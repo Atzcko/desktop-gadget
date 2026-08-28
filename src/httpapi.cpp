@@ -693,7 +693,8 @@ void httpapi_begin(void)
         int w = -1;
         if      (strstr(buf.c_str(), "snake"))    w = 0;
         else if (strstr(buf.c_str(), "breakout")) w = 1;
-        else if (strstr(buf.c_str(), "gameboy"))  w = 2;
+        else if (strstr(buf.c_str(), "jump"))     w = 2;
+        else if (strstr(buf.c_str(), "gameboy"))  w = 3;
         if (w < 0) { send_err(req, 400, "expected snake|breakout|gameboy"); return; }
         games_request_open_c(w);
         req->send(200, "application/json", "{\"ok\":true}");
