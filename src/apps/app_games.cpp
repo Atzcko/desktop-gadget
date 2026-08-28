@@ -662,7 +662,7 @@ static void gb_tick(void)
 
 /* ============================================================== chooser == */
 
-static void game_close(void);
+static void game_close(bool forget_cart = true);
 static void menu_build(void);
 
 static void menu_pick_cb(lv_event_t *e)
@@ -728,9 +728,15 @@ static void menu_build(void)
     app_host_std_back(scr, nullptr);
 }
 
-static void game_close(void)
+/*
+ * forget_cart: true when the OWNER leaves (back / app exit) so the shelf
+ * greets them next time; false when the picker reopens the Game Boy with a
+ * freshly chosen cart — v1.36.0 forgot the distinction and wiped the choice
+ * it was about to boot, which made the picker a loop (v1.36.1).
+ */
+static void game_close(bool forget_cart)
 {
-    if (view == V_GB) { gb_close(); gb_cart_path[0] = '\0'; }
+    if (view == V_GB) { gb_close(); if (forget_cart) gb_cart_path[0] = '\0'; }
     if (view == V_SNAKE) {
         if (sn_buf)  { heap_caps_free(sn_buf);  sn_buf = nullptr; }
         if (sn_body) { heap_caps_free(sn_body); sn_body = nullptr; }
@@ -818,7 +824,7 @@ static void games_tick(void)
     if (games_pending_pick >= 0) {
         const int w = games_pending_pick;
         games_pending_pick = -1;
-        if (view != V_MENU) game_close();
+        if (view != V_MENU) game_close(/*forget_cart=*/w != 2);
         lv_obj_clean(scr);
         game_view = nullptr;
         if (w == 0) { view = V_SNAKE;    snake_open(); }

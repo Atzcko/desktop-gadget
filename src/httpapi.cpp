@@ -699,6 +699,18 @@ void httpapi_begin(void)
         req->send(200, "application/json", "{\"ok\":true}");
     });
 
+    server.on("/rom", HTTP_DELETE, [](AsyncWebServerRequest *req) {
+        if (!req->hasParam("name")) { send_err(req, 400, "need ?name="); return; }
+        String nm = req->getParam("name")->value();
+        nm.replace("/", "");
+        bool ok = LittleFS.remove("/roms/" + nm);
+        String sav = "/roms/" + nm;
+        sav.replace(".gb", ".sav");
+        LittleFS.remove(sav);
+        req->send(ok ? 200 : 404, "application/json",
+                  ok ? "{\"ok\":true,\"removed\":true}" : "{\"ok\":false}");
+    });
+
     server.on("/rom", HTTP_POST,
               [](AsyncWebServerRequest *req) {
         req->send(200, "application/json", "{\"ok\":true,\"cartridge\":\"loaded\"}");
