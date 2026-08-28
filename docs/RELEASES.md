@@ -11,6 +11,15 @@ Semantic versioning; the scheme and the release procedure live in [[CLAUDE]].
 The version is reported by the boot log, `GET /health` and Settings ▸ Info,
 each with a compiler build stamp so a stale flash is detectable.
 
+## v1.27.3 — 2026-08-28
+
+**The Screen page has a layout system instead of a wrap.** Four row rules
+(D048 addendum): one setting per row; label left, control right; sliders get
+label + live value above a full-width bar; groups titled by section headers.
+Grouped as Brightness / Night / Display / Rotation. The rules are helpers
+(`setting_row`, `slider_row`), orientation-proof by construction, ready for
+the other pages.
+
 ## v1.27.2 — 2026-08-28
 
 **The Screen page scrolled sideways; now nothing in Settings can.** Two

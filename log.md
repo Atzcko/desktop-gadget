@@ -1514,3 +1514,24 @@ own width+wrap.
 Lesson entered into the collection: in LVGL, "do not scroll sideways" is not
 a rule you follow, it is a flag you must CLEAR on every container that could
 ever be too wide — the default fights the rule.
+
+## 2026-08-28 — Wrap is a fallback, not a layout (v1.27.3)
+
+Owner: the Screen page "looks messy - find some rules and clean it up." The
+diagnosis is in the phrasing: v1.27.2 made rows WRAP, which stopped the
+sideways scrolling but produced whatever shape the wrap happened to produce
+- sliders beside numbers, four toggles flowing into ragged lines, a dropdown
+wherever it landed.
+
+The rules were already chosen the day Settings copied Apple (D048); they just
+had not been applied below the navigation level. iOS's grouped-table idiom,
+as four rules now in the D048 addendum: one setting per row; label left,
+control right; sliders tall with the live value top-right; groups titled.
+setting_row()/slider_row() implement them, and they are orientation-proof by
+construction - a full-width row with one right-aligned control cannot
+overflow any pane this device has.
+
+Screen rebuilt: Brightness (2 slider rows) / Night (sunrise toggle, from,
+until) / Display (3 toggle rows) / Rotation. The "to" roller pair that shared
+a row became two rows - rule 2's "a row that would wrap is two settings" is
+the rule doing its job. Other pages adopt the helpers as they are touched.

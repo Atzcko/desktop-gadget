@@ -128,6 +128,51 @@ static lv_obj_t *body_label(lv_obj_t *parent, const char *text)
     return l;
 }
 
+/*
+ * THE ROW RULES (D048 addendum) — what every settings page is built from:
+ *
+ *   1. One setting per row. A row is full-width, card-colored, fixed height.
+ *   2. Label LEFT-center; its one control RIGHT-center. Never side by side
+ *      groups, never wrap — a row that would need to wrap is two settings.
+ *   3. A slider is the tall variant: label top-left, live value top-right,
+ *      the slider full-width beneath.
+ *   4. Groups get a section() header. Nothing else separates them.
+ *
+ * The same rows serve both orientations untouched: full-width + one control
+ * cannot overflow a 410 px pane or a 426 px portrait page.
+ */
+static lv_obj_t *setting_row(lv_obj_t *parent, const char *label, int h)
+{
+    lv_obj_t *row = lv_obj_create(parent);
+    lv_obj_remove_style_all(row);
+    lv_obj_set_size(row, LV_PCT(100), h);
+    lv_obj_set_style_bg_color(row, lv_color_hex(0x161616), LV_PART_MAIN);
+    lv_obj_set_style_bg_opa(row, LV_OPA_COVER, LV_PART_MAIN);
+    lv_obj_set_style_radius(row, 12, LV_PART_MAIN);
+    lv_obj_set_style_pad_hor(row, 14, LV_PART_MAIN);
+    lv_obj_clear_flag(row, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_t *l = body_label(row, label);
+    lv_obj_align(l, LV_ALIGN_LEFT_MID, 0, 0);
+    return row;
+}
+
+static void row_control(lv_obj_t *row, lv_obj_t *ctrl)
+{
+    lv_obj_align(ctrl, LV_ALIGN_RIGHT_MID, 0, 0);
+}
+
+/* Rule 3: the slider row. Returns the row; *out_val is the live number. */
+static lv_obj_t *slider_row(lv_obj_t *parent, const char *label,
+                            lv_obj_t **out_val)
+{
+    lv_obj_t *row = setting_row(parent, label, 84);
+    lv_obj_t *l = lv_obj_get_child(row, 0);
+    lv_obj_align(l, LV_ALIGN_TOP_LEFT, 0, 8);
+    *out_val = body_label(row, "");
+    lv_obj_align(*out_val, LV_ALIGN_TOP_RIGHT, 0, 8);
+    return row;
+}
+
 static lv_obj_t *make_button(lv_obj_t *parent, const char *text,
                              lv_event_cb_t cb, void *ud)
 {
@@ -879,117 +924,88 @@ lv_obj_t *ui_settings_create(void)
 
     /* ---- Screen ---- */
     lv_obj_set_flex_flow(t_screen, LV_FLEX_FLOW_COLUMN);
-    lv_obj_set_style_pad_row(t_screen, 6, LV_PART_MAIN);
+    lv_obj_set_style_pad_row(t_screen, 8, LV_PART_MAIN);
     {
         char buf[8];
-        section(t_screen, "Day brightness");
-        lv_obj_t *r1 = lv_obj_create(t_screen);
-        lv_obj_remove_style_all(r1);
-        lv_obj_set_size(r1, LV_PCT(100), LV_SIZE_CONTENT);
-        /* Rows WRAP into the narrow pane and never scroll - an LVGL container
-         * is scrollable by default, and a too-wide flex row scrolls SIDEWAYS,
-         * which is the one direction this screen forbids (D048). */
-        lv_obj_clear_flag(r1, LV_OBJ_FLAG_SCROLLABLE);
-        lv_obj_set_style_pad_row(r1, 6, LV_PART_MAIN);
-        lv_obj_set_flex_flow(r1, LV_FLEX_FLOW_ROW_WRAP);
-        lv_obj_set_flex_align(r1, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER,
-                              LV_FLEX_ALIGN_CENTER);
-        lv_obj_set_style_pad_column(r1, 14, LV_PART_MAIN);
-        sl_day = lv_slider_create(r1);
-        lv_obj_set_width(sl_day, LV_PCT(70));
+        section(t_screen, "Brightness");
+
+        lv_obj_t *r = slider_row(t_screen, "Day", &lbl_day);
+        snprintf(buf, sizeof(buf), "%d", s.brightness_day);
+        lv_label_set_text(lbl_day, buf);
+        sl_day = lv_slider_create(r);
+        lv_obj_set_width(sl_day, LV_PCT(100));
+        lv_obj_align(sl_day, LV_ALIGN_BOTTOM_MID, 0, -12);
         lv_slider_set_range(sl_day, 10, 255);
         lv_slider_set_value(sl_day, s.brightness_day, LV_ANIM_OFF);
         lv_obj_add_event_cb(sl_day, slider_cb, LV_EVENT_VALUE_CHANGED, nullptr);
-        snprintf(buf, sizeof(buf), "%d", s.brightness_day);
-        lbl_day = body_label(r1, buf);
 
-        section(t_screen, "Night brightness");
-        lv_obj_t *r2 = lv_obj_create(t_screen);
-        lv_obj_remove_style_all(r2);
-        lv_obj_set_size(r2, LV_PCT(100), LV_SIZE_CONTENT);
-        /* Rows WRAP into the narrow pane and never scroll - an LVGL container
-         * is scrollable by default, and a too-wide flex row scrolls SIDEWAYS,
-         * which is the one direction this screen forbids (D048). */
-        lv_obj_clear_flag(r2, LV_OBJ_FLAG_SCROLLABLE);
-        lv_obj_set_style_pad_row(r2, 6, LV_PART_MAIN);
-        lv_obj_set_flex_flow(r2, LV_FLEX_FLOW_ROW_WRAP);
-        lv_obj_set_flex_align(r2, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER,
-                              LV_FLEX_ALIGN_CENTER);
-        lv_obj_set_style_pad_column(r2, 14, LV_PART_MAIN);
-        sl_night = lv_slider_create(r2);
-        lv_obj_set_width(sl_night, LV_PCT(70));
+        r = slider_row(t_screen, "Night", &lbl_night);
+        snprintf(buf, sizeof(buf), "%d", s.brightness_night);
+        lv_label_set_text(lbl_night, buf);
+        sl_night = lv_slider_create(r);
+        lv_obj_set_width(sl_night, LV_PCT(100));
+        lv_obj_align(sl_night, LV_ALIGN_BOTTOM_MID, 0, -12);
         lv_slider_set_range(sl_night, 5, 255);
         lv_slider_set_value(sl_night, s.brightness_night, LV_ANIM_OFF);
         lv_obj_add_event_cb(sl_night, slider_cb, LV_EVENT_VALUE_CHANGED, nullptr);
-        snprintf(buf, sizeof(buf), "%d", s.brightness_night);
-        lbl_night = body_label(r2, buf);
     }
     {
         static char hopts[128];
         hours_options(hopts, sizeof(hopts));
-        lv_obj_t *r3 = lv_obj_create(t_screen);
-        lv_obj_remove_style_all(r3);
-        lv_obj_set_size(r3, LV_PCT(100), LV_SIZE_CONTENT);
-        /* Rows WRAP into the narrow pane and never scroll - an LVGL container
-         * is scrollable by default, and a too-wide flex row scrolls SIDEWAYS,
-         * which is the one direction this screen forbids (D048). */
-        lv_obj_clear_flag(r3, LV_OBJ_FLAG_SCROLLABLE);
-        lv_obj_set_style_pad_row(r3, 6, LV_PART_MAIN);
-        lv_obj_set_flex_flow(r3, LV_FLEX_FLOW_ROW_WRAP);
-        lv_obj_set_flex_align(r3, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER,
-                              LV_FLEX_ALIGN_CENTER);
-        lv_obj_set_style_pad_column(r3, 12, LV_PART_MAIN);
-        body_label(r3, "Dim by sunrise");
-        sw_sun = lv_switch_create(r3);
+        section(t_screen, "Night");
+
+        lv_obj_t *r = setting_row(t_screen, "Dim by sunrise", 52);
+        sw_sun = lv_switch_create(r);
         if (s.night_follows_sun) lv_obj_add_state(sw_sun, LV_STATE_CHECKED);
-        body_label(r3, "Night from");
-        roller_ns = lv_roller_create(r3);
+        row_control(r, sw_sun);
+
+        r = setting_row(t_screen, "Night from", 88);
+        roller_ns = lv_roller_create(r);
         lv_roller_set_options(roller_ns, hopts, LV_ROLLER_MODE_NORMAL);
         lv_roller_set_visible_row_count(roller_ns, 2);
         lv_roller_set_selected(roller_ns, s.night_start_hour, LV_ANIM_OFF);
-        body_label(r3, "to");
-        roller_ne = lv_roller_create(r3);
+        row_control(r, roller_ns);
+
+        r = setting_row(t_screen, "Night until", 88);
+        roller_ne = lv_roller_create(r);
         lv_roller_set_options(roller_ne, hopts, LV_ROLLER_MODE_NORMAL);
         lv_roller_set_visible_row_count(roller_ne, 2);
         lv_roller_set_selected(roller_ne, s.night_end_hour, LV_ANIM_OFF);
+        row_control(r, roller_ne);
     }
     {
-        lv_obj_t *r4 = lv_obj_create(t_screen);
-        lv_obj_remove_style_all(r4);
-        lv_obj_set_size(r4, LV_PCT(100), LV_SIZE_CONTENT);
-        /* Rows WRAP into the narrow pane and never scroll - an LVGL container
-         * is scrollable by default, and a too-wide flex row scrolls SIDEWAYS,
-         * which is the one direction this screen forbids (D048). */
-        lv_obj_clear_flag(r4, LV_OBJ_FLAG_SCROLLABLE);
-        lv_obj_set_style_pad_row(r4, 6, LV_PART_MAIN);
-        lv_obj_set_flex_flow(r4, LV_FLEX_FLOW_ROW_WRAP);
-        lv_obj_set_flex_align(r4, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER,
-                              LV_FLEX_ALIGN_CENTER);
-        lv_obj_set_style_pad_column(r4, 14, LV_PART_MAIN);
-        body_label(r4, "Weather");
-        sw_wx = lv_switch_create(r4);
+        section(t_screen, "Display");
+
+        lv_obj_t *r = setting_row(t_screen, "Weather", 52);
+        sw_wx = lv_switch_create(r);
         if (s.show_weather) lv_obj_add_state(sw_wx, LV_STATE_CHECKED);
-        body_label(r4, "Humidity");
-        sw_hum = lv_switch_create(r4);
+        row_control(r, sw_wx);
+
+        r = setting_row(t_screen, "Humidity", 52);
+        sw_hum = lv_switch_create(r);
         if (s.show_humidity) lv_obj_add_state(sw_hum, LV_STATE_CHECKED);
-        body_label(r4, "Burn-in guard");
-        sw_burn = lv_switch_create(r4);
+        row_control(r, sw_hum);
+
+        r = setting_row(t_screen, "Burn-in guard", 52);
+        sw_burn = lv_switch_create(r);
         if (s.burnin_guard) lv_obj_add_state(sw_burn, LV_STATE_CHECKED);
-        body_label(r4, "Rotation");
+        row_control(r, sw_burn);
+
+        section(t_screen, "Rotation");
         /*
-         * A selector, applied on SAVE — not live, which is what the old Flip
-         * switch did. Settings itself is a landscape screen (the host forces
-         * landscape under it, D043), so a live 90 here would rotate the very
-         * screen being touched. The live control is the BOOT button, which
-         * works from the clock where every orientation has a real layout.
+         * Applied on SAVE, not live: Settings itself is on screen, and a live
+         * 90 would rotate the very page being touched. The live control is
+         * the BOOT button, which works from the clock (D043).
          */
-        dd_rot = lv_dropdown_create(r4);
+        r = setting_row(t_screen, "Rotation", 52);
+        dd_rot = lv_dropdown_create(r);
         lv_dropdown_set_options_static(dd_rot, "0\n90\n180\n270");
         lv_obj_set_width(dd_rot, 110);
         lv_obj_set_style_text_font(dd_rot, &lv_font_montserrat_18, LV_PART_MAIN);
         lv_obj_set_style_text_font(lv_dropdown_get_list(dd_rot),
                                    &lv_font_montserrat_18, LV_PART_MAIN);
         lv_dropdown_set_selected(dd_rot, s.rotation);
+        row_control(r, dd_rot);
     }
 
     /* ---- BLE ---- */

@@ -37,6 +37,23 @@ edge swipe walk it identically: **editor → page (portrait) → unsaved-changes
 guard → host**. Fixed 560-px children (the Wi-Fi and city lists) went
 percentage-width — they had already been silently clipping in portrait.
 
+## Addendum, 2026-08-28 — the row rules (v1.27.3)
+
+The Screen page proved that wrap is a fallback, not a layout. Every settings
+page is now built from four rules:
+
+1. **One setting per row** — full-width, card-colored, fixed height.
+2. **Label left-center, its one control right-center.** A row that would
+   need to wrap is two settings.
+3. **A slider is the tall variant**: label top-left, live value top-right,
+   slider full-width beneath.
+4. **Groups get a `section()` header** and nothing else.
+
+`setting_row()` / `row_control()` / `slider_row()` implement them; the same
+rows serve both orientations untouched, because full-width-plus-one-control
+cannot overflow either pane. Screen is converted; the other pages adopt the
+helpers as they are next touched.
+
 ## Consequences
 
 - No horizontal gesture remains in Settings, so nothing competes with the
