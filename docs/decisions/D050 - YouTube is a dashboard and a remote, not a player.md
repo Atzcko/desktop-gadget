@@ -53,6 +53,24 @@ throwing the video to the Mac.
 - A future OAuth device-flow could add real subscriptions; the seam is
   `do_refresh()`, nothing above it.
 
+## Addendum, 2026-08-28 — Popular and Search (v1.31.0)
+
+The owner asked for "home and suggested videos". **The official API cannot
+provide either**: the personal Home feed and recommendations are not exposed
+at all (the related-videos endpoint was removed in 2023), and subscriptions
+need OAuth. What shipped instead, honestly labelled:
+
+- **Popular** — `chart=mostPopular` for a region (default AE), one quota
+  unit. Trending is the closest Home surrogate a key can buy.
+- **Search** — real `search.list`, 100 units a query (≈100/day within the
+  free tier), typed on the on-screen keyboard, on demand only.
+- Latest (channels) stays the default. Mode chips at the top switch;
+  `POST /youtube {"mode":n}` / `{"search":"q"}` / `{"region":"US"}` drive it
+  remotely.
+
+Also fixed here: thumbnails rendered with crossed bytes — `LV_COLOR_16_SWAP`
+is 1 for this panel, so TRUE_COLOR buffers must be stored pre-swapped.
+
 ## Related
 
 - [[D046 - Gadgets message over HTTP and mDNS]] — the worker-task pattern

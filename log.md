@@ -1663,3 +1663,23 @@ The meta-lesson joins D045's flag collection: every HID surface change since
 v1.29.0 has had the same failure shape (host-side cache, device-side
 silence). subs{} is the /crash of pairing — the observability arrives with
 the second bug, as usual.
+
+## 2026-08-28 — Crossed bytes and honest substitutes (v1.31.0)
+
+Owner: thumbnails look like messed-up colors; wants Home/suggested instead
+of channels; wants search. Three different answers.
+
+The colors: LV_COLOR_16_SWAP=1 on this panel, so LVGL TRUE_COLOR buffers
+must hold PRE-SWAPPED RGB565 — the decoder packed little-endian and every
+pixel's bytes were crossed. One conditional swap in jpg_out.
+
+Home/suggested: the official API simply does not expose them - not with a
+key, not with OAuth (recommendations left the API in 2023). Rather than
+fake it, the app gained POPULAR (chart=mostPopular for the region, 1 unit)
+as the closest honest surrogate, labelled as what it is. Search is the real
+thing at 100 units a query - about 100/day inside the free tier, on demand
+from the on-screen keyboard.
+
+The pattern worth keeping: when the platform refuses a feature, ship the
+nearest true thing under its own name instead of the asked-for thing as a
+lie. D050 addendum holds the reasoning.

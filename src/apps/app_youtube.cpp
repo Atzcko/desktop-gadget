@@ -46,11 +46,12 @@ static void overlay_done(void)
     const char *txt = ov_ta ? lv_textarea_get_text(ov_ta) : "";
     if      (ov_field == 0) yt_set_key(txt);
     else if (ov_field == 1) yt_set_channels(txt);
-    else                    yt_set_play_host(txt);
+    else if (ov_field == 2) yt_set_play_host(txt);
+    else if (txt[0])        yt_set_search(txt);          /* mode -> search */
     overlay_close();
     if (setup_view) { lv_obj_del(setup_view); setup_view = nullptr; }
     yt_request_refresh();
-    lv_label_set_text(lbl_status, "saved - refreshing");
+    lv_label_set_text(lbl_status, ov_field == 3 ? "searching..." : "saved - refreshing");
 }
 
 static void ov_kb_cb(lv_event_t *e)
@@ -64,11 +65,13 @@ static void overlay_open(int field)
 {
     if (overlay) return;
     ov_field = field;
-    static const char *cap[3] = {
+    static const char *cap[4] = {
         "API key (Google Cloud console, YouTube Data API v3)",
         "Channels: @handle, comma separated (up to 6)",
-        "Companion IP (the Mac running tools/ytserve)" };
-    static const char *ph[3] = { "AIza...", "@mkbhd, @veritasium", "192.168.0.10" };
+        "Companion IP (the Mac running tools/ytserve)",
+        "Search YouTube" };
+    static const char *ph[4] = { "AIza...", "@mkbhd, @veritasium", "192.168.0.10",
+                                 "search videos" };
 
     overlay = lv_obj_create(scr);
     lv_obj_remove_style_all(overlay);
@@ -308,11 +311,27 @@ static lv_obj_t *yt_create(void)
     lv_obj_set_style_bg_color(scr, COL_BG, LV_PART_MAIN);
     lv_obj_clear_flag(scr, LV_OBJ_FLAG_SCROLLABLE);
 
-    lv_obj_t *t = lv_label_create(scr);
-    lv_obj_set_style_text_font(t, &lv_font_montserrat_18, LV_PART_MAIN);
-    lv_obj_set_style_text_color(t, COL_DIM, LV_PART_MAIN);
-    lv_label_set_text(t, "YouTube   ·   tap a video to play it on the Mac");
-    lv_obj_set_pos(t, 14, 10);
+    /* Mode chips instead of a title: Latest (channels) / Popular / Search.
+     * Search opens the keyboard; the others refetch immediately. */
+    static const char *chips[3] = { "Latest", "Popular", LV_SYMBOL_KEYBOARD " Search" };
+    for (int i = 0; i < 3; i++) {
+        lv_obj_t *ch = lv_btn_create(scr);
+        lv_obj_set_size(ch, i == 2 ? 130 : 104, 36);
+        lv_obj_set_pos(ch, 14 + i * (i == 2 ? 112 : 112), 6);
+        lv_obj_set_style_bg_color(ch,
+            lv_color_hex(yt_mode() == i ? 0x3A3A3A : 0x1A1A1A), LV_PART_MAIN);
+        lv_obj_set_style_radius(ch, 18, LV_PART_MAIN);
+        lv_obj_add_event_cb(ch, [](lv_event_t *e) {
+            const int m = (int)(intptr_t)lv_event_get_user_data(e);
+            if (m == 2) { overlay_open(3); return; }     /* search keyboard */
+            yt_set_mode(m);
+            yt_request_refresh();
+        }, LV_EVENT_CLICKED, (void *)(intptr_t)i);
+        lv_obj_t *cl = lv_label_create(ch);
+        lv_obj_set_style_text_font(cl, &lv_font_montserrat_18, LV_PART_MAIN);
+        lv_label_set_text(cl, chips[i]);
+        lv_obj_center(cl);
+    }
 
     list = lv_obj_create(scr);
     lv_obj_remove_style_all(list);
@@ -364,6 +383,8 @@ static void yt_destroy(void)
     scr = list = lbl_status = setup_view = overlay = ov_ta = nullptr;
     btn_refresh_lbl = nullptr;
 }
+
+static int shown_mode = -1;
 
 static void yt_tick(void)
 {

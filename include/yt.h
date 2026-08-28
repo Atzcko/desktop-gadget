@@ -41,6 +41,13 @@ void yt_set_play_host(const char *ip);
 const char *yt_play_host(void);
 
 /* worker */
+/* 0 = channel latest, 1 = popular (regional trending), 2 = search */
+int  yt_mode(void);
+void yt_set_mode(int m);
+void yt_set_search(const char *q);         /* sets mode 2 */
+const char *yt_search_query(void);
+void yt_set_region(const char *r);         /* "AE", "US", ... */
+
 void yt_request_refresh(void);
 void yt_request_play(const char *video_id);
 bool yt_busy(void);

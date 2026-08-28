@@ -23,6 +23,15 @@ the drawer's height is computed from the live display instead of a
 landscape constant, so portrait also SHOWS a full extra row before
 scrolling at all.
 
+## v1.31.0 — 2026-08-28
+
+**YouTube: correct colors, Popular, and Search.** Thumbnails were rendered
+with crossed bytes (`LV_COLOR_16_SWAP=1` panel, unswapped buffers) — fixed
+in the decoder. Mode chips: Latest / **Popular** (regional trending, the
+closest Home the key-only API allows — the real Home/suggested feeds are
+not exposed, D050 addendum) / **Search** (real search.list, 100 units per
+query, keyboard-entered). All remotely drivable via POST /youtube.
+
 ## v1.30.0 — 2026-08-28
 
 **A Keyboard app — the clock types on the Mac.**

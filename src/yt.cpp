@@ -5,6 +5,7 @@
 #include <WiFiClientSecure.h>
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
+#include <lvgl.h>
 #include <esp_heap_caps.h>
 /*
  * LVGL's bundled TJpgDec, NOT the ROM's — and that word "not" cost a crash
@@ -32,6 +33,9 @@ static int      video_n;
 static volatile uint32_t rev_v;
 static volatile bool     busy;
 static char     status_buf[64];
+static uint8_t  mode_v;                  /* 0 channels, 1 popular, 2 search */
+static char     search_q[64];
+static char     region[4];
 
 enum CmdType { CMD_REFRESH = 1, CMD_PLAY };
 static struct { CmdType type; char id[16]; } cmd;
@@ -76,6 +80,26 @@ void yt_set_channels(const char *csv)
     /* A changed channel list may orphan the cached playlist ids; drop them. */
     prefs.remove("plmap");
 }
+
+int  yt_mode(void) { return mode_v; }
+void yt_set_mode(int m)
+{
+    if (m < 0 || m > 2) return;
+    mode_v = (uint8_t)m;
+}
+
+void yt_set_region(const char *r)
+{
+    snprintf(region, sizeof(region), "%s", (r && r[0]) ? r : "AE");
+    prefs.putString("region", region);
+}
+
+void yt_set_search(const char *q)
+{
+    snprintf(search_q, sizeof(search_q), "%s", q ? q : "");
+    mode_v = 2;
+}
+const char *yt_search_query(void) { return search_q; }
 
 void yt_set_play_host(const char *ip)
 {
@@ -164,7 +188,14 @@ static int jpg_out(JDEC *jd, void *bitmap, JRECT *r)
     for (int y = r->top; y <= r->bottom; y++) {
         for (int x = r->left; x <= r->right; x++) {
             if (x < c->ow && y < c->oh) {
-                const uint16_t px = ((p[0] & 0xF8) << 8) | ((p[1] & 0xFC) << 3) | (p[2] >> 3);
+                uint16_t px = ((p[0] & 0xF8) << 8) | ((p[1] & 0xFC) << 3) | (p[2] >> 3);
+#if LV_COLOR_16_SWAP
+                /* The panel takes big-endian 565 and LVGL stores TRUE_COLOR
+                 * buffers pre-swapped when LV_COLOR_16_SWAP=1 — without this
+                 * every thumbnail's bytes are crossed and the colors smear
+                 * (v1.31.0, owner-reported). */
+                px = (uint16_t)((px >> 8) | (px << 8));
+#endif
                 c->out[y * c->ow + x] = px;
             }
             p += 3;
@@ -263,14 +294,80 @@ static bool uploads_playlist_for(const char *handle, char *out, size_t cap,
 struct Fetched { char id[16]; char title[YT_TITLE_MAX + 1]; char chan[28];
                  char iso[24]; char thumb_url[96]; };
 
+/* Minimal query escaper: spaces and the reserved handful. */
+static void url_escape(const char *in, char *out, size_t cap)
+{
+    size_t o = 0;
+    for (const char *p = in; *p && o + 4 < cap; p++) {
+        if (isalnum((unsigned char)*p) || *p == '-' || *p == '_' || *p == '.')
+            out[o++] = *p;
+        else
+            o += snprintf(out + o, cap - o, "%%%02X", (unsigned char)*p);
+    }
+    out[o] = '\0';
+}
+
+/* One JSON video list -> Fetched[]; search and popular share the shape,
+ * they just keep the id in different places. */
+static int parse_items(const String &body, Fetched *all, int cap, bool id_nested)
+{
+    DynamicJsonDocument doc(12288);
+    if (deserializeJson(doc, body) != DeserializationError::Ok) return 0;
+    int n = 0;
+    for (JsonVariant v : doc["items"].as<JsonArray>()) {
+        if (n >= cap) break;
+        Fetched &f = all[n];
+        const char *id = id_nested ? (const char *)v["id"]["videoId"]
+                                   : (const char *)v["id"];
+        snprintf(f.id,    sizeof(f.id),    "%s", id ? id : "");
+        snprintf(f.title, sizeof(f.title), "%s", (const char *)v["snippet"]["title"]);
+        snprintf(f.chan,  sizeof(f.chan),  "%s", (const char *)v["snippet"]["channelTitle"]);
+        snprintf(f.iso,   sizeof(f.iso),   "%s", (const char *)v["snippet"]["publishedAt"]);
+        snprintf(f.thumb_url, sizeof(f.thumb_url), "%s",
+                 (const char *)v["snippet"]["thumbnails"]["medium"]["url"]);
+        if (f.id[0]) n++;
+    }
+    return n;
+}
+
 static void do_refresh(void)
 {
     status_buf[0] = '\0';
     if (!yt_has_key())    { snprintf(status_buf, sizeof(status_buf), "no API key"); return; }
-    if (channels_n == 0)  { snprintf(status_buf, sizeof(status_buf), "no channels configured"); return; }
 
     static Fetched all[YT_CHANNELS_N * 3];
     int all_n = 0;
+
+    if (mode_v == 1) {
+        /* Trending for the region — the closest thing to a Home feed the
+         * key-only API allows (D050 addendum). One unit. */
+        char url[300];
+        snprintf(url, sizeof(url),
+                 "https://www.googleapis.com/youtube/v3/videos"
+                 "?part=snippet&chart=mostPopular&maxResults=%d&regionCode=%s"
+                 "&fields=items(id,snippet(title,channelTitle,publishedAt,"
+                 "thumbnails/medium/url))&key=%s",
+                 YT_VIDEOS_N, region, key_buf);
+        String body;
+        if (https_get(url, body, 20000))
+            all_n = parse_items(body, all, YT_VIDEOS_N, false);
+    } else if (mode_v == 2) {
+        if (!search_q[0]) { snprintf(status_buf, sizeof(status_buf), "empty search"); return; }
+        char q[200];
+        url_escape(search_q, q, sizeof(q));
+        char url[400];
+        /* 100 quota units per search — the expensive call, on demand only. */
+        snprintf(url, sizeof(url),
+                 "https://www.googleapis.com/youtube/v3/search"
+                 "?part=snippet&type=video&maxResults=%d&q=%s"
+                 "&fields=items(id/videoId,snippet(title,channelTitle,"
+                 "publishedAt,thumbnails/medium/url))&key=%s",
+                 YT_VIDEOS_N, q, key_buf);
+        String body;
+        if (https_get(url, body, 20000))
+            all_n = parse_items(body, all, YT_VIDEOS_N, true);
+    } else {
+    if (channels_n == 0)  { snprintf(status_buf, sizeof(status_buf), "no channels configured"); return; }
 
     for (int c = 0; c < channels_n; c++) {
         char pl[40], ctitle[28];
@@ -301,13 +398,16 @@ static void do_refresh(void)
         }
     }
 
+    }   /* channels mode */
+
     if (all_n == 0 && !status_buf[0])
         snprintf(status_buf, sizeof(status_buf), "nothing fetched");
 
-    /* newest first, across channels — ISO 8601 sorts as text */
-    for (int i = 0; i < all_n; i++)
-        for (int j = i + 1; j < all_n; j++)
-            if (strcmp(all[j].iso, all[i].iso) > 0) { Fetched t = all[i]; all[i] = all[j]; all[j] = t; }
+    /* Channels merge newest-first; popular and search keep API order. */
+    if (mode_v == 0)
+        for (int i = 0; i < all_n; i++)
+            for (int j = i + 1; j < all_n; j++)
+                if (strcmp(all[j].iso, all[i].iso) > 0) { Fetched t = all[i]; all[i] = all[j]; all[j] = t; }
 
     videos_clear();
     for (int i = 0; i < all_n && video_n < YT_VIDEOS_N; i++) {
@@ -380,6 +480,8 @@ void yt_begin(void)
     prefs.getString("host",  play_host, sizeof(play_host));
     char chans[200] = "";
     prefs.getString("chans", chans, sizeof(chans));
+    prefs.getString("region", region, sizeof(region));
+    if (!region[0]) snprintf(region, sizeof(region), "AE");
     channels_n = 0;
     for (char *t = strtok(chans, ","); t && channels_n < YT_CHANNELS_N;
          t = strtok(nullptr, ",")) {

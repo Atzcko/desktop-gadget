@@ -595,9 +595,9 @@ void httpapi_begin(void)
         char body[420], st[96];
         json_escape(yt_status(), st, sizeof(st));
         snprintf(body, sizeof(body),
-                 "{\"ok\":true,\"has_key\":%s,\"channels\":\"%s\","
+                 "{\"ok\":true,\"has_key\":%s,\"mode\":%d,\"channels\":\"%s\","
                  "\"host\":\"%s\",\"videos\":%d,\"busy\":%s,\"status\":\"%s\"}",
-                 yt_has_key() ? "true" : "false", chans, yt_play_host(),
+                 yt_has_key() ? "true" : "false", yt_mode(), chans, yt_play_host(),
                  yt_video_count(), yt_busy() ? "true" : "false", st);
         req->send(200, "application/json", body);
     });
@@ -624,6 +624,18 @@ void httpapi_begin(void)
         if ((p = strstr(buf.c_str(), "\"host\""))) {
             p = strchr(p + 6, '"');
             if (p && sscanf(p + 1, "%19[^\"]", val) == 1) { yt_set_play_host(val); did = true; }
+        }
+        if ((p = strstr(buf.c_str(), "\"region\""))) {
+            p = strchr(p + 8, '"');
+            if (p && sscanf(p + 1, "%3[^\"]", val) == 1) { yt_set_region(val); did = true; }
+        }
+        if ((p = strstr(buf.c_str(), "\"mode\""))) {
+            p = strchr(p + 6, ':');
+            if (p) { yt_set_mode(atoi(p + 1)); did = true; }
+        }
+        if ((p = strstr(buf.c_str(), "\"search\""))) {
+            p = strchr(p + 8, '"');
+            if (p && sscanf(p + 1, "%63[^\"]", val) == 1) { yt_set_search(val); did = true; }
         }
         if (!did) { send_err(req, 400, "expected key / channels / host"); return; }
         yt_request_refresh();
