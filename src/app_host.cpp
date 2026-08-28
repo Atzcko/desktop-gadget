@@ -11,6 +11,7 @@
 #include "settings.h"
 #include "script.h"
 #include "app.h"
+#include "theme.h"
 
 /*
  * The drawer renders in the owner's order, not the registry's.
@@ -152,8 +153,8 @@ lv_obj_t *app_host_std_back(lv_obj_t *parent, lv_event_cb_t cb)
     lv_obj_t *b = lv_btn_create(parent);
     lv_obj_set_size(b, 132, 56);
     lv_obj_align(b, LV_ALIGN_BOTTOM_LEFT, 12, -10);
-    lv_obj_set_style_bg_color(b, lv_color_hex(0x2A2A2A), LV_PART_MAIN);
-    lv_obj_set_style_radius(b, 14, LV_PART_MAIN);
+    lv_obj_set_style_bg_color(b, lv_color_hex(theme_get().chip), LV_PART_MAIN);
+    lv_obj_set_style_radius(b, 14 + theme_get().radius_add, LV_PART_MAIN);
     lv_obj_add_event_cb(b, cb ? cb
                               : [](lv_event_t *) { app_host_back(); },
                         LV_EVENT_CLICKED, nullptr);
@@ -336,7 +337,8 @@ static void build_drawer(void)
         lv_obj_clear_flag(tile, LV_OBJ_FLAG_SCROLLABLE);
         lv_obj_set_size(tile, TILE, TILE);
         lv_obj_align(tile, LV_ALIGN_TOP_MID, 0, 0);
-        lv_obj_set_style_bg_color(tile, COL_CARD, LV_PART_MAIN);
+        lv_obj_set_style_bg_color(tile,
+            lv_color_hex(theme_get().tile[i % 3]), LV_PART_MAIN);
         lv_obj_set_style_bg_opa(tile, LV_OPA_COVER, LV_PART_MAIN);
         lv_obj_set_style_radius(tile, 22, LV_PART_MAIN);
         lv_obj_add_flag(tile, LV_OBJ_FLAG_CLICKABLE);

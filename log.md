@@ -1452,3 +1452,26 @@ in exactly the way an unmatched str.replace is).
 
 Back stack gained a level and stayed one implementation: chip and edge swipe
 both walk editor -> page-pop -> unsaved guard -> host.
+
+## 2026-08-28 — The look is a table (v1.27.0)
+
+Owner showed two references — a board of vivid bento widgets and a round
+gadget drawing generative pixels — and asked for themes: keep today's look,
+add one inspired by those, cascade everywhere.
+
+The whole feature fell out of two existing decisions. Because every screen
+is create-on-entry (D026), a theme is just a table the builders read; because
+rotate-in-place (v1.24.1) already rebuilds the clock and re-opens the current
+app, APPLYING a theme is that same machinery minus the rotate. theme.cpp is
+40 lines; the cascade is a dozen one-line color reads scattered where cards
+are born. "Pop": blue hour, red minute, yellow colon, orange/blue weather,
+palette-cycled drawer tiles, orange chrome, +6 radius. Background stays true
+black in every theme — AMOLED, and the burn-in walk was tuned against black.
+
+Honest scope note in D049: the generative-pixel reference is a SCREEN, not a
+palette — if it comes it is an idle-screen/line-renderer feature, and
+pretending a color table covers it would be claiming more than shipped.
+
+One bug caught before it shipped: /theme rode app_request_rotation(current),
+and the rotation service skips no-ops — the rebuild would never fire.
+app_request_rebuild() now exists for exactly "same shape, new paint".

@@ -39,3 +39,7 @@ void app_apply_rotation_live(uint8_t rotation);
 
 /* Thread-safe request from other tasks (HTTP); served on the LVGL loop. */
 void app_request_rotation(uint8_t rotation);
+
+/* Rebuild everything visible at the CURRENT rotation — a theme change needs
+ * the rebuild without the rotate, and the rotate path skips no-ops (D049). */
+void app_request_rebuild(void);

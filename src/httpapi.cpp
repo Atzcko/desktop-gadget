@@ -4,6 +4,8 @@
 #include "app_host.h"
 #include "gauge.h"
 #include "msg.h"
+#include "theme.h"
+#include "app.h"
 #include "app.h"
 #include "net.h"
 #include "version.h"
@@ -65,6 +67,7 @@ static void handle_health(AsyncWebServerRequest *req)
              "\"current\":\"%s\","
              "\"rotation\":%u,"
              "\"panel\":\"%dx%d\","
+             "\"theme\":\"%s\","
              "\"uptime_s\":%lu,"
              "\"rssi\":%d,"
              "\"ip\":\"%s\","
@@ -90,6 +93,7 @@ static void handle_health(AsyncWebServerRequest *req)
              app_host_current(),
              (unsigned)(settings_get().rotation * 90u),
              (int)lv_disp_get_hor_res(nullptr), (int)lv_disp_get_ver_res(nullptr),
+             theme_get().name,
              (unsigned long)(millis() / 1000UL),
              st.rssi,
              st.wifi_up ? st.ip : "",
@@ -577,6 +581,26 @@ void httpapi_begin(void)
 
     server.on("/launch", HTTP_POST,
               [](AsyncWebServerRequest *) {}, nullptr, handle_launch_body);
+
+    server.on("/theme", HTTP_POST,
+              [](AsyncWebServerRequest *) {}, nullptr,
+              [](AsyncWebServerRequest *req, uint8_t *data, size_t len,
+                 size_t index, size_t total) {
+        static String buf;
+        if (index == 0) buf = "";
+        buf.concat((const char *)data, len);
+        if (index + len != total) return;
+        int n = -1;
+        const char *p = strstr(buf.c_str(), "\"n\"");
+        if (p) { p = strchr(p + 3, ':'); if (p) n = atoi(p + 1); }
+        if (n < 0 || n >= theme_count()) { send_err(req, 400, "expected {\"n\":0..}"); return; }
+        settings_get().theme = (uint8_t)n;
+        settings_save();
+        app_request_rebuild();               /* same rotation, new colors */
+        char body[64];
+        snprintf(body, sizeof(body), "{\"ok\":true,\"theme\":\"%s\"}", theme_at(n).name);
+        req->send(200, "application/json", body);
+    });
 
     server.on("/msg", HTTP_POST,
               [](AsyncWebServerRequest *) {}, nullptr, handle_msg_body);

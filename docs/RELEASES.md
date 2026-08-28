@@ -11,6 +11,16 @@ Semantic versioning; the scheme and the release procedure live in [[CLAUDE]].
 The version is reported by the boot log, `GET /health` and Settings ▸ Info,
 each with a compiler build stamp so a stale flash is detectable.
 
+## v1.27.0 — 2026-08-28
+
+**Themes** ([[D049 - The look is a table]]). Theme 0 is Fliqlo, untouched.
+Theme 1 "Pop" is the bento-widget board: blue hour card, red minute card,
+yellow colon, orange/blue weather pair, palette-cycled drawer tiles, orange
+chrome, chunkier corners — on the same true black. A Themes app previews
+each theme from its own color table and applies it as an in-place rebuild
+(the rotation machinery, minus the rotation). `POST /theme` and a `theme`
+field in `/health` keep it drivable from a shell.
+
 ## v1.26.0 — 2026-08-28
 
 **Settings navigates like Apple's** ([[D048 - Settings navigates like Apple's]]).

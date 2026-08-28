@@ -112,8 +112,10 @@ void app_apply_rotation_live(uint8_t rotation)
                   keep ? keep->name : (drawer_was ? "drawer" : "clock"));
 }
 
-static volatile int pending_rot = -1;
+static volatile int  pending_rot = -1;
+static volatile bool pending_rebuild;
 void app_request_rotation(uint8_t rotation) { pending_rot = rotation & 3; }
+void app_request_rebuild(void)              { pending_rebuild = true; }
 
 void app_refresh_clock(bool animate)
 {
@@ -330,6 +332,11 @@ void loop()
         }
     }
     bt0_was_low = bt0_low;
+
+    if (pending_rebuild) {
+        pending_rebuild = false;
+        app_apply_rotation_live(settings_get().rotation);
+    }
 
     /* Rotation asked for over HTTP: same path, served on this task. */
     if (pending_rot >= 0) {

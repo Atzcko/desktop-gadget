@@ -13,6 +13,7 @@
  */
 #include "app_api.h"
 #include "app_host.h"
+#include "theme.h"
 
 #include <Arduino.h>
 #include <stdio.h>
@@ -23,7 +24,7 @@ LV_FONT_DECLARE(fliqlo_digits);
 }
 
 #define COL_BG      lv_color_hex(0x000000)
-#define COL_CARD    lv_color_hex(0x161616)
+#define COL_CARD    lv_color_hex(theme_get().card)
 #define COL_PRESS   lv_color_hex(0x262626)
 #define COL_DIGIT   lv_color_hex(0xFFFFFF)
 #define COL_DIM     lv_color_hex(0x8A8A8A)
@@ -326,9 +327,9 @@ static void make_key(int x, int y, int w, const char *txt, lv_event_cb_t cb,
     lv_obj_remove_style_all(b);
     lv_obj_set_size(b, w, STRIP_H);
     lv_obj_set_pos(b, x, y);
-    lv_obj_set_style_bg_color(b, COL_CARD, LV_PART_MAIN);
+    lv_obj_set_style_bg_color(b, lv_color_hex(theme_get().chip), LV_PART_MAIN);
     lv_obj_set_style_bg_opa(b, LV_OPA_COVER, LV_PART_MAIN);
-    lv_obj_set_style_radius(b, CARD_RADIUS, LV_PART_MAIN);
+    lv_obj_set_style_radius(b, CARD_RADIUS + theme_get().radius_add, LV_PART_MAIN);
     lv_obj_set_style_bg_color(b, COL_PRESS, LV_PART_MAIN | LV_STATE_PRESSED);
     lv_obj_add_flag(b, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_clear_flag(b, LV_OBJ_FLAG_SCROLLABLE);
@@ -424,9 +425,13 @@ static lv_obj_t *timer_create(void)
         const int cx = (W - CARD_W) / 2;
         build_card(scr, d_min, cx, 20,               true);
         build_card(scr, d_sec, cx, 20 + CARD_H + 16, false);
+        lv_obj_set_style_bg_color(d_sec.card, lv_color_hex(theme_get().timer2),
+                                  LV_PART_MAIN);
     } else {
         build_card(scr, d_min, 14,                     30, true);
         build_card(scr, d_sec, 14 + CARD_W + CARD_GAP, 30, false);
+        lv_obj_set_style_bg_color(d_sec.card, lv_color_hex(theme_get().timer2),
+                                  LV_PART_MAIN);
 
         for (int i = 0; i < 2; i++) {
             lv_obj_t *dot = lv_obj_create(scr);

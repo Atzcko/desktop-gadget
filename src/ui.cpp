@@ -24,10 +24,15 @@ LV_FONT_DECLARE(fliqlo_wx_small);
 LV_FONT_DECLARE(fliqlo_mid);
 }
 
+#include "theme.h"
+
+/* Background stays true black in every theme (AMOLED; burn-in budget). The
+ * card family reads the LIVE theme — safe because everything using these is
+ * rebuilt by ui_init, and a theme change triggers exactly that (D049). */
 #define COL_BG          lv_color_hex(0x000000)
-#define COL_CARD        lv_color_hex(0x161616)
-#define COL_DIGIT       lv_color_hex(0xFFFFFF)
-#define COL_COLON       lv_color_hex(0x707070)
+#define COL_CARD        lv_color_hex(theme_get().card)
+#define COL_DIGIT       lv_color_hex(theme_get().digit)
+#define COL_COLON       lv_color_hex(theme_get().colon)
 #define COL_TEMP        lv_color_hex(0xFFFFFF)
 #define COL_SECONDARY   lv_color_hex(0x8A8A8A)
 /* Humidity is deliberately the quietest thing on the panel: same 28 px size
@@ -652,6 +657,8 @@ void ui_init(uint16_t screen_w, uint16_t screen_h)
         clock_y = 24;
         make_card(card_h, clock_x, clock_y);
         make_card(card_m, clock_x, clock_y + CARD_H + 24);
+        lv_obj_set_style_bg_color(card_m.root, lv_color_hex(theme_get().card2),
+                                  LV_PART_MAIN);
     } else {
         const int clock_w = CARD_W * 2 + CARD_GAP;
         clock_x = (screen_w - clock_w) / 2;
@@ -659,6 +666,8 @@ void ui_init(uint16_t screen_w, uint16_t screen_h)
 
         make_card(card_h, clock_x, clock_y);
         make_card(card_m, clock_x + CARD_W + CARD_GAP, clock_y);
+        lv_obj_set_style_bg_color(card_m.root, lv_color_hex(theme_get().card2),
+                                  LV_PART_MAIN);
 
         for (int i = 0; i < 2; i++) {
             lv_obj_t *dot = lv_obj_create(clock_grp);
@@ -710,6 +719,11 @@ void ui_init(uint16_t screen_w, uint16_t screen_h)
      * as well, and the row reads as one palette instead of three greys. */
     mini_card(weather_grp, w_hum,    &fliqlo_mid, WX_H, WX_RADIUS,
               lv_color_hex(0x8E8E8E), "--%");
+
+    lv_obj_set_style_bg_color(w_temp.root, lv_color_hex(theme_get().wx_temp),
+                              LV_PART_MAIN);
+    lv_obj_set_style_bg_color(w_hum.root,  lv_color_hex(theme_get().wx_hum),
+                              LV_PART_MAIN);
 
     w_temp.icon = lv_obj_create(w_temp.root);
     decor(w_temp.icon);

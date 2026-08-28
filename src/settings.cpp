@@ -85,6 +85,7 @@ static void apply_defaults(void)
     s.burnin_guard     = true;
     s.rotation         = DEFAULT_ROTATION;
     s.batt_mah         = DEFAULT_BATT_MAH;
+    s.theme            = DEFAULT_THEME;
     s.night_follows_sun = true;
     for (uint8_t i = 0; i < sizeof(s.app_order); i++) s.app_order[i] = i;
     s.ble_enabled      = true;
@@ -139,6 +140,7 @@ void settings_load(void)
      * key only when the new one has never been written, so a device that has
      * chosen a portrait orientation cannot be snapped back by a stale bool. */
     if (have("bmah"))   s.batt_mah         = prefs.getUShort("bmah");
+    if (have("thm"))    s.theme            = prefs.getUChar("thm");
     if      (have("rotd")) s.rotation = prefs.getUChar("rotd") & 3;
     else if (have("rot"))  s.rotation = prefs.getBool("rot") ? 2 : 0;
     if (have("sun"))    s.night_follows_sun = prefs.getBool("sun");
@@ -180,6 +182,7 @@ void settings_save(void)
     prefs.putBool("burn",     s.burnin_guard);
     prefs.putUChar("rotd",    s.rotation);
     prefs.putUShort("bmah",   s.batt_mah);
+    prefs.putUChar("thm",     s.theme);
     prefs.putBool("sun",      s.night_follows_sun);
     prefs.putBytes("apps",    s.app_order, sizeof(s.app_order));
     prefs.putBool("ble",      s.ble_enabled);
