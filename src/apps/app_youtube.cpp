@@ -23,6 +23,10 @@
 
 static lv_obj_t *scr, *list, *lbl_status, *setup_view, *overlay, *ov_ta;
 static lv_obj_t *btn_refresh_lbl;
+static lv_obj_t *player_view, *player_img, *player_status;
+static lv_img_dsc_t frame_dsc;
+static uint32_t  seen_frame;
+static char      playing_id[16];
 static uint32_t  seen_rev;
 static int       ov_field;               /* 0 key, 1 channels, 2 host */
 static lv_img_dsc_t thumb_dsc[YT_VIDEOS_N];
@@ -170,13 +174,84 @@ static void setup_open(lv_event_t *)
 
 /* ----------------------------------------------------------------- list -- */
 
+static void player_close(void)
+{
+    if (!player_view) return;
+    yt_stream_stop();
+    lv_obj_del(player_view);
+    player_view = player_img = player_status = nullptr;
+    playing_id[0] = '\0';
+}
+
+static void player_open(const char *id, const char *title)
+{
+    if (player_view) return;
+    snprintf(playing_id, sizeof(playing_id), "%s", id);
+
+    const int W = lv_disp_get_hor_res(nullptr);
+    const int H = lv_disp_get_ver_res(nullptr);
+
+    player_view = lv_obj_create(scr);
+    lv_obj_remove_style_all(player_view);
+    lv_obj_set_size(player_view, LV_PCT(100), LV_PCT(100));
+    lv_obj_set_style_bg_color(player_view, lv_color_hex(0x000000), LV_PART_MAIN);
+    lv_obj_set_style_bg_opa(player_view, LV_OPA_COVER, LV_PART_MAIN);
+    lv_obj_clear_flag(player_view, LV_OBJ_FLAG_SCROLLABLE);
+
+    lv_obj_t *t = lv_label_create(player_view);
+    lv_obj_set_style_text_font(t, &lv_font_montserrat_18, LV_PART_MAIN);
+    lv_obj_set_style_text_color(t, COL_DIM, LV_PART_MAIN);
+    lv_obj_set_width(t, LV_PCT(94));
+    lv_label_set_long_mode(t, LV_LABEL_LONG_DOT);
+    lv_label_set_text(t, title);
+    lv_obj_set_pos(t, 14, 8);
+
+    frame_dsc.header.always_zero = 0;
+    frame_dsc.header.w  = YT_FRAME_W;
+    frame_dsc.header.h  = YT_FRAME_H;
+    frame_dsc.header.cf = LV_IMG_CF_TRUE_COLOR;
+    frame_dsc.data_size = YT_FRAME_W * YT_FRAME_H * 2;
+    frame_dsc.data      = (const uint8_t *)yt_frame();
+
+    player_img = lv_img_create(player_view);
+    lv_img_set_src(player_img, &frame_dsc);
+    /* 320x180 native pixels, integer-honest, centered above the strip. */
+    lv_obj_align(player_img, LV_ALIGN_CENTER, 0, H > W ? -40 : -20);
+
+    player_status = lv_label_create(player_view);
+    lv_obj_set_style_text_font(player_status, &lv_font_montserrat_18, LV_PART_MAIN);
+    lv_obj_set_style_text_color(player_status, COL_DIM, LV_PART_MAIN);
+    lv_label_set_text(player_status, "connecting to the companion...");
+    lv_obj_align_to(player_status, player_img, LV_ALIGN_OUT_BOTTOM_MID, 0, 10);
+
+    app_host_std_back(player_view, nullptr);   /* pops via yt_back */
+
+    lv_obj_t *mac = lv_btn_create(player_view);
+    lv_obj_set_size(mac, 170, 56);
+    lv_obj_align(mac, LV_ALIGN_BOTTOM_RIGHT, -12, -10);
+    lv_obj_set_style_bg_color(mac, COL_YT, LV_PART_MAIN);
+    lv_obj_add_event_cb(mac, [](lv_event_t *) {
+        char id[16];
+        snprintf(id, sizeof(id), "%s", playing_id);
+        player_close();                 /* frees the worker for the send */
+        yt_request_play(id);
+        lv_label_set_text(lbl_status, "sent to the Mac");
+    }, LV_EVENT_CLICKED, nullptr);
+    lv_obj_t *ml = lv_label_create(mac);
+    lv_obj_set_style_text_font(ml, &lv_font_montserrat_20, LV_PART_MAIN);
+    lv_label_set_text(ml, LV_SYMBOL_UPLOAD "  On Mac");
+    lv_obj_center(ml);
+
+    yt_stream_start(id);
+    seen_frame = yt_frame_rev();
+}
+
 static void row_cb(lv_event_t *e)
 {
     const int i = (int)(intptr_t)lv_event_get_user_data(e);
     const YtVideo *v = yt_video(i);
     if (!v) return;
-    yt_request_play(v->id);
-    lv_label_set_text(lbl_status, "sending to the Mac...");
+    player_open(v->id, v->title);       /* plays HERE; the Mac is a button */
 }
 
 static void list_build(void)
@@ -380,8 +455,11 @@ static lv_obj_t *yt_create(void)
 
 static void yt_destroy(void)
 {
+    yt_stream_stop();                   /* leaving the app ends the stream */
     scr = list = lbl_status = setup_view = overlay = ov_ta = nullptr;
     btn_refresh_lbl = nullptr;
+    player_view = player_img = player_status = nullptr;
+    playing_id[0] = '\0';
 }
 
 static int shown_mode = -1;
@@ -389,6 +467,26 @@ static int shown_mode = -1;
 static void yt_tick(void)
 {
     if (!scr) return;
+
+    if (player_view) {
+        if (yt_frame_rev() != seen_frame) {
+            seen_frame = yt_frame_rev();
+            frame_dsc.data = (const uint8_t *)yt_frame();
+            lv_obj_invalidate(player_img);
+            if (player_status && !lv_obj_has_flag(player_status, LV_OBJ_FLAG_HIDDEN))
+                lv_obj_add_flag(player_status, LV_OBJ_FLAG_HIDDEN);
+        }
+        if (player_status && yt_rev() != seen_rev) {
+            seen_rev = yt_rev();
+            const char *st = yt_status();
+            if (st[0] && !yt_streaming()) {
+                lv_obj_clear_flag(player_status, LV_OBJ_FLAG_HIDDEN);
+                lv_label_set_text(player_status, st);
+            }
+        }
+        return;                          /* the list sleeps under the player */
+    }
+
     if (yt_rev() != seen_rev) {
         seen_rev = yt_rev();
         if (!setup_view && !overlay) list_build();
@@ -405,8 +503,9 @@ static void yt_tick(void)
 
 static bool yt_back(void)
 {
-    if (overlay)    { overlay_close(); return true; }
-    if (setup_view) { lv_obj_del(setup_view); setup_view = nullptr; list_build(); return true; }
+    if (overlay)     { overlay_close(); return true; }
+    if (player_view) { player_close(); list_build(); return true; }
+    if (setup_view)  { lv_obj_del(setup_view); setup_view = nullptr; list_build(); return true; }
     return false;
 }
 

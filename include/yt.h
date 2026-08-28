@@ -48,6 +48,15 @@ void yt_set_search(const char *q);         /* sets mode 2 */
 const char *yt_search_query(void);
 void yt_set_region(const char *r);         /* "AE", "US", ... */
 
+/* ---- on-device playback (D053): MJPEG frames from the companion ---- */
+#define YT_FRAME_W  320
+#define YT_FRAME_H  180
+void yt_stream_start(const char *video_id);
+void yt_stream_stop(void);
+bool yt_streaming(void);
+uint32_t yt_frame_rev(void);          /* bumps per decoded frame */
+const uint16_t *yt_frame(void);       /* front buffer, RGB565 pre-swapped */
+
 void yt_request_refresh(void);
 void yt_request_play(const char *video_id);
 bool yt_busy(void);

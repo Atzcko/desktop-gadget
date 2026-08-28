@@ -37,7 +37,7 @@ static uint8_t  mode_v;                  /* 0 channels, 1 popular, 2 search */
 static char     search_q[64];
 static char     region[4];
 
-enum CmdType { CMD_REFRESH = 1, CMD_PLAY };
+enum CmdType { CMD_REFRESH = 1, CMD_PLAY, CMD_STREAM };
 static struct { CmdType type; char id[16]; } cmd;
 static QueueHandle_t cmd_q;
 
@@ -79,6 +79,28 @@ void yt_set_channels(const char *csv)
     prefs.putString("chans", joined);
     /* A changed channel list may orphan the cached playlist ids; drop them. */
     prefs.remove("plmap");
+}
+
+/* ------------------------------------------------------- streaming state */
+static uint16_t *fb[2];
+static volatile uint8_t  fb_front;
+static volatile uint32_t frame_rev_v;
+static volatile bool     stream_stop_flag, streaming_v;
+static char     stream_id[16];
+
+bool     yt_streaming(void) { return streaming_v; }
+uint32_t yt_frame_rev(void) { return frame_rev_v; }
+const uint16_t *yt_frame(void) { return fb[fb_front]; }
+
+void yt_stream_stop(void) { stream_stop_flag = true; }
+
+void yt_stream_start(const char *id)
+{
+    if (busy || !id || !id[0] || !play_host[0]) return;
+    decltype(cmd) c = {}; c.type = CMD_STREAM;
+    snprintf(c.id, sizeof(c.id), "%s", id);
+    stream_stop_flag = false;
+    xQueueSend(cmd_q, &c, 0);
 }
 
 int  yt_mode(void) { return mode_v; }
@@ -216,6 +238,97 @@ static uint16_t *decode_thumb(const uint8_t *jpg, size_t len)
     /* mqdefault is 320x180; scale 1 = 1/2 lands exactly on 160x90 */
     if (jd_decomp(&jd, jpg_out, 1) != JDR_OK) { heap_caps_free(ctx.out); return nullptr; }
     return ctx.out;
+}
+
+/* ---------------------------------------------------------------- stream -- */
+/*
+ * The player loop (D053). Plain HTTP from the companion, a rolling buffer,
+ * SOI/EOI framing, decode-latest-drop-stale — the natural frame-skip when
+ * decode (~35 ms) falls behind the 12 fps the Mac sends. Runs entirely on
+ * this worker; the LVGL task only ever blits the front buffer.
+ */
+static bool decode_frame(const uint8_t *jpg, size_t len)
+{
+    static uint8_t work[3800];
+    JDEC jd;
+    JpgCtx ctx = { jpg, len, 0, fb[fb_front ^ 1], YT_FRAME_W, YT_FRAME_H };
+    if (jd_prepare(&jd, jpg_in, work, sizeof(work), &ctx) != JDR_OK) return false;
+    if (jd_decomp(&jd, jpg_out, 0) != JDR_OK) return false;   /* 1:1 */
+    fb_front ^= 1;
+    frame_rev_v++;
+    return true;
+}
+
+static void do_stream(const char *id)
+{
+    if (!fb[0]) {
+        fb[0] = (uint16_t *)heap_caps_malloc(YT_FRAME_W * YT_FRAME_H * 2,
+                                             MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+        fb[1] = (uint16_t *)heap_caps_malloc(YT_FRAME_W * YT_FRAME_H * 2,
+                                             MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+        if (!fb[0] || !fb[1]) { snprintf(status_buf, sizeof(status_buf), "no PSRAM for frames"); return; }
+    }
+
+    char url[80];
+    snprintf(url, sizeof(url), "http://%s:8999/stream/%s", play_host, id);
+    HTTPClient http;
+    http.setConnectTimeout(4000);
+    http.setTimeout(30000);            /* yt-dlp resolve can take a while  */
+    if (!http.begin(url)) return;
+    const int code = http.GET();
+    if (code != 200) {
+        snprintf(status_buf, sizeof(status_buf),
+                 code == 503 ? "companion: install yt-dlp" : "stream HTTP %d", code);
+        http.end();
+        rev_v++;
+        return;
+    }
+
+    WiFiClient *s = http.getStreamPtr();
+    const size_t CAP = 96 * 1024;
+    uint8_t *acc = (uint8_t *)heap_caps_malloc(CAP, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+    size_t   n = 0;
+    uint32_t last_data = millis();
+    streaming_v = true;
+    snprintf(status_buf, sizeof(status_buf), "playing here");
+    rev_v++;
+
+    while (!stream_stop_flag) {
+        int avail = s->available();
+        if (avail > 0) {
+            int r = s->read(acc + n, min((size_t)avail, CAP - n));
+            if (r > 0) { n += r; last_data = millis(); }
+        } else {
+            if (!s->connected() || millis() - last_data > 15000) break;
+            delay(5);
+            continue;
+        }
+
+        /* Latest complete SOI..EOI wins; everything before it is stale. */
+        size_t soi = SIZE_MAX, eoi = SIZE_MAX;
+        for (size_t i = n; i >= 2; i--) {
+            if (acc[i-2] == 0xFF && acc[i-1] == 0xD9) { eoi = i; break; }
+        }
+        if (eoi != SIZE_MAX) {
+            for (size_t i = eoi - 2; i >= 2; i--) {
+                if (acc[i-2] == 0xFF && acc[i-1] == 0xD8) { soi = i - 2; break; }
+                if (i == 2) break;
+            }
+        }
+        if (soi != SIZE_MAX && eoi != SIZE_MAX && eoi > soi) {
+            decode_frame(acc + soi, eoi - soi);
+            memmove(acc, acc + eoi, n - eoi);
+            n -= eoi;
+        } else if (n >= CAP - 4096) {
+            n = 0;                       /* garbage overflow: resync */
+        }
+    }
+
+    heap_caps_free(acc);
+    http.end();
+    streaming_v = false;
+    snprintf(status_buf, sizeof(status_buf), stream_stop_flag ? "" : "stream ended");
+    rev_v++;
 }
 
 /* ----------------------------------------------------------------- refresh */
@@ -454,6 +567,7 @@ static void yt_task(void *)
         busy = true;
         if      (cmd.type == CMD_REFRESH) do_refresh();
         else if (cmd.type == CMD_PLAY)    do_play(cmd.id);
+        else if (cmd.type == CMD_STREAM)  do_stream(cmd.id);
         busy = false;
     }
 }

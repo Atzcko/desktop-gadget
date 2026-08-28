@@ -23,6 +23,17 @@ the drawer's height is computed from the live display instead of a
 landscape constant, so portrait also SHOWS a full extra row before
 scrolling at all.
 
+## v1.32.0 — 2026-08-28
+
+**Videos play ON the clock** ([[D053 - The clock plays video after all, through the Mac]]).
+Tap a row → a 320×180 @ 12 fps MJPEG stream, transcoded by the Mac companion
+(yt-dlp + ffmpeg), decoded frame-by-frame on the worker, blitted from a
+double buffer. Native pixels, no upscale blur; latest-frame-wins skipping;
+silent by hardware (no audio path exists). **"On Mac"** in the player sends
+it to the browser instead — the old tap behavior, demoted to the option.
+`POST /youtube {"play_here":"id"}` / `{"stop":true}` and `frames` in GET
+keep it shell-drivable. Requires `brew install yt-dlp` on the Mac once.
+
 ## v1.31.0 — 2026-08-28
 
 **YouTube: correct colors, Popular, and Search.** Thumbnails were rendered

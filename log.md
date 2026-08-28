@@ -1710,3 +1710,24 @@ found, which is apparently just what synthesis notes do:
 decisions write themselves at release time because the workflow demands it;
 synthesis rots at the speed of progress, so the sweep IS the maintenance
 schedule for exactly that layer.
+
+## 2026-08-28 — Tier B arrives (v1.32.0)
+
+Owner asked for the mobile experience: play on the device, Mac as an option.
+That is Tier B from the original YouTube assessment, built exactly along the
+lines D050 predicted: the Mac carries the two walls that were policy (codec,
+stream extraction - yt-dlp lives where brew can update it, never in
+firmware) and the clock carries the one that is physics (no audio; the
+player is a moving picture and says so).
+
+ytserve gained /stream/<id> (yt-dlp -g | ffmpeg -> baseline MJPEG 320x180
+@12fps); the yt worker reads a rolling buffer, frames on SOI/EOI, decodes
+the LATEST complete frame and drops stale - frame-skip for free when the
+~35ms decode lags. Double buffer in PSRAM; the LVGL task blits the front
+and never decodes. Tap = play here; "On Mac" is the old behavior demoted to
+a button. Back/leave always stops the stream.
+
+Shipped and verified to the last verifiable inch without yt-dlp: the 503
+path reports "companion: install yt-dlp" on the player, play_here/stop/
+frames round-trip over HTTP. The first actual moving frame awaits the
+owner's one brew install - which is their download to approve, not mine.
