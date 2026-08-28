@@ -11,6 +11,16 @@ Semantic versioning; the scheme and the release procedure live in [[CLAUDE]].
 The version is reported by the boot log, `GET /health` and Settings ▸ Info,
 each with a compiler build stamp so a stale flash is detectable.
 
+## v1.27.1 — 2026-08-28
+
+**Settings text no longer runs off the screen.** Eleven fixed widths from the
+600-wide tabview era (560/540/520/440/400 px) were living inside D048's
+410 px landscape pane, and the label helpers created unconstrained labels
+that size to their text — the Wi-Fi status line and the Info diagnostics
+sailed off the right edge. Every width is percentage-of-pane now and every
+helper label wraps; growth is vertical only, which is the direction that
+scrolls. No horizontal scrolling was added anywhere — the rule stands.
+
 ## v1.27.0 — 2026-08-28
 
 **Themes** ([[D049 - The look is a table]]). Theme 0 is Fliqlo, untouched.

@@ -1475,3 +1475,17 @@ pretending a color table covers it would be claiming more than shipped.
 One bug caught before it shipped: /theme rode app_request_rotation(current),
 and the rotation service skips no-ops — the rebuild would never fire.
 app_request_rebuild() now exists for exactly "same shape, new paint".
+
+## 2026-08-28 — The pane was 410 and the widgets were 560 (v1.27.1)
+
+Owner: text runs off the screen inside Settings sections. Cause: D048 put
+pages in a 410 px landscape pane, but eleven widths inside them still said
+560/540/520/440/400 from the tabview era — and body_label/section created
+labels with no width at all, which in LVGL means "size to the text", which
+for the Wi-Fi status line means "exit the screen on the right".
+
+The v1.26.0 conversion fixed the two widths a grep for >=380 found and I
+called it done; the real fix was hiding in the HELPERS, which every tab uses.
+Now: every width is percentage-of-pane, every helper label wraps, and the
+only direction anything grows is down — the direction that scrolls. The
+left/right rule survives untouched.

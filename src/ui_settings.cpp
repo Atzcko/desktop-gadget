@@ -109,6 +109,8 @@ static lv_obj_t *section(lv_obj_t *parent, const char *text)
     lv_obj_t *l = lv_label_create(parent);
     lv_obj_set_style_text_font(l, &lv_font_montserrat_16, LV_PART_MAIN);
     lv_obj_set_style_text_color(l, lv_color_hex(0x7A7A7A), LV_PART_MAIN);
+    lv_obj_set_width(l, LV_PCT(100));
+    lv_label_set_long_mode(l, LV_LABEL_LONG_WRAP);
     lv_label_set_text(l, text);
     return l;
 }
@@ -118,6 +120,12 @@ static lv_obj_t *body_label(lv_obj_t *parent, const char *text)
     lv_obj_t *l = lv_label_create(parent);
     lv_obj_set_style_text_font(l, &lv_font_montserrat_20, LV_PART_MAIN);
     lv_obj_set_style_text_color(l, lv_color_hex(0xE0E0E0), LV_PART_MAIN);
+    /* Width-capped and wrapping: the pane is 410 px in landscape (D048), and
+     * an unconstrained label sizes to its text and sails off the right edge.
+     * Vertical growth is fine - the pages scroll that way, and only that
+     * way. */
+    lv_obj_set_width(l, LV_PCT(100));
+    lv_label_set_long_mode(l, LV_LABEL_LONG_WRAP);
     lv_label_set_text(l, text);
     return l;
 }
@@ -800,7 +808,7 @@ lv_obj_t *ui_settings_create(void)
     lv_textarea_set_one_line(ta_pass, true);
     lv_textarea_set_password_mode(ta_pass, true);
     lv_textarea_set_placeholder_text(ta_pass, "Wi-Fi password");
-    lv_obj_set_width(ta_pass, 560);
+    lv_obj_set_width(ta_pass, LV_PCT(100));
     lv_obj_add_event_cb(ta_pass, ta_open_editor, LV_EVENT_CLICKED, (void *)"Wi-Fi password");
 
     cb_show_pass = lv_checkbox_create(t_wifi);
@@ -825,14 +833,14 @@ lv_obj_t *ui_settings_create(void)
         roller_tz = lv_roller_create(t_time);
         lv_roller_set_options(roller_tz, opts.c_str(), LV_ROLLER_MODE_NORMAL);
         lv_roller_set_visible_row_count(roller_tz, 3);
-        lv_obj_set_width(roller_tz, 400);
+        lv_obj_set_width(roller_tz, LV_PCT(100));
         lv_obj_set_style_text_font(roller_tz, &lv_font_montserrat_20, LV_PART_MAIN);
         lv_roller_set_selected(roller_tz, settings_timezone_index(), LV_ANIM_OFF);
     }
     {
         lv_obj_t *row = lv_obj_create(t_time);
         lv_obj_remove_style_all(row);
-        lv_obj_set_size(row, 400, 40);
+        lv_obj_set_size(row, LV_PCT(100), 40);
         lv_obj_set_flex_flow(row, LV_FLEX_FLOW_ROW);
         lv_obj_set_flex_align(row, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER,
                               LV_FLEX_ALIGN_CENTER);
@@ -855,7 +863,7 @@ lv_obj_t *ui_settings_create(void)
     ta_city = lv_textarea_create(t_place);
     lv_textarea_set_one_line(ta_city, true);
     lv_textarea_set_placeholder_text(ta_city, "City name");
-    lv_obj_set_width(ta_city, 560);
+    lv_obj_set_width(ta_city, LV_PCT(100));
     lv_obj_add_event_cb(ta_city, ta_open_editor, LV_EVENT_CLICKED, (void *)"City name");
 
     make_button(t_place, LV_SYMBOL_GPS "  Search", geo_search_cb, nullptr);
@@ -872,13 +880,13 @@ lv_obj_t *ui_settings_create(void)
         section(t_screen, "Day brightness");
         lv_obj_t *r1 = lv_obj_create(t_screen);
         lv_obj_remove_style_all(r1);
-        lv_obj_set_size(r1, 540, 36);
+        lv_obj_set_size(r1, LV_PCT(100), 36);
         lv_obj_set_flex_flow(r1, LV_FLEX_FLOW_ROW);
         lv_obj_set_flex_align(r1, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER,
                               LV_FLEX_ALIGN_CENTER);
         lv_obj_set_style_pad_column(r1, 14, LV_PART_MAIN);
         sl_day = lv_slider_create(r1);
-        lv_obj_set_width(sl_day, 440);
+        lv_obj_set_width(sl_day, LV_PCT(70));
         lv_slider_set_range(sl_day, 10, 255);
         lv_slider_set_value(sl_day, s.brightness_day, LV_ANIM_OFF);
         lv_obj_add_event_cb(sl_day, slider_cb, LV_EVENT_VALUE_CHANGED, nullptr);
@@ -888,13 +896,13 @@ lv_obj_t *ui_settings_create(void)
         section(t_screen, "Night brightness");
         lv_obj_t *r2 = lv_obj_create(t_screen);
         lv_obj_remove_style_all(r2);
-        lv_obj_set_size(r2, 540, 36);
+        lv_obj_set_size(r2, LV_PCT(100), 36);
         lv_obj_set_flex_flow(r2, LV_FLEX_FLOW_ROW);
         lv_obj_set_flex_align(r2, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER,
                               LV_FLEX_ALIGN_CENTER);
         lv_obj_set_style_pad_column(r2, 14, LV_PART_MAIN);
         sl_night = lv_slider_create(r2);
-        lv_obj_set_width(sl_night, 440);
+        lv_obj_set_width(sl_night, LV_PCT(70));
         lv_slider_set_range(sl_night, 5, 255);
         lv_slider_set_value(sl_night, s.brightness_night, LV_ANIM_OFF);
         lv_obj_add_event_cb(sl_night, slider_cb, LV_EVENT_VALUE_CHANGED, nullptr);
@@ -906,7 +914,7 @@ lv_obj_t *ui_settings_create(void)
         hours_options(hopts, sizeof(hopts));
         lv_obj_t *r3 = lv_obj_create(t_screen);
         lv_obj_remove_style_all(r3);
-        lv_obj_set_size(r3, 540, 90);
+        lv_obj_set_size(r3, LV_PCT(100), 90);
         lv_obj_set_flex_flow(r3, LV_FLEX_FLOW_ROW);
         lv_obj_set_flex_align(r3, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER,
                               LV_FLEX_ALIGN_CENTER);
@@ -928,7 +936,7 @@ lv_obj_t *ui_settings_create(void)
     {
         lv_obj_t *r4 = lv_obj_create(t_screen);
         lv_obj_remove_style_all(r4);
-        lv_obj_set_size(r4, 540, 40);
+        lv_obj_set_size(r4, LV_PCT(100), 40);
         lv_obj_set_flex_flow(r4, LV_FLEX_FLOW_ROW);
         lv_obj_set_flex_align(r4, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER,
                               LV_FLEX_ALIGN_CENTER);
@@ -965,7 +973,7 @@ lv_obj_t *ui_settings_create(void)
     {
         lv_obj_t *row = lv_obj_create(t_ble);
         lv_obj_remove_style_all(row);
-        lv_obj_set_size(row, 520, 40);
+        lv_obj_set_size(row, LV_PCT(100), 40);
         lv_obj_set_flex_flow(row, LV_FLEX_FLOW_ROW);
         lv_obj_set_flex_align(row, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER,
                               LV_FLEX_ALIGN_CENTER);
@@ -980,7 +988,7 @@ lv_obj_t *ui_settings_create(void)
     lv_textarea_set_one_line(ta_ble_name, true);
     lv_textarea_set_max_length(ta_ble_name, sizeof(s.ble_name) - 1);
     lv_textarea_set_text(ta_ble_name, s.ble_name);
-    lv_obj_set_width(ta_ble_name, 520);
+    lv_obj_set_width(ta_ble_name, LV_PCT(100));
     lv_obj_add_event_cb(ta_ble_name, ta_open_editor, LV_EVENT_CLICKED, (void *)"Bluetooth device name");
 
     {
@@ -994,7 +1002,7 @@ lv_obj_t *ui_settings_create(void)
     {
         lv_obj_t *row = lv_obj_create(t_ble);
         lv_obj_remove_style_all(row);
-        lv_obj_set_size(row, 560, 40);
+        lv_obj_set_size(row, LV_PCT(100), 40);
         lv_obj_set_flex_flow(row, LV_FLEX_FLOW_ROW);
         lv_obj_set_flex_align(row, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER,
                               LV_FLEX_ALIGN_CENTER);
@@ -1007,7 +1015,7 @@ lv_obj_t *ui_settings_create(void)
     {
         lv_obj_t *row = lv_obj_create(t_ble);
         lv_obj_remove_style_all(row);
-        lv_obj_set_size(row, 560, 40);
+        lv_obj_set_size(row, LV_PCT(100), 40);
         lv_obj_set_flex_flow(row, LV_FLEX_FLOW_ROW);
         lv_obj_set_flex_align(row, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER,
                               LV_FLEX_ALIGN_CENTER);
