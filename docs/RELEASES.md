@@ -11,6 +11,21 @@ Semantic versioning; the scheme and the release procedure live in [[CLAUDE]].
 The version is reported by the boot log, `GET /health` and Settings ▸ Info,
 each with a compiler build stamp so a stale flash is detectable.
 
+## v1.29.0 — 2026-08-28
+
+**The clock is a Bluetooth trackpad.**
+([[D051 - The clock is a trackpad; the mouse is real HID]])
+
+A standard mouse (Report ID 2) joined both HID identities, so the paired Mac
+sees a real pointing device — no companion. The Trackpad app: one finger
+moves (1.5 gain, fractional carry), a still tap left-clicks, a TWO-finger
+tap right-clicks (raw CST226 point count; LVGL only ever sees finger one),
+two-finger drag scrolls, and Left/Right strip buttons click without moving.
+Leaving the app always releases every button.
+
+**Re-pair required**: hosts cache the HID descriptor per bond — forget the
+device on the Mac, Clear pairings on the clock, pair again.
+
 ## v1.28.0 — 2026-08-28
 
 **A YouTube app — the dashboard-and-remote, exactly as assessed.**

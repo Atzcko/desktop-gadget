@@ -43,3 +43,10 @@ void app_request_rotation(uint8_t rotation);
 /* Rebuild everything visible at the CURRENT rotation — a theme change needs
  * the rebuild without the rotate, and the rotate path skips no-ops (D049). */
 void app_request_rebuild(void);
+
+/*
+ * Raw touch-point COUNT from the controller, for the trackpad's two-finger
+ * detection (D051) — LVGL's indev only ever reports the first finger. Reads
+ * the same CST226 state the indev polls; count-only, positions untouched.
+ */
+uint8_t app_touch_count(void);

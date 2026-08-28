@@ -1574,3 +1574,29 @@ app says "companion offline" and everything else keeps working.
 Awaiting the owner: a real API key, and running tools/ytserve. Verified
 without either: the app renders its guidance states, GET/POST /youtube
 round-trip, channels persist, and the drawer holds seven tiles.
+
+## 2026-08-28 — The clock grows a cursor (v1.29.0)
+
+Owner: an app to control the mouse - one-finger tap clicks, two-finger tap
+right-clicks. The transport was sitting in the vault already: D021/D022
+built BLE HID for discoverability and left input as "a later phase". The
+phase arrived as a pointer, not a keyboard: a standard relative-mouse
+collection (Report ID 2) in BOTH report maps - a pointing device does not
+wake Keyboard Setup Assistant, so the gadget identity survives intact.
+
+Two implementation truths worth the log:
+
+- LVGL's pointer indev reports exactly one finger, forever. The two-finger
+  tap therefore reads the CST226's raw point count (app_touch_count) while a
+  press is live - the one place the firmware reads the touch controller
+  outside the LVGL helper, noted in D051 with the double-read risk stated.
+- A click is a DOWN report and an UP report ~30 ms apart, and destroy()
+  fires an unconditional all-up: a phantom held button on the host is the
+  unforgivable trackpad bug, so the release does not depend on the app
+  staying alive.
+
+The cost is the descriptor-cache rule from CLAUDE.md's own warning: the map
+changed, so the existing bond is a lie until both sides forget and re-pair.
+
+Shipped OTA; motion itself is physically unverifiable from here - the owner
+has the only cursor.

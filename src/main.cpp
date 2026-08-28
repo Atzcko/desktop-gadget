@@ -118,6 +118,12 @@ static volatile bool pending_rebuild;
 void app_request_rotation(uint8_t rotation) { pending_rot = rotation & 3; }
 void app_request_rebuild(void)              { pending_rebuild = true; }
 
+uint8_t app_touch_count(void)
+{
+    int16_t xs[2], ys[2];
+    return amoled.getPoint(xs, ys, 2);
+}
+
 void app_refresh_clock(bool animate)
 {
     struct tm tm_now;

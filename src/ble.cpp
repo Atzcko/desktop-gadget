@@ -66,7 +66,41 @@ static const uint8_t HID_REPORT_MAP[] = {
     0x19, 0x00,  /*   Usage Minimum (0)               */
     0x29, 0x65,  /*   Usage Maximum (101)             */
     0x81, 0x00,  /*   Input (Data,Array) keys         */
-    0xC0         /* End Collection                    */
+    0xC0,        /* End Collection                    */
+
+    /*
+     * Standard relative mouse, Report ID 2 (D051). Present in BOTH identities:
+     * a pointing device does not summon Keyboard Setup Assistant, so the
+     * gadget identity keeps its meaning while gaining a cursor.
+     */
+    0x05, 0x01,        /* Usage Page (Generic Desktop)         */
+    0x09, 0x02,        /* Usage (Mouse)                        */
+    0xA1, 0x01,        /* Collection (Application)             */
+    0x85, 0x02,        /*   Report ID (2)                      */
+    0x09, 0x01,        /*   Usage (Pointer)                    */
+    0xA1, 0x00,        /*   Collection (Physical)              */
+    0x05, 0x09,        /*     Usage Page (Buttons)             */
+    0x19, 0x01,        /*     Usage Minimum (1)                */
+    0x29, 0x03,        /*     Usage Maximum (3)                */
+    0x15, 0x00,        /*     Logical Minimum (0)              */
+    0x25, 0x01,        /*     Logical Maximum (1)              */
+    0x95, 0x03,        /*     Report Count (3)                 */
+    0x75, 0x01,        /*     Report Size (1)                  */
+    0x81, 0x02,        /*     Input (Data,Var,Abs) buttons     */
+    0x95, 0x01,        /*     Report Count (1)                 */
+    0x75, 0x05,        /*     Report Size (5)                  */
+    0x81, 0x03,        /*     Input (Const) padding            */
+    0x05, 0x01,        /*     Usage Page (Generic Desktop)     */
+    0x09, 0x30,        /*     Usage (X)                        */
+    0x09, 0x31,        /*     Usage (Y)                        */
+    0x09, 0x38,        /*     Usage (Wheel)                    */
+    0x15, 0x81,        /*     Logical Minimum (-127)           */
+    0x25, 0x7F,        /*     Logical Maximum (127)            */
+    0x75, 0x08,        /*     Report Size (8)                  */
+    0x95, 0x03,        /*     Report Count (3)                 */
+    0x81, 0x06,        /*     Input (Data,Var,Rel)             */
+    0xC0,              /*   End Collection                     */
+    0xC0,              /* End Collection                       */
 };
 
 /*
@@ -101,7 +135,41 @@ static const uint8_t GADGET_REPORT_MAP[] = {
     0x75, 0x08,
     0x95, 0x20,        /*   Report Count (32)                  */
     0x91, 0x02,        /*   Output (Data,Var,Abs)              */
-    0xC0               /* End Collection                       */
+    0xC0,              /* End Collection                       */
+
+    /*
+     * Standard relative mouse, Report ID 2 (D051). Present in BOTH identities:
+     * a pointing device does not summon Keyboard Setup Assistant, so the
+     * gadget identity keeps its meaning while gaining a cursor.
+     */
+    0x05, 0x01,        /* Usage Page (Generic Desktop)         */
+    0x09, 0x02,        /* Usage (Mouse)                        */
+    0xA1, 0x01,        /* Collection (Application)             */
+    0x85, 0x02,        /*   Report ID (2)                      */
+    0x09, 0x01,        /*   Usage (Pointer)                    */
+    0xA1, 0x00,        /*   Collection (Physical)              */
+    0x05, 0x09,        /*     Usage Page (Buttons)             */
+    0x19, 0x01,        /*     Usage Minimum (1)                */
+    0x29, 0x03,        /*     Usage Maximum (3)                */
+    0x15, 0x00,        /*     Logical Minimum (0)              */
+    0x25, 0x01,        /*     Logical Maximum (1)              */
+    0x95, 0x03,        /*     Report Count (3)                 */
+    0x75, 0x01,        /*     Report Size (1)                  */
+    0x81, 0x02,        /*     Input (Data,Var,Abs) buttons     */
+    0x95, 0x01,        /*     Report Count (1)                 */
+    0x75, 0x05,        /*     Report Size (5)                  */
+    0x81, 0x03,        /*     Input (Const) padding            */
+    0x05, 0x01,        /*     Usage Page (Generic Desktop)     */
+    0x09, 0x30,        /*     Usage (X)                        */
+    0x09, 0x31,        /*     Usage (Y)                        */
+    0x09, 0x38,        /*     Usage (Wheel)                    */
+    0x15, 0x81,        /*     Logical Minimum (-127)           */
+    0x25, 0x7F,        /*     Logical Maximum (127)            */
+    0x75, 0x08,        /*     Report Size (8)                  */
+    0x95, 0x03,        /*     Report Count (3)                 */
+    0x81, 0x06,        /*     Input (Data,Var,Rel)             */
+    0xC0,              /*   End Collection                     */
+    0xC0,              /* End Collection                       */
 };
 
 #define APPEARANCE_GENERIC_HID 0x03C0
@@ -117,6 +185,7 @@ static const uint8_t GADGET_REPORT_MAP[] = {
 static NimBLEServer         *server;
 static NimBLECharacteristic *tx_char;
 static NimBLEHIDDevice      *hid;
+static NimBLECharacteristic *mouse_input;
 static bool running;
 static bool connected;
 
@@ -254,6 +323,7 @@ void ble_begin(void)
             NimBLECharacteristic *out = hid->outputReport(1);
             out->setCallbacks(&hid_out_cb);
         }
+        mouse_input = hid->inputReport(2);      /* both identities (D051) */
         hid->startServices();
     }
 
@@ -357,3 +427,17 @@ void ble_clear_bonds(void)
 
 bool ble_is_running(void)   { return running; }
 bool ble_is_connected(void) { return connected; }
+
+/*
+ * The trackpad app's whole transport (D051): a 4-byte relative report.
+ * Safe to call from the LVGL task - NimBLE's notify is task-safe, and this
+ * sends nothing unless a host is connected and subscribed.
+ */
+bool ble_mouse(uint8_t buttons, int8_t dx, int8_t dy, int8_t wheel)
+{
+    if (!mouse_input || !ble_is_connected()) return false;
+    uint8_t r[4] = { buttons, (uint8_t)dx, (uint8_t)dy, (uint8_t)wheel };
+    mouse_input->setValue(r, sizeof(r));
+    mouse_input->notify();
+    return true;
+}
