@@ -1828,3 +1828,20 @@ itself, single boot.gb slot by design. Fair ask, so the slot became a
 shelf: /roms/*.gb all count, a picker appears past one cart, saves are
 per-cart, tools/rom keeps filenames. The lesson logged: when a report
 survives the first fix, re-read it literally.
+
+## 2026-08-28 — The picker that wiped its own choice (v1.36.1)
+
+Owner: now it cannot load anything. One read of the reopen path found it:
+tapping a cartridge asks for a Game Boy reopen; the reopen calls
+game_close(); game_close unconditionally wiped gb_cart_path - the choice
+the tap had JUST made - so the scan ran again, found two carts (v1.35's
+stale boot.gb plus libbet.gb), and showed the picker again. A loop wearing
+a menu's clothes. The wipe is now conditional: forget the cart when the
+OWNER leaves, keep it when the picker is booting it. DELETE /rom?name=
+cleans shelves; boot.gb removed from the device.
+
+Verified without a finger: with one cart on the shelf, opening the Game Boy
+dropped free PSRAM by the ROM-plus-canvas footprint and uptime kept
+climbing - the emulator is demonstrably executing. The pattern of the day,
+third occurrence: state cleared by a common path that one caller needed
+preserved (Settings edits at rotation, the theme rebuild, now this).
