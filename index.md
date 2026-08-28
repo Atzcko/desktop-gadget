@@ -98,6 +98,7 @@ bridge is the only way. See [[CLAUDE]].
 | [[D032 - Three gestures, one control]] | Drag coarse, tap exact, hold repeat — one card does all three |
 | [[D033 - Back goes one level, not home]] | app → drawer → clock; one function owns what back means |
 | [[D034 - Updates ship over the air]] | POST /update to the ota_1 slot that was always in the table |
+| [[D054 - Home comes from the owner's own session]] | yt-dlp + browser cookies on the Mac; the clock sees ids and titles |
 | [[D053 - The clock plays video after all, through the Mac]] | Mac transcodes MJPEG; clock shows honest 320×180 pixels |
 | [[D052 - The gadget types, on request]] | Keyboard report joins the map; D022 revised, identity follows function |
 | [[D051 - The clock is a trackpad; the mouse is real HID]] | Mouse report in both identities; two fingers read raw |

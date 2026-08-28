@@ -106,7 +106,7 @@ void yt_stream_start(const char *id)
 int  yt_mode(void) { return mode_v; }
 void yt_set_mode(int m)
 {
-    if (m < 0 || m > 2) return;
+    if (m < 0 || m > 3) return;
     mode_v = (uint8_t)m;
 }
 
@@ -451,7 +451,43 @@ static void do_refresh(void)
     static Fetched all[YT_CHANNELS_N * 3];
     int all_n = 0;
 
-    if (mode_v == 1) {
+    if (mode_v == 3) {
+        /* HOME — the owner's real recommendations, resolved by the Mac from
+         * their logged-in browser session (D054). Plain HTTP to the
+         * companion; the clock only ever sees ids and titles. */
+        if (!play_host[0]) { snprintf(status_buf, sizeof(status_buf), "no companion host set"); return; }
+        char url[64];
+        snprintf(url, sizeof(url), "http://%s:8999/home", play_host);
+        HTTPClient http;
+        http.setConnectTimeout(4000);
+        http.setTimeout(45000);          /* cookie extraction can be slow */
+        String body;
+        if (http.begin(url)) {
+            const int code = http.GET();
+            if (code == 200) body = http.getString();
+            else snprintf(status_buf, sizeof(status_buf),
+                          code == 502 ? "companion: log into YouTube in Chrome"
+                        : code == 503 ? "companion: install yt-dlp"
+                                      : "home HTTP %d", code);
+            http.end();
+        }
+        if (body.length()) {
+            DynamicJsonDocument doc(8192);
+            if (deserializeJson(doc, body) == DeserializationError::Ok) {
+                for (JsonVariant v : doc["items"].as<JsonArray>()) {
+                    if (all_n >= (int)(sizeof(all) / sizeof(all[0]))) break;
+                    Fetched &f = all[all_n];
+                    snprintf(f.id,    sizeof(f.id),    "%s", (const char *)v["id"]);
+                    snprintf(f.title, sizeof(f.title), "%s", (const char *)v["title"]);
+                    snprintf(f.chan,  sizeof(f.chan),  "%s", (const char *)v["channel"]);
+                    f.iso[0] = '\0';
+                    snprintf(f.thumb_url, sizeof(f.thumb_url),
+                             "https://i.ytimg.com/vi/%s/mqdefault.jpg", f.id);
+                    if (f.id[0]) all_n++;
+                }
+            }
+        }
+    } else if (mode_v == 1) {
         /* Trending for the region — the closest thing to a Home feed the
          * key-only API allows (D050 addendum). One unit. */
         char url[300];
@@ -596,6 +632,9 @@ void yt_begin(void)
     prefs.getString("chans", chans, sizeof(chans));
     prefs.getString("region", region, sizeof(region));
     if (!region[0]) snprintf(region, sizeof(region), "AE");
+    /* The owner asked for Home as the face of the app: default there
+     * whenever a companion exists to serve it (D054). */
+    if (play_host[0]) mode_v = 3;
     channels_n = 0;
     for (char *t = strtok(chans, ","); t && channels_n < YT_CHANNELS_N;
          t = strtok(nullptr, ",")) {

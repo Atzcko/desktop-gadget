@@ -23,6 +23,20 @@ the drawer's height is computed from the live display instead of a
 landscape constant, so portrait also SHOWS a full extra row before
 scrolling at all.
 
+## v1.33.0 — 2026-08-28
+
+**A real Home, and playback that actually plays.**
+([[D054 - Home comes from the owner's own session]])
+
+- **Home** — the phone's front page, for real: the companion reads the
+  owner's logged-in browser session (cookies never leave the Mac; the clock
+  gets ids and titles) and serves their actual recommendations. Default
+  view when a companion is configured. Chips: Home / Latest / Popular / ⌨.
+- **Playback fix**: the stream format selector demanded muxed streams;
+  modern YouTube ships adaptive-only. Video-only is correct (the clock is
+  silent, ffmpeg drops audio anyway) — verified against the exact video
+  that failed.
+
 ## v1.32.0 — 2026-08-28
 
 **Videos play ON the clock** ([[D053 - The clock plays video after all, through the Mac]]).

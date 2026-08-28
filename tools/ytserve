@@ -43,6 +43,47 @@ class H(BaseHTTPRequestHandler):
         self.wfile.write(b'{"ok":true}')
 
     def do_GET(self):
+        if self.path == "/home":
+            # The owner's REAL Home: yt-dlp reads the logged-in browser
+            # session and returns their recommendations. Cookies never leave
+            # this Mac; the clock receives ids and titles only (D054).
+            if shutil.which("yt-dlp") is None:
+                self.send_response(503)
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                self.wfile.write(b'{"ok":false,"error":"yt-dlp not installed"}')
+                return
+            items, tried = [], []
+            for browser in ("chrome", "firefox", "safari"):
+                try:
+                    out = subprocess.check_output(
+                        ["yt-dlp", "--flat-playlist", "--playlist-end", "12",
+                         "-j", "--cookies-from-browser", browser,
+                         "https://www.youtube.com/feed/recommended"],
+                        timeout=40, stderr=subprocess.DEVNULL).decode()
+                    for line in out.splitlines():
+                        try:
+                            j = json.loads(line)
+                            if j.get("id") and j.get("title"):
+                                items.append({"id": j["id"], "title": j["title"][:80],
+                                              "channel": (j.get("channel") or j.get("uploader") or "")[:26]})
+                        except Exception:
+                            pass
+                    if items:
+                        print(f"[ytserve] home: {len(items)} items via {browser} cookies")
+                        break
+                except Exception:
+                    tried.append(browser)
+            self.send_response(200 if items else 502)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            if items:
+                self.wfile.write(json.dumps({"ok": True, "items": items}).encode())
+            else:
+                self.wfile.write(json.dumps({"ok": False,
+                    "error": "no browser session found - open youtube.com and log in"
+                             f" (tried {', '.join(tried)})"}).encode())
+            return
         if self.path.startswith("/stream/"):
             vid = self.path[len("/stream/"):]
             if not (vid.replace("-", "").replace("_", "").isalnum() and len(vid) <= 15):
@@ -54,9 +95,14 @@ class H(BaseHTTPRequestHandler):
                 self.wfile.write(b'{"ok":false,"error":"yt-dlp not installed - brew install yt-dlp"}')
                 return
             try:
+                # VIDEO-ONLY formats are fine - the clock has no audio and
+                # ffmpeg drops it anyway. Demanding muxed ("best") failed on
+                # every video that ships only adaptive streams, which is most
+                # of modern YouTube (v1.33.0, owner-reported).
                 url = subprocess.check_output(
                     ["yt-dlp", "-g", "-f",
-                     "best[height<=360][vcodec^=avc]/best[height<=360]/best",
+                     "bestvideo[height<=360]/bestvideo[height<=480]"
+                     "/best[height<=480]/bestvideo/best",
                      f"https://www.youtube.com/watch?v={vid}"],
                     timeout=25).decode().strip().splitlines()[0]
             except Exception as e:

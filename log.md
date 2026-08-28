@@ -1731,3 +1731,24 @@ Shipped and verified to the last verifiable inch without yt-dlp: the 503
 path reports "companion: install yt-dlp" on the player, play_here/stop/
 frames round-trip over HTTP. The first actual moving frame awaits the
 owner's one brew install - which is their download to approve, not mine.
+
+## 2026-08-28 — A real Home, and the format that refused (v1.33.0)
+
+Two owner reports. Playback: the /stream selector demanded MUXED formats and
+modern YouTube ships most videos adaptive-only — the probe showed my test id
+streaming fine while both ids the owner actually tapped failed with
+"Requested format is not available". Video-only is the correct request for a
+silent device; fixed server-side, verified against the exact failing id,
+zero reflash.
+
+Home: the ask I had twice answered "the API cannot" got a better answer -
+the API still cannot, but yt-dlp reading the owner's OWN browser session
+can. /home on the companion runs --cookies-from-browser and returns the top
+recommendations; the privacy line is exact (cookies never leave the Mac,
+the clock sees ids and titles). Home is now the app's default face, which
+is what "like my phone" meant. The remaining wall is the owner's: a browser
+on the Mac logged into YouTube, and possibly one keychain approval.
+
+The stack's most breakable link (cookie extraction) deliberately lives
+where brew upgrade fixes it - the same placement argument three decisions
+running.

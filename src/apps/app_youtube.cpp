@@ -388,20 +388,26 @@ static lv_obj_t *yt_create(void)
 
     /* Mode chips instead of a title: Latest (channels) / Popular / Search.
      * Search opens the keyboard; the others refetch immediately. */
-    static const char *chips[3] = { "Latest", "Popular", LV_SYMBOL_KEYBOARD " Search" };
-    for (int i = 0; i < 3; i++) {
+    /* Home | Latest | Popular | search — Home is the phone's front page,
+     * served by the companion from the owner's own session (D054). */
+    static const char *chips[4] = { "Home", "Latest", "Popular", LV_SYMBOL_KEYBOARD };
+    static const int  modes[4]  = { 3, 0, 1, 2 };
+    static const int  widths[4] = { 90, 92, 102, 56 };
+    int cx = 14;
+    for (int i = 0; i < 4; i++) {
         lv_obj_t *ch = lv_btn_create(scr);
-        lv_obj_set_size(ch, i == 2 ? 130 : 104, 36);
-        lv_obj_set_pos(ch, 14 + i * (i == 2 ? 112 : 112), 6);
+        lv_obj_set_size(ch, widths[i], 36);
+        lv_obj_set_pos(ch, cx, 6);
+        cx += widths[i] + 8;
         lv_obj_set_style_bg_color(ch,
-            lv_color_hex(yt_mode() == i ? 0x3A3A3A : 0x1A1A1A), LV_PART_MAIN);
+            lv_color_hex(yt_mode() == modes[i] ? 0x3A3A3A : 0x1A1A1A), LV_PART_MAIN);
         lv_obj_set_style_radius(ch, 18, LV_PART_MAIN);
         lv_obj_add_event_cb(ch, [](lv_event_t *e) {
             const int m = (int)(intptr_t)lv_event_get_user_data(e);
             if (m == 2) { overlay_open(3); return; }     /* search keyboard */
             yt_set_mode(m);
             yt_request_refresh();
-        }, LV_EVENT_CLICKED, (void *)(intptr_t)i);
+        }, LV_EVENT_CLICKED, (void *)(intptr_t)modes[i]);
         lv_obj_t *cl = lv_label_create(ch);
         lv_obj_set_style_text_font(cl, &lv_font_montserrat_18, LV_PART_MAIN);
         lv_label_set_text(cl, chips[i]);
