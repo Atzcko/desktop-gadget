@@ -15,6 +15,7 @@
 #include "net.h"
 #include "ui.h"
 #include "gauge.h"
+#include "msg.h"
 #include "ui_settings.h"
 #include "app.h"
 #include "app_host.h"
@@ -227,6 +228,7 @@ void setup()
     pinMode(0, INPUT_PULLUP);
 
     gauge_begin(amoled.getBattVoltage());
+    msg_begin();
 
     ui_init(amoled.width(), amoled.height());
     ui_show_weather_block(s.show_weather);

@@ -51,10 +51,10 @@ static const LabPin PINS[] = {
 
 enum PinMode8 { PM_HIZ = 0, PM_IN_PU, PM_IN_PD, PM_OUT };
 
-/* 450 tall, less a 52 px strip at the bottom for Back. Every tab was checked
- * against the smaller area: UART's monitor ends at 306 of 338 usable, I2C's
- * results label starts at 120 and the tab scrolls, GPIO scrolls already. */
-#define TAB_AREA_H  398
+/* The tabview stops above the uniform bottom strip (D045); the strip is
+ * 56 + 20 of margin. Computed from the live display so portrait gets its
+ * extra 150 px of tab area instead of a landscape constant. */
+#define TAB_AREA_H  (lv_disp_get_ver_res(nullptr) - 76)
 
 static lv_obj_t *scr;
 static lv_obj_t *rows_gpio[NPINS];       /* state buttons, indexed like PINS */
@@ -275,19 +275,23 @@ static void build_i2c_tab(lv_obj_t *tab)
 {
     lv_obj_set_style_pad_all(tab, 10, LV_PART_MAIN);
 
-    mk_lbl(tab, "bus",  0,   0);
-    mk_dd(tab, &dd_bus, "external\ninternal 6/7", 46, 0, 170, 0);
-    mk_lbl(tab, "kHz",  230, 0);
-    mk_dd(tab, &dd_freq, "100\n400", 276, 0, 100, 0);
+    /* Flex rows that wrap, not an absolute grid: at 450 wide (portrait,
+     * D045) the old fixed x-positions pushed Scan past the right edge. */
+    lv_obj_set_flex_flow(tab, LV_FLEX_FLOW_ROW_WRAP);
+    lv_obj_set_style_pad_row(tab, 10, LV_PART_MAIN);
+    lv_obj_set_style_pad_column(tab, 8, LV_PART_MAIN);
 
-    mk_lbl(tab, "SDA", 0, 56);
-    mk_dd(tab, &dd_sda, pin_options(), 46, 56, 100, 6);   /* IO47 */
-    mk_lbl(tab, "SCL", 160, 56);
-    mk_dd(tab, &dd_scl, pin_options(), 206, 56, 100, 7);  /* IO48 */
+    mk_lbl(tab, "bus",  0, 0);
+    mk_dd(tab, &dd_bus, "external\ninternal 6/7", 0, 0, 170, 0);
+    mk_lbl(tab, "kHz",  0, 0);
+    mk_dd(tab, &dd_freq, "100\n400", 0, 0, 100, 0);
+    mk_lbl(tab, "SDA", 0, 0);
+    mk_dd(tab, &dd_sda, pin_options(), 0, 0, 100, 6);     /* IO47 */
+    mk_lbl(tab, "SCL", 0, 0);
+    mk_dd(tab, &dd_scl, pin_options(), 0, 0, 100, 7);     /* IO48 */
 
     lv_obj_t *b = lv_btn_create(tab);
     lv_obj_set_size(b, 140, 44);
-    lv_obj_set_pos(b, 396, 56);
     lv_obj_add_event_cb(b, scan_cb, LV_EVENT_CLICKED, nullptr);
     lv_obj_t *bl = lv_label_create(b);
     lv_obj_set_style_text_font(bl, &lv_font_montserrat_20, LV_PART_MAIN);
@@ -300,7 +304,6 @@ static void build_i2c_tab(lv_obj_t *tab)
     lv_obj_set_width(lbl_i2c, LV_PCT(100));
     lv_label_set_long_mode(lbl_i2c, LV_LABEL_LONG_WRAP);
     lv_label_set_text(lbl_i2c, "Pick pins, tap Scan.\nAddress probe only - safe on a live bus.");
-    lv_obj_set_pos(lbl_i2c, 0, 120);
 }
 
 /* ----------------------------------------------------------------- UART -- */
@@ -356,16 +359,20 @@ static void send_cb(lv_event_t *e)
 static void build_uart_tab(lv_obj_t *tab)
 {
     lv_obj_set_style_pad_all(tab, 10, LV_PART_MAIN);
+    /* Wrapping flex for the same reason as the I2C tab: fixed x-positions
+     * put Open at x=442 of a 450-wide portrait screen (D045). */
+    lv_obj_set_flex_flow(tab, LV_FLEX_FLOW_ROW_WRAP);
+    lv_obj_set_style_pad_row(tab, 10, LV_PART_MAIN);
+    lv_obj_set_style_pad_column(tab, 8, LV_PART_MAIN);
 
     mk_lbl(tab, "TX", 0, 0);
-    mk_dd(tab, &dd_tx, pin_options(), 36, 0, 100, 8);     /* IO43 */
-    mk_lbl(tab, "RX", 150, 0);
-    mk_dd(tab, &dd_rx, pin_options(), 186, 0, 100, 9);    /* IO44 */
-    mk_dd(tab, &dd_baud, "9600\n19200\n38400\n57600\n115200\n230400", 300, 0, 128, 4);
+    mk_dd(tab, &dd_tx, pin_options(), 0, 0, 100, 8);      /* IO43 */
+    mk_lbl(tab, "RX", 0, 0);
+    mk_dd(tab, &dd_rx, pin_options(), 0, 0, 100, 9);      /* IO44 */
+    mk_dd(tab, &dd_baud, "9600\n19200\n38400\n57600\n115200\n230400", 0, 0, 128, 4);
 
     lv_obj_t *b = lv_btn_create(tab);
     lv_obj_set_size(b, 108, 44);
-    lv_obj_set_pos(b, 442, 0);
     lv_obj_add_event_cb(b, uart_toggle_cb, LV_EVENT_CLICKED, nullptr);
     btn_uart_lbl = lv_label_create(b);
     lv_obj_set_style_text_font(btn_uart_lbl, &lv_font_montserrat_18, LV_PART_MAIN);
@@ -376,7 +383,6 @@ static void build_uart_tab(lv_obj_t *tab)
     for (int i = 0; i < 3; i++) {
         lv_obj_t *sb = lv_btn_create(tab);
         lv_obj_set_size(sb, 100, 40);
-        lv_obj_set_pos(sb, i * 112, 54);
         lv_obj_add_event_cb(sb, send_cb, LV_EVENT_CLICKED, (void *)(intptr_t)i);
         lv_obj_t *sl = lv_label_create(sb);
         lv_obj_set_style_text_font(sl, &lv_font_montserrat_18, LV_PART_MAIN);
@@ -386,8 +392,7 @@ static void build_uart_tab(lv_obj_t *tab)
 
     mon_box = lv_obj_create(tab);
     lv_obj_remove_style_all(mon_box);
-    lv_obj_set_size(mon_box, LV_PCT(100), 190);
-    lv_obj_set_pos(mon_box, 0, 106);
+    lv_obj_set_size(mon_box, LV_PCT(100), 170);
     lv_obj_set_style_bg_color(mon_box, COL_CARD, LV_PART_MAIN);
     lv_obj_set_style_bg_opa(mon_box, LV_OPA_COVER, LV_PART_MAIN);
     lv_obj_set_style_radius(mon_box, 12, LV_PART_MAIN);
@@ -469,16 +474,7 @@ static lv_obj_t *lab_create(void)
     build_i2c_tab(lv_tabview_add_tab(tv, "I2C"));
     build_uart_tab(lv_tabview_add_tab(tv, "UART"));
 
-    lv_obj_t *back = lv_btn_create(scr);
-    lv_obj_set_size(back, 132, 40);
-    lv_obj_align(back, LV_ALIGN_BOTTOM_LEFT, 10, -6);
-    lv_obj_set_style_bg_color(back, lv_color_hex(0x2A2A2A), LV_PART_MAIN);
-    lv_obj_add_event_cb(back, [](lv_event_t *) { app_host_back(); },
-                        LV_EVENT_CLICKED, nullptr);
-    lv_obj_t *bl = lv_label_create(back);
-    lv_obj_set_style_text_font(bl, &lv_font_montserrat_18, LV_PART_MAIN);
-    lv_label_set_text(bl, LV_SYMBOL_LEFT "  Back");
-    lv_obj_center(bl);
+    app_host_std_back(scr, nullptr);            /* the uniform chip (D045) */
 
     /* Leaving resets every pin, so say so where the leaving happens. */
     lv_obj_t *hint = lv_label_create(scr);
@@ -523,4 +519,4 @@ static void lab_tick(void)
 }
 
 extern const App app_lab = { "Lab", lab_icon, lab_create, lab_destroy,
-                             lab_tick, nullptr };
+                             lab_tick, nullptr, /*portrait_ok=*/true };

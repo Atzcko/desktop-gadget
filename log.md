@@ -1311,3 +1311,40 @@ patch silently failed — snprintf with two %d and no args, and the build
 SUCCEEDED because DISABLE_ALL_LIBRARY_WARNINGS eats -Wformat. Garbage JSON at
 runtime, zero compile noise. The assert-every-patch rule exists for exactly
 this; the arg patch got its own verified pass.
+
+## 2026-08-28 — One chrome, every shape, and the gadgets talk (v1.24.0)
+
+Three asks in one message: rotation reflected properly in the menu and every
+app with no overlap; a uniform, findable back button; and gadget-to-gadget
+messaging with an identity — "research about it and see what would be the
+best". Plus the standing one: document it all.
+
+**The chrome.** `app_host_std_back()` — bottom-left, 132×56, "← Back" — on
+every app and the drawer. Settings keeps its unsaved-changes guard by passing
+its own callback into the same chip. The drawer's button stopped saying
+"Clock": the label names the gesture, which is always true, instead of the
+destination, which rotates. Timer's Start/Reset gave up their 122-tall cards
+for 56-tall strip keys — uniformity beat v1.14.0's "bigger buttons" where
+they collided, and D045 records that trade openly.
+
+**The shapes.** Timer stacks its cards in portrait like the clock does;
+Settings' tabview, keyboard and editor went PCT; the Lab's absolute grids
+became wrapping flex rows (the I2C Scan button used to sit at x=396 of a
+450-wide screen). `App.portrait_ok` records who lays themselves out;
+borrowed-landscape (D043) survives only for scripts that have not put
+`portrait_ok` in their first line — first line, because the host decides
+rotation before the script runs. Scripts see `SCREEN_W/H` to branch.
+
+**The messaging.** Research came down fast: the async server is already
+listening, mDNS is already advertising, HTTPClient is already linked — so
+HTTP + mDNS-SD wins over ESP-NOW (MAC-as-identity, channel-locked, no
+cross-AP) and MQTT (a broker is exactly what the no-cloud boundary forbids).
+Identity is the device name from Settings ▸ BLE. `_gadget-msg._tcp` + TXT
+name for discovery; POST /msg to deliver; arrivals announce on the line
+display through the emotion queue and land in a RAM inbox the Messages app
+reads. Scans and sends block for seconds, so they live on a worker task with
+a command queue — the third task-boundary pattern in this firmware, and the
+same shape as the first two.
+
+Verification below in the release entry; the composer, scan and a real
+two-device exchange need fingers and a second gadget respectively.

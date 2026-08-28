@@ -35,6 +35,15 @@ struct App {
      * Wi-Fi password, which is the most expensive input on the device.
      */
     bool      (*back)(void);
+
+    /*
+     * Declares that create() lays itself out correctly for BOTH 600x450 and
+     * 450x600 (read the live size with lv_disp_get_hor_res/ver_res). Apps
+     * that leave it false get the panel temporarily rotated to the nearest
+     * landscape (D043) — scripts default to false unless the script sets a
+     * global `portrait_ok = true` and actually branches on SCREEN_W/H.
+     */
+    bool      portrait_ok;
 };
 
 /*

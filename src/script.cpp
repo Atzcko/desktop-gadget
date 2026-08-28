@@ -450,6 +450,10 @@ static lv_obj_t *script_create(void)
     luaL_requiref(L, LUA_MATHLIBNAME, luaopen_math,  1); lua_pop(L, 1);
     register_api(L);
 
+    /* The live screen size, so a script CAN lay out for both shapes. */
+    lua_pushinteger(L, lv_disp_get_hor_res(nullptr)); lua_setglobal(L, "SCREEN_W");
+    lua_pushinteger(L, lv_disp_get_ver_res(nullptr)); lua_setglobal(L, "SCREEN_H");
+
     char path[48];
     snprintf(path, sizeof(path), APPS_DIR "/%s.lua", cur_script->name);
     File f = LittleFS.open(path, "r");
@@ -535,8 +539,19 @@ int script_rescan(void)
         memcpy(s.name, fn, stem);
         s.name[stem] = '\0';
         s.used = true;
+
+        /* portrait_ok must be known BEFORE the script runs (the host decides
+         * rotation before create), so it is a tag in the first line of the
+         * file: any first line containing "portrait_ok" opts in (D045). */
+        bool portrait_ok = false;
+        {
+            char head[128] = "";
+            File pf = LittleFS.open(f.path(), "r");
+            if (pf) { pf.readBytesUntil('\n', head, sizeof(head) - 1); pf.close(); }
+            portrait_ok = (strstr(head, "portrait_ok") != nullptr);
+        }
         s.app  = { s.name, nullptr, script_create, script_destroy,
-                   script_tick, script_back };
+                   script_tick, script_back, portrait_ok };
         script_n++;
         f.close();
     }

@@ -11,6 +11,27 @@ Semantic versioning; the scheme and the release procedure live in [[CLAUDE]].
 The version is reported by the boot log, `GET /health` and Settings ▸ Info,
 each with a compiler build stamp so a stale flash is detectable.
 
+## v1.24.0 — 2026-08-28
+
+**Every shape, one chrome, and the gadgets can talk.**
+
+- **Native apps are orientation-native** ([[D045 - One chrome, every shape]]):
+  the Timer stacks its cards in portrait, Settings and the Lab reflow (fixed
+  grids became wrapping flex), and D043's borrowed-landscape now applies only
+  to scripts that have not tagged `portrait_ok` in their first line. Scripts
+  get `SCREEN_W`/`SCREEN_H` to branch on.
+- **One back chip everywhere**: bottom-left, 132×56, "← Back" — timer, Lab,
+  Settings (still guarding unsaved changes), Messages, and the drawer, whose
+  button now names the gesture rather than the destination.
+- **Messages** ([[D046 - Gadgets message over HTTP and mDNS]]): a new app and
+  a new service. Identity is the device name; peers are one mDNS browse away
+  (`_gadget-msg._tcp`); delivery is `POST /msg` into the server every device
+  already runs; arrivals announce themselves on the line display and land in
+  a 16-deep inbox. `GET /messages` and `POST /send` make the whole loop
+  drivable from a shell. ESP-NOW and MQTT considered and rejected for cause.
+
+RAM 19.4 % · Flash 30.8 %.
+
 ## v1.23.0 — 2026-08-26
 
 **The battery gauge counts coulombs where the hardware can measure them.**

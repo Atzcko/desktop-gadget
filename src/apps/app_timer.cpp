@@ -33,12 +33,13 @@ LV_FONT_DECLARE(fliqlo_digits);
 #define CARD_H      232
 #define CARD_GAP    36
 #define CARD_RADIUS 26
-#define CARD_TOP    30
 #define SEAM_H       3          /* same hairline as the clock's big cards */
 #define DIGIT_TOP   ((CARD_H - 154) / 2)
 
-#define BTN_TOP     (CARD_TOP + CARD_H + 24)    /* 286 */
-#define BTN_H       122                          /* bottom edge at 408 of 450 */
+/* The uniform bottom strip (D045): standard back at the left, this app's
+ * actions beside it, all 56 tall, 10 px off the bottom edge. */
+#define STRIP_H     56
+#define STRIP_Y(h)  ((h) - STRIP_H - 10)
 
 /*
  * 70 ms a phase, not the clock's 180. The clock folds once a minute and the
@@ -318,12 +319,13 @@ static void back_cb(lv_event_t *) { app_host_back(); }
  * directly under the numbers they act on. No seam — that line means "this
  * flips", and drawing it through a word would read as a strikethrough.
  */
-static void make_key(int x, int w, const char *txt, lv_event_cb_t cb, lv_obj_t **out_lbl)
+static void make_key(int x, int y, int w, const char *txt, lv_event_cb_t cb,
+                     lv_obj_t **out_lbl)
 {
     lv_obj_t *b = lv_obj_create(scr);
     lv_obj_remove_style_all(b);
-    lv_obj_set_size(b, w, BTN_H);
-    lv_obj_set_pos(b, x, BTN_TOP);
+    lv_obj_set_size(b, w, STRIP_H);
+    lv_obj_set_pos(b, x, y);
     lv_obj_set_style_bg_color(b, COL_CARD, LV_PART_MAIN);
     lv_obj_set_style_bg_opa(b, LV_OPA_COVER, LV_PART_MAIN);
     lv_obj_set_style_radius(b, CARD_RADIUS, LV_PART_MAIN);
@@ -340,12 +342,12 @@ static void make_key(int x, int w, const char *txt, lv_event_cb_t cb, lv_obj_t *
     if (out_lbl) *out_lbl = l;
 }
 
-static void build_card(lv_obj_t *parent, Digits &d, int x, bool is_min)
+static void build_card(lv_obj_t *parent, Digits &d, int x, int y, bool is_min)
 {
     d.card = lv_obj_create(parent);
     lv_obj_remove_style_all(d.card);
     lv_obj_set_size(d.card, CARD_W, CARD_H);
-    lv_obj_set_pos(d.card, x, CARD_TOP);
+    lv_obj_set_pos(d.card, x, y);
     lv_obj_set_style_bg_color(d.card, COL_CARD, LV_PART_MAIN);
     lv_obj_set_style_bg_opa(d.card, LV_OPA_COVER, LV_PART_MAIN);
     lv_obj_set_style_radius(d.card, CARD_RADIUS, LV_PART_MAIN);
@@ -409,47 +411,52 @@ static lv_obj_t *timer_create(void)
     running = false; finished = false; dragging = false; drag_moved = false;
     left_seconds = set_seconds;
 
+    const int W = lv_disp_get_hor_res(nullptr);
+    const int H = lv_disp_get_ver_res(nullptr);
+    const bool portrait = H > W;
+
     scr = lv_obj_create(nullptr);
     lv_obj_set_style_bg_color(scr, COL_BG, LV_PART_MAIN);
     lv_obj_clear_flag(scr, LV_OBJ_FLAG_SCROLLABLE);
 
-    build_card(scr, d_min, 14, true);
-    build_card(scr, d_sec, 14 + CARD_W + CARD_GAP, false);
+    if (portrait) {
+        /* Stacked, like the portrait clock: minutes over seconds. */
+        const int cx = (W - CARD_W) / 2;
+        build_card(scr, d_min, cx, 20,               true);
+        build_card(scr, d_sec, cx, 20 + CARD_H + 16, false);
+    } else {
+        build_card(scr, d_min, 14,                     30, true);
+        build_card(scr, d_sec, 14 + CARD_W + CARD_GAP, 30, false);
 
-    for (int i = 0; i < 2; i++) {
-        lv_obj_t *dot = lv_obj_create(scr);
-        decor(dot);
-        lv_obj_set_size(dot, 14, 14);
-        lv_obj_set_style_radius(dot, 7, LV_PART_MAIN);
-        lv_obj_set_style_bg_color(dot, COL_DIM, LV_PART_MAIN);
-        lv_obj_set_style_bg_opa(dot, LV_OPA_COVER, LV_PART_MAIN);
-        lv_obj_set_pos(dot, 14 + CARD_W + CARD_GAP / 2 - 7,
-                       CARD_TOP + (i ? (CARD_H * 2) / 3 : CARD_H / 3) - 7);
+        for (int i = 0; i < 2; i++) {
+            lv_obj_t *dot = lv_obj_create(scr);
+            decor(dot);
+            lv_obj_set_size(dot, 14, 14);
+            lv_obj_set_style_radius(dot, 7, LV_PART_MAIN);
+            lv_obj_set_style_bg_color(dot, COL_DIM, LV_PART_MAIN);
+            lv_obj_set_style_bg_opa(dot, LV_OPA_COVER, LV_PART_MAIN);
+            lv_obj_set_pos(dot, 14 + CARD_W + CARD_GAP / 2 - 7,
+                           30 + (i ? (CARD_H * 2) / 3 : CARD_H / 3) - 7);
+        }
     }
 
-    make_key(14,  120, LV_SYMBOL_LEFT, back_cb, nullptr);
-    make_key(150, 202, LV_SYMBOL_PLAY    "  Start", play_cb,  &btn_play_lbl);
-    make_key(368, 202, LV_SYMBOL_REFRESH "  Reset", reset_cb, nullptr);
-
-    /*
-     * The Clock button is gone, so the left-edge swipe is the only way out.
-     * A gesture with no affordance is a gesture nobody finds — this is the
-     * same thin accent the clock used to show for the hold, doing the same
-     * job: say that the edge is live, without spending a line of text on it.
-     */
-    lv_obj_t *edge = lv_obj_create(scr);
-    decor(edge);
-    lv_obj_set_size(edge, 4, 92);
-    lv_obj_set_style_radius(edge, 2, LV_PART_MAIN);
-    lv_obj_set_style_bg_color(edge, lv_color_hex(0x3A3A3A), LV_PART_MAIN);
-    lv_obj_set_style_bg_opa(edge, LV_OPA_COVER, LV_PART_MAIN);
-    lv_obj_align(edge, LV_ALIGN_LEFT_MID, 0, 0);
+    /* Uniform strip (D045): the standard back chip, actions beside it. */
+    const int sy = STRIP_Y(H);
+    app_host_std_back(scr, back_cb);
+    if (portrait) {
+        make_key(156, sy, 140, LV_SYMBOL_PLAY    "  Start", play_cb,  &btn_play_lbl);
+        make_key(308, sy, 130, LV_SYMBOL_REFRESH "  Reset", reset_cb, nullptr);
+    } else {
+        make_key(156, sy, 210, LV_SYMBOL_PLAY    "  Start", play_cb,  &btn_play_lbl);
+        make_key(378, sy, 208, LV_SYMBOL_REFRESH "  Reset", reset_cb, nullptr);
+    }
 
     lbl_hint = lv_label_create(scr);
     lv_obj_set_style_text_font(lbl_hint, &lv_font_montserrat_20, LV_PART_MAIN);
     lv_obj_set_style_text_color(lbl_hint, COL_DIM, LV_PART_MAIN);
     lv_label_set_text(lbl_hint, "");
-    lv_obj_align(lbl_hint, LV_ALIGN_TOP_MID, 0, BTN_TOP + BTN_H + 8);
+    lv_obj_align(lbl_hint, LV_ALIGN_TOP_MID, 0,
+                 portrait ? 20 + CARD_H * 2 + 16 + 14 : 30 + CARD_H + 18);
 
     render();
     return scr;

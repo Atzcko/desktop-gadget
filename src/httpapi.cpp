@@ -3,6 +3,7 @@
 #include "settings.h"
 #include "app_host.h"
 #include "gauge.h"
+#include "msg.h"
 #include "app.h"
 #include "net.h"
 #include "version.h"
@@ -178,6 +179,76 @@ static void handle_launch_body(AsyncWebServerRequest *req, uint8_t *data,
     char body[96];
     snprintf(body, sizeof(body), "{\"ok\":true,\"opening\":\"%s\"}", name);
     req->send(200, "application/json", body);
+}
+
+/* -------------------------------------------------------------- messages -- */
+/*
+ * POST /msg — how another gadget's message ARRIVES (D046). Also the remote
+ * test seam: curl can play the role of a second device.
+ * GET /messages — the inbox, for the app and for remote verification.
+ * POST /send {"ip":"...","text":"..."} — ask THIS device to send; used by
+ * tests and by anything on the LAN that wants to relay through the clock.
+ */
+static void handle_msg_body(AsyncWebServerRequest *req, uint8_t *data,
+                            size_t len, size_t index, size_t total)
+{
+    static String buf;
+    if (index == 0) buf = "";
+    buf.concat((const char *)data, len);
+    if (index + len != total) return;
+
+    char from[MSG_FROM_MAX + 1] = "", text[MSG_TEXT_MAX + 1] = "";
+    const char *p = strstr(buf.c_str(), "\"from\"");
+    if (p) { p = strchr(p + 6, '"'); if (p) sscanf(p + 1, "%23[^\"]", from); }
+    p = strstr(buf.c_str(), "\"text\"");
+    if (p) { p = strchr(p + 6, '"'); if (p) sscanf(p + 1, "%96[^\"]", text); }
+
+    if (!from[0] || !text[0]) {
+        send_err(req, 400, "expected {\"from\":\"...\",\"text\":\"...\"}");
+        return;
+    }
+    msg_store(from, text);
+    req->send(200, "application/json", "{\"ok\":true,\"delivered\":true}");
+}
+
+static void handle_messages(AsyncWebServerRequest *req)
+{
+    char body[1400];
+    size_t o = snprintf(body, sizeof(body), "{\"ok\":true,\"name\":\"%s\",\"inbox\":[",
+                        msg_name());
+    MsgEntry e;
+    for (int i = 0; i < msg_inbox_count() && o + 160 < sizeof(body); i++) {
+        if (!msg_inbox(i, &e)) break;
+        char f[48], t[200];
+        json_escape(e.from, f, sizeof(f));
+        json_escape(e.text, t, sizeof(t));
+        o += snprintf(body + o, sizeof(body) - o,
+                      "%s{\"from\":\"%s\",\"text\":\"%s\",\"age_s\":%lu}",
+                      i ? "," : "", f, t,
+                      (unsigned long)((millis() - e.at_ms) / 1000UL));
+    }
+    snprintf(body + o, sizeof(body) - o, "]}");
+    req->send(200, "application/json", body);
+}
+
+static void handle_send_body(AsyncWebServerRequest *req, uint8_t *data,
+                             size_t len, size_t index, size_t total)
+{
+    static String buf;
+    if (index == 0) buf = "";
+    buf.concat((const char *)data, len);
+    if (index + len != total) return;
+
+    char ip[16] = "", text[MSG_TEXT_MAX + 1] = "";
+    const char *p = strstr(buf.c_str(), "\"ip\"");
+    if (p) { p = strchr(p + 4, '"'); if (p) sscanf(p + 1, "%15[^\"]", ip); }
+    p = strstr(buf.c_str(), "\"text\"");
+    if (p) { p = strchr(p + 6, '"'); if (p) sscanf(p + 1, "%96[^\"]", text); }
+
+    if (!ip[0] || !text[0]) { send_err(req, 400, "expected {\"ip\",\"text\"}"); return; }
+    if (msg_busy())         { send_err(req, 503, "sender busy"); return; }
+    msg_request_send(ip, text);
+    req->send(200, "application/json", "{\"ok\":true,\"sending\":true}");
 }
 
 /* ---------------------------------------------------------------- rotate -- */
@@ -487,6 +558,11 @@ void httpapi_begin(void)
 
     if (MDNS.begin(MDNS_HOSTNAME)) {
         MDNS.addService("http", "tcp", HTTP_PORT);
+        /* The messaging identity (D046): the service other gadgets browse
+         * for, carrying this device's name. Two clocks on one LAN should get
+         * different names in Settings > BLE - the name IS the identity. */
+        MDNS.addService("gadget-msg", "tcp", HTTP_PORT);
+        MDNS.addServiceTxt("gadget-msg", "tcp", "name", msg_name());
         Serial.printf("[http] http://%s.local/\n", MDNS_HOSTNAME);
     } else {
         Serial.println("[http] mDNS failed to start");
@@ -498,6 +574,12 @@ void httpapi_begin(void)
 
     server.on("/launch", HTTP_POST,
               [](AsyncWebServerRequest *) {}, nullptr, handle_launch_body);
+
+    server.on("/msg", HTTP_POST,
+              [](AsyncWebServerRequest *) {}, nullptr, handle_msg_body);
+    server.on("/messages", HTTP_GET, handle_messages);
+    server.on("/send", HTTP_POST,
+              [](AsyncWebServerRequest *) {}, nullptr, handle_send_body);
 
     server.on("/rotate", HTTP_POST,
               [](AsyncWebServerRequest *) {}, nullptr, handle_rotate_body);

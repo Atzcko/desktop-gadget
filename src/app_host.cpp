@@ -131,8 +131,9 @@ void app_host_home(void)
  */
 static bool app_forced_landscape;
 
-static void force_landscape_for_app(void)
+static void force_landscape_for_app(const App *app)
 {
+    if (app && app->portrait_ok) return;        /* lays itself out; D045 */
     const uint8_t r = settings_get().rotation;
     if (!(r & 1)) return;                       /* already landscape */
     app_panel_rotate(r == 1 ? 0 : 2);           /* nearest: 90->0, 270->180 */
@@ -146,6 +147,23 @@ static void restore_user_rotation(void)
     app_panel_rotate(settings_get().rotation);
 }
 
+lv_obj_t *app_host_std_back(lv_obj_t *parent, lv_event_cb_t cb)
+{
+    lv_obj_t *b = lv_btn_create(parent);
+    lv_obj_set_size(b, 132, 56);
+    lv_obj_align(b, LV_ALIGN_BOTTOM_LEFT, 12, -10);
+    lv_obj_set_style_bg_color(b, lv_color_hex(0x2A2A2A), LV_PART_MAIN);
+    lv_obj_set_style_radius(b, 14, LV_PART_MAIN);
+    lv_obj_add_event_cb(b, cb ? cb
+                              : [](lv_event_t *) { app_host_back(); },
+                        LV_EVENT_CLICKED, nullptr);
+    lv_obj_t *l = lv_label_create(b);
+    lv_obj_set_style_text_font(l, &lv_font_montserrat_20, LV_PART_MAIN);
+    lv_label_set_text(l, LV_SYMBOL_LEFT "  Back");
+    lv_obj_center(l);
+    return b;
+}
+
 void app_host_launch(const App *app)
 {
     if (!app) return;
@@ -155,7 +173,7 @@ void app_host_launch(const App *app)
     lv_obj_t *dead = drawer;
     drawer = nullptr;
 
-    force_landscape_for_app();
+    force_landscape_for_app(app);
 
     running     = app;
     running_scr = app->create();
@@ -353,15 +371,10 @@ static void build_drawer(void)
         lv_obj_align(lbl, LV_ALIGN_BOTTOM_MID, 0, 0);
     }
 
-    lv_obj_t *back = lv_btn_create(drawer);
-    lv_obj_set_size(back, 200, 46);
-    lv_obj_align(back, LV_ALIGN_BOTTOM_MID, 0, -16);
-    lv_obj_set_style_bg_color(back, lv_color_hex(0x2A2A2A), LV_PART_MAIN);
-    lv_obj_add_event_cb(back, close_cb, LV_EVENT_CLICKED, nullptr);
-    lv_obj_t *bl = lv_label_create(back);
-    lv_obj_set_style_text_font(bl, &lv_font_montserrat_20, LV_PART_MAIN);
-    lv_label_set_text(bl, LV_SYMBOL_LEFT "  Clock");
-    lv_obj_center(bl);
+    /* The same back chip as every app, in the same corner (D045). It says
+     * Back rather than Clock because the label names the GESTURE, not the
+     * destination — one word that is always true beats four that rotate. */
+    app_host_std_back(drawer, nullptr);
 
     lv_scr_load(drawer);
 }

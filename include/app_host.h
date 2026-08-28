@@ -3,6 +3,7 @@
  */
 #pragma once
 #include <stdbool.h>
+#include <lvgl.h>
 
 struct App;
 
@@ -28,4 +29,12 @@ bool app_host_request_open(const char *name);
  * directly closes the interpreter that is still executing. See D041.
  */
 void app_host_request_back(void);
+
+/*
+ * THE back button — one look, one place, every screen (D045): bottom-left,
+ * 132x56, charcoal, "< Back". Pass a custom cb only when leaving needs a
+ * guard (Settings' unsaved-changes prompt); null wires app_host_back().
+ * Reserve the bottom-left 156x76 of your layout for it.
+ */
+lv_obj_t *app_host_std_back(lv_obj_t *parent, lv_event_cb_t cb);
 const char *app_host_current(void);   /* "clock", or the running app's name */

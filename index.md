@@ -33,7 +33,7 @@ This vault is the project's memory: every decision, why it was made, and what ha
 | Clock *(home)* | resting state |
 | Line / activity | `POST /emotion`, BLE NUS, or the MCP tool |
 | App drawer | swipe up from the bottom edge |
-| Timer · Settings · Lab | tap a tile (long-press moves it; order persists) |
+| Timer · Settings · Lab · Messages | tap a tile (long-press moves it; order persists) |
 | Text editor | tapping any field in Settings |
 | *back one level* | swipe in from the left edge, or the app's back button ([[D033 - Back goes one level, not home]]) |
 
@@ -95,6 +95,8 @@ bridge is the only way. See [[CLAUDE]].
 | [[D032 - Three gestures, one control]] | Drag coarse, tap exact, hold repeat — one card does all three |
 | [[D033 - Back goes one level, not home]] | app → drawer → clock; one function owns what back means |
 | [[D034 - Updates ship over the air]] | POST /update to the ota_1 slot that was always in the table |
+| [[D046 - Gadgets message over HTTP and mDNS]] | Identity is the device name; the server was already listening |
+| [[D045 - One chrome, every shape]] | One back chip, every app portrait-native; scripts tag in |
 | [[D044 - Coulombs where measurable, model where not]] | Charge is counted, discharge is modelled and voltage-tethered |
 | [[D043 - Orientation is the clock's job; apps borrow landscape]] | Clock and drawer go portrait; apps get lent a landscape panel |
 | [[D042 - The battery gauge is a voltage estimate]] | SY6970 has no fuel gauge; the chip is honest about it |

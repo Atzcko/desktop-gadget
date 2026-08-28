@@ -168,7 +168,7 @@ static void editor_open(lv_obj_t *target, const char *title, bool is_password)
 
     editor = lv_obj_create(scr_set);
     lv_obj_remove_style_all(editor);
-    lv_obj_set_size(editor, 600, 450);
+    lv_obj_set_size(editor, LV_PCT(100), LV_PCT(100));   /* both shapes, D045 */
     lv_obj_set_pos(editor, 0, 0);
     lv_obj_set_style_bg_color(editor, lv_color_hex(0x0A0A0A), LV_PART_MAIN);
     lv_obj_set_style_bg_opa(editor, LV_OPA_COVER, LV_PART_MAIN);
@@ -221,7 +221,7 @@ static void editor_open(lv_obj_t *target, const char *title, bool is_password)
      * bottom edge, with z/x/c/v and the space bar gone.
      */
     lv_obj_t *kb = lv_keyboard_create(editor);
-    lv_obj_set_size(kb, 600, 288);
+    lv_obj_set_size(kb, LV_PCT(100), 288);
     lv_obj_align(kb, LV_ALIGN_BOTTOM_MID, 0, 0);
     lv_keyboard_set_textarea(kb, editor_ta);
     lv_obj_add_event_cb(kb, editor_kb_event, LV_EVENT_ALL, nullptr);
@@ -622,7 +622,7 @@ lv_obj_t *ui_settings_create(void)
     lv_obj_set_style_bg_color(scr_set, lv_color_hex(0x0A0A0A), LV_PART_MAIN);
 
     lv_obj_t *tv = lv_tabview_create(scr_set, LV_DIR_TOP, 46);
-    lv_obj_set_size(tv, 600, 396);
+    lv_obj_set_size(tv, LV_PCT(100), lv_disp_get_ver_res(nullptr) - 76);
     lv_obj_set_pos(tv, 0, 0);
     lv_obj_set_style_bg_color(tv, lv_color_hex(0x0A0A0A), LV_PART_MAIN);
     lv_obj_set_style_text_font(lv_tabview_get_tab_btns(tv),
@@ -929,28 +929,23 @@ lv_obj_t *ui_settings_create(void)
     }
     make_button(t_info, LV_SYMBOL_TRASH "  Reset to defaults", reset_cb, nullptr);
 
-    /* ---- bottom bar ---- */
-    lv_obj_t *bar = lv_obj_create(scr_set);
-    lv_obj_remove_style_all(bar);
-    lv_obj_set_size(bar, 600, 54);
-    lv_obj_set_pos(bar, 0, 396);
-    lv_obj_set_style_bg_color(bar, lv_color_hex(0x141414), LV_PART_MAIN);
-    lv_obj_set_style_bg_opa(bar, LV_OPA_COVER, LV_PART_MAIN);
-    lv_obj_clear_flag(bar, LV_OBJ_FLAG_SCROLLABLE);
-
-    lbl_status = lv_label_create(bar);
+    /* ---- bottom strip, uniform across apps (D045): back chip bottom-left,
+     * Save bottom-right, status floating above the strip. ---- */
+    lbl_status = lv_label_create(scr_set);
     lv_obj_set_style_text_font(lbl_status, &lv_font_montserrat_18, LV_PART_MAIN);
     lv_obj_set_style_text_color(lbl_status, lv_color_hex(0x2FBF71), LV_PART_MAIN);
     lv_label_set_text(lbl_status, "");
-    lv_obj_align(lbl_status, LV_ALIGN_LEFT_MID, 24, 0);
+    lv_obj_align(lbl_status, LV_ALIGN_BOTTOM_LEFT, 156, -28);
+
+    lv_obj_t *bar = scr_set;   /* buttons parent straight onto the screen */
+
+    /* Back through the STANDARD chip but with Settings' own guard: leaving
+     * with unsaved changes must still ask (close_cb owns that dialog). */
+    app_host_std_back(bar, close_cb);
 
     btn_save = make_button(bar, LV_SYMBOL_SAVE "  Save", save_cb, nullptr);
-    lv_obj_set_size(btn_save, 180, 44);
-    lv_obj_align(btn_save, LV_ALIGN_LEFT_MID, 210, 0);
-
-    lv_obj_t *btn_close = make_button(bar, LV_SYMBOL_LEFT "  Back", close_cb, nullptr);
-    lv_obj_set_size(btn_close, 180, 44);
-    lv_obj_align(btn_close, LV_ALIGN_LEFT_MID, 400, 0);
+    lv_obj_set_size(btn_save, 160, 56);
+    lv_obj_align(btn_save, LV_ALIGN_BOTTOM_RIGHT, -12, -10);
 
     return scr_set;
 }
