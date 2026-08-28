@@ -154,8 +154,10 @@ a layer above it. See [[Module map]] for what every file owns.
 
 ## Using the device
 
-**Swipe up from the bottom edge** for the app drawer — Timer, Settings and the
-Lab (GPIO / I2C scan / UART monitor on the free header pins) live there.
+**Swipe up from the bottom edge** for the app drawer — Timer, Settings, the
+Lab (GPIO / I2C scan / UART monitor) and Messages (gadget-to-gadget over
+Wi-Fi, D046) live there. Every screen's back button is the same chip in the
+same corner: bottom-left (D045).
 Long-press a tile to move it one place left; the order persists.
 
 **Swipe in from the left edge** (or tap an app's back button) to go back one
