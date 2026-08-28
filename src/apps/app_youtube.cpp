@@ -196,6 +196,14 @@ static void list_build(void)
         return;
     }
 
+    if (yt_video_count() == 0) {
+        lv_obj_t *l = lv_label_create(list);
+        lv_obj_set_style_text_font(l, &lv_font_montserrat_18, LV_PART_MAIN);
+        lv_obj_set_style_text_color(l, COL_DIM, LV_PART_MAIN);
+        lv_label_set_text(l, yt_busy() ? "fetching..." : "nothing yet - tap Refresh");
+        return;
+    }
+
     const int W = lv_disp_get_hor_res(nullptr);
     for (int i = 0; i < yt_video_count(); i++) {
         const YtVideo *v = yt_video(i);

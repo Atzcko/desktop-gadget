@@ -6,8 +6,19 @@
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
 #include <esp_heap_caps.h>
+/*
+ * LVGL's bundled TJpgDec, NOT the ROM's — and that word "not" cost a crash
+ * loop (v1.30.2). LV_USE_SJPG=1 compiles lvgl's tjpgd.c with the same
+ * jd_prepare/jd_decomp symbol names, and at link time a real object file
+ * beats the ROM's linker alias. v1.30.0 included the ROM header, so the
+ * structs were laid out per the ROM while the CODE that ran was LVGL's:
+ * jd_prepare scribbled by its own layout, jpg_in read a device pointer made
+ * of 0xA5 stack fill, LoadProhibited, reboot — on the first thumbnail of
+ * the first refresh, every time the app opened. The header must match the
+ * implementation that LINKS, and this one provably does.
+ */
 extern "C" {
-#include "esp32s3/rom/tjpgd.h"
+#include "src/extra/libs/sjpg/tjpgd.h"
 }
 
 static Preferences prefs;
@@ -136,7 +147,7 @@ static bool https_get_bin(const char *url, uint8_t **buf, size_t *len)
 
 struct JpgCtx { const uint8_t *data; size_t len, pos; uint16_t *out; int ow, oh; };
 
-static UINT jpg_in(JDEC *jd, BYTE *buf, UINT n)
+static size_t jpg_in(JDEC *jd, uint8_t *buf, size_t n)
 {
     JpgCtx *c = (JpgCtx *)jd->device;
     if (c->pos + n > c->len) n = c->len - c->pos;
@@ -145,8 +156,8 @@ static UINT jpg_in(JDEC *jd, BYTE *buf, UINT n)
     return n;
 }
 
-/* ROM build is JD_FORMAT=0: RGB888 in, we pack to 565. */
-static UINT jpg_out(JDEC *jd, void *bitmap, JRECT *r)
+/* LVGL's build is JD_FORMAT=0: RGB888 in, we pack to 565. */
+static int jpg_out(JDEC *jd, void *bitmap, JRECT *r)
 {
     JpgCtx *c = (JpgCtx *)jd->device;
     const uint8_t *p = (const uint8_t *)bitmap;
