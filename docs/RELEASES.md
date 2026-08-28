@@ -23,6 +23,18 @@ the drawer's height is computed from the live display instead of a
 landscape constant, so portrait also SHOWS a full extra row before
 scrolling at all.
 
+## v1.30.0 — 2026-08-28
+
+**A Keyboard app — the clock types on the Mac.**
+([[D052 - The gadget types, on request]])
+
+A standard keyboard collection (Report ID 3) joins both HID identities. The
+stock LVGL keyboard drives it with no textarea — keys go to the HOST — via
+an ASCII→usage table; arrows, backspace and enter included; press+release
+in one call so nothing can stick. A dim 24-char tail is the only local echo.
+D022 revised, not repealed: the gadget IS an input device now, on request.
+Re-pair once more; Keyboard Setup Assistant may appear once — close it.
+
 ## v1.29.2 — 2026-08-28
 
 Trackpad: the Left/Right strip buttons are gone at the owner's request —

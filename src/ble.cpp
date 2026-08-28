@@ -101,6 +101,37 @@ static const uint8_t HID_REPORT_MAP[] = {
     0x81, 0x06,        /*     Input (Data,Var,Rel)             */
     0xC0,              /*   End Collection                     */
     0xC0,              /* End Collection                       */
+
+    /*
+     * Standard keyboard, Report ID 3 (D052). Both identities carry it: the
+     * owner asked the gadget to type, so "cannot be mistaken for a keyboard"
+     * (D022) is deliberately traded for "is one, on request". 8-byte boot
+     * report: modifiers, reserved, six keycodes.
+     */
+    0x05, 0x01,        /* Usage Page (Generic Desktop)         */
+    0x09, 0x06,        /* Usage (Keyboard)                     */
+    0xA1, 0x01,        /* Collection (Application)             */
+    0x85, 0x03,        /*   Report ID (3)                      */
+    0x05, 0x07,        /*   Usage Page (Key Codes)             */
+    0x19, 0xE0,        /*   Usage Minimum (224)                */
+    0x29, 0xE7,        /*   Usage Maximum (231)                */
+    0x15, 0x00,        /*   Logical Minimum (0)                */
+    0x25, 0x01,        /*   Logical Maximum (1)                */
+    0x75, 0x01,        /*   Report Size (1)                    */
+    0x95, 0x08,        /*   Report Count (8)                   */
+    0x81, 0x02,        /*   Input (Var) modifiers              */
+    0x95, 0x01,        /*   Report Count (1)                   */
+    0x75, 0x08,        /*   Report Size (8)                    */
+    0x81, 0x01,        /*   Input (Const) reserved             */
+    0x95, 0x06,        /*   Report Count (6)                   */
+    0x75, 0x08,        /*   Report Size (8)                    */
+    0x15, 0x00,        /*   Logical Minimum (0)                */
+    0x25, 0x65,        /*   Logical Maximum (101)              */
+    0x05, 0x07,        /*   Usage Page (Key Codes)             */
+    0x19, 0x00,        /*   Usage Minimum (0)                  */
+    0x29, 0x65,        /*   Usage Maximum (101)                */
+    0x81, 0x00,        /*   Input (Array) keys                 */
+    0xC0,              /* End Collection                       */
 };
 
 /*
@@ -170,6 +201,37 @@ static const uint8_t GADGET_REPORT_MAP[] = {
     0x81, 0x06,        /*     Input (Data,Var,Rel)             */
     0xC0,              /*   End Collection                     */
     0xC0,              /* End Collection                       */
+
+    /*
+     * Standard keyboard, Report ID 3 (D052). Both identities carry it: the
+     * owner asked the gadget to type, so "cannot be mistaken for a keyboard"
+     * (D022) is deliberately traded for "is one, on request". 8-byte boot
+     * report: modifiers, reserved, six keycodes.
+     */
+    0x05, 0x01,        /* Usage Page (Generic Desktop)         */
+    0x09, 0x06,        /* Usage (Keyboard)                     */
+    0xA1, 0x01,        /* Collection (Application)             */
+    0x85, 0x03,        /*   Report ID (3)                      */
+    0x05, 0x07,        /*   Usage Page (Key Codes)             */
+    0x19, 0xE0,        /*   Usage Minimum (224)                */
+    0x29, 0xE7,        /*   Usage Maximum (231)                */
+    0x15, 0x00,        /*   Logical Minimum (0)                */
+    0x25, 0x01,        /*   Logical Maximum (1)                */
+    0x75, 0x01,        /*   Report Size (1)                    */
+    0x95, 0x08,        /*   Report Count (8)                   */
+    0x81, 0x02,        /*   Input (Var) modifiers              */
+    0x95, 0x01,        /*   Report Count (1)                   */
+    0x75, 0x08,        /*   Report Size (8)                    */
+    0x81, 0x01,        /*   Input (Const) reserved             */
+    0x95, 0x06,        /*   Report Count (6)                   */
+    0x75, 0x08,        /*   Report Size (8)                    */
+    0x15, 0x00,        /*   Logical Minimum (0)                */
+    0x25, 0x65,        /*   Logical Maximum (101)              */
+    0x05, 0x07,        /*   Usage Page (Key Codes)             */
+    0x19, 0x00,        /*   Usage Minimum (0)                  */
+    0x29, 0x65,        /*   Usage Maximum (101)                */
+    0x81, 0x00,        /*   Input (Array) keys                 */
+    0xC0,              /* End Collection                       */
 };
 
 #define APPEARANCE_GENERIC_HID 0x03C0
@@ -186,6 +248,7 @@ static NimBLEServer         *server;
 static NimBLECharacteristic *tx_char;
 static NimBLEHIDDevice      *hid;
 static NimBLECharacteristic *mouse_input;
+static NimBLECharacteristic *key_input;
 static bool running;
 static bool connected;
 
@@ -324,6 +387,7 @@ void ble_begin(void)
             out->setCallbacks(&hid_out_cb);
         }
         mouse_input = hid->inputReport(2);      /* both identities (D051) */
+        key_input   = hid->inputReport(3);      /* both identities (D052) */
         hid->startServices();
     }
 
@@ -439,5 +503,22 @@ bool ble_mouse(uint8_t buttons, int8_t dx, int8_t dy, int8_t wheel)
     uint8_t r[4] = { buttons, (uint8_t)dx, (uint8_t)dy, (uint8_t)wheel };
     mouse_input->setValue(r, sizeof(r));
     mouse_input->notify();
+    return true;
+}
+
+/*
+ * One keystroke: press with modifiers, then all-up. Back-to-back notifies
+ * are fine at human typing rates; a stuck key needs the release to be
+ * unconditional, so it is not a separate call anyone can forget.
+ */
+bool ble_key(uint8_t modifiers, uint8_t keycode)
+{
+    if (!key_input || !ble_is_connected()) return false;
+    uint8_t press[8] = { modifiers, 0, keycode, 0, 0, 0, 0, 0 };
+    key_input->setValue(press, sizeof(press));
+    key_input->notify();
+    uint8_t up[8] = { 0 };
+    key_input->setValue(up, sizeof(up));
+    key_input->notify();
     return true;
 }

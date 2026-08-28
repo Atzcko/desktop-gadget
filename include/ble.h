@@ -18,6 +18,10 @@ bool ble_is_connected(void);
  * host is connected. buttons: bit0 left, bit1 right, bit2 middle (D051). */
 bool ble_mouse(uint8_t buttons, int8_t dx, int8_t dy, int8_t wheel);
 
+/* One keystroke on the HID keyboard report (ID 3): press+release. modifiers
+ * bit1 = left shift. US usage codes (D052). */
+bool ble_key(uint8_t modifiers, uint8_t keycode);
+
 /* Forget every bonded host. Use when macOS pairing gets into a bad state:
  * the Mac remembers a bond the device has forgotten, or vice versa. */
 void ble_clear_bonds(void);

@@ -16,11 +16,12 @@ extern const App app_messages;
 extern const App app_themes;
 extern const App app_youtube;
 extern const App app_trackpad;
+extern const App app_keyboard;
 
 /* Compiled in. These can never fail to load, which is why Settings is one of
  * them — the screen that fixes a broken Wi-Fi config must not depend on a
  * filesystem. */
-static const App *const NATIVE[] = { &app_timer, &app_settings, &app_lab, &app_messages, &app_themes, &app_youtube, &app_trackpad };
+static const App *const NATIVE[] = { &app_timer, &app_settings, &app_lab, &app_messages, &app_themes, &app_youtube, &app_trackpad, &app_keyboard };
 static const int        NATIVE_N = sizeof(NATIVE) / sizeof(NATIVE[0]);
 
 /* Native first, then scripts. Stable ordering matters: settings.app_order

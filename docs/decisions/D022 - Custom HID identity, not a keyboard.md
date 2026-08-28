@@ -14,6 +14,13 @@ tags:
 
 # D022 — Custom HID identity, not a keyboard
 
+> [!note] Revised by D052 (2026-08-28)
+> The identity remains vendor-led, but the report map now also carries a
+> real mouse (D051) and keyboard (D052) at the owner's request. "Cannot be
+> mistaken for an input device" became "is one, deliberately, when asked."
+> Keyboard Setup Assistant may appear once after re-pairing; the reasoning
+> below still explains why it never appeared before.
+
 **Ask.** "Make it a custom HID device, so my Mac knows it's not a keyboard, it's a desktop gadget."
 
 [[D021 - BLE HID, for discoverability not typing]] got the device into System Settings ▸ Bluetooth by presenting a **keyboard**. That worked, but it lies about what the device is, and it is why macOS opens Keyboard Setup Assistant.

@@ -1622,3 +1622,23 @@ Owner: remove the Left and Right buttons. They were my hedge against the
 gesture layer not working; the gestures evidently work, so the hedge goes.
 The pad is the whole surface now, the strip is just the back chip, and D051's
 "explicit clicks" row exits the gesture table.
+
+## 2026-08-28 — The gadget types (v1.30.0)
+
+Owner: put also a keyboard app. The interesting part is what it does to
+D022, which built the whole custom-HID identity so the device could NEVER be
+taken for a keyboard. That decision was right then and is revised now, not
+repealed: the fear was being MISTAKEN for an input device; being one on
+purpose, at the owner's request, is identity following function. D022 got
+its revision note, D052 records the trade, and Keyboard Setup Assistant -
+the dialog the whole design once existed to suppress - may greet the owner
+once at re-pair. Close it and move on.
+
+Mechanics: keyboard collection ID 3 in both maps; the stock LVGL keyboard
+with NO textarea (keys go to the host, not a field); a 60-line ASCII->usage
+table; ble_key sends press and release in ONE call because a stuck key must
+not depend on a second call happening; a dim 24-char tail as the only echo,
+with the on-screen discretion caveat stated in the header.
+
+Third descriptor change, third re-pair. After this the HID surface is
+complete - vendor + mouse + keyboard - so this dance should be done.
