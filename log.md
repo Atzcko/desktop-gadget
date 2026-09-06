@@ -1861,3 +1861,44 @@ The two legitimate Mario paths are the owner's, stated plainly: Super Mario
 Land DMG carts they own run fine on Peanut-GB via tools/rom (their upload,
 their right), and Tobu Tobu Girl builds from source the day they approve an
 rgbds install.
+
+## 2026-09-06 — The clock is a browser (v1.38.0)
+
+Owner asked for a browser app. The assessment held: a real browser for the
+modern web cannot run on this board (megabytes of JS, no JIT, no GPU, 8 MB
+PSRAM), and I said so rather than shipping a toy that pretends. But the
+thin-client architecture Opera Mini and Puffin shipped as products IS
+possible, and it is the pattern the YouTube player already proved (D053):
+the Mac renders, the clock shows pixels.
+
+Built end to end and verified on hardware before calling it done:
+
+- Companion: tools/browser_session.py runs headless Chrome via Playwright
+  with channel="chrome" — the SYSTEM Chrome 151, so nothing downloads a
+  Chromium. Screenshot loop = 9 ms/frame (100+ fps) on the Mac; the wire is
+  concatenated JPEGs, byte-for-byte the format yt's decoder already eats.
+  ytserve routes /browse (nav/stop), /browse/stream (pixels down),
+  /browse/input (tap/scroll/key/back up). Playwright missing => 503 with the
+  fix, YouTube untouched.
+- Device: browser.cpp = two worker tasks (stream decode into a full-screen
+  PSRAM double buffer; input queue -> POST), never touching LVGL.
+  app_browser.cpp = toolbar + a touch layer that turns drags into wheel
+  scrolls and taps into clicks, plus keyboard overlays for the URL and for
+  typing into the focused page field. Host seeds from yt_play_host(), so a
+  YouTube-configured device needs no new setup.
+- On the device: navigated to example.com and Wikipedia, 40+ frames flowing,
+  ~5 fps, uptime climbing, ~1 MB PSRAM for the buffers. The proof frame — a
+  fully rendered "Flip clock" Wikipedia article, mobile layout, on the flip
+  clock — is the whole idea in one picture.
+
+The privacy line is D054's exactly: Chrome browses with the Mac's own
+sessions; the device sends coordinates and keystrokes and receives JPEGs,
+never a cookie. Costs stated on the tin (D057): companion-only, remote-
+control latency, Chrome's full fidelity.
+
+Housekeeping caught up here: RELEASES was silently missing v1.36.1 and
+v1.37.0 (two more str.replace anchors that never matched in past sessions,
+the same silent-failure genre this project keeps re-learning) — both added
+now, plus v1.38.0. This flash also carried Jump to the device for the first
+time; it had built clean in v1.37.0 but the device was wedged that day and
+never took it.

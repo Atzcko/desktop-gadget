@@ -6,6 +6,7 @@
 #include "msg.h"
 #include "theme.h"
 #include "yt.h"
+#include "browser.h"
 #include <LittleFS.h>
 
 extern "C" void games_request_open_c(int);
@@ -687,6 +688,36 @@ void httpapi_begin(void)
     server.on("/reboot", HTTP_POST, [](AsyncWebServerRequest *req) {
         req->onDisconnect([]() { ESP.restart(); });
         req->send(200, "application/json", "{\"ok\":true,\"rebooting\":true}");
+    });
+
+    /* Browser (D057): set the companion IP, read status, drive it remotely. */
+    server.on("/browser", HTTP_GET, [](AsyncWebServerRequest *req) {
+        char b[160];
+        snprintf(b, sizeof(b),
+                 "{\"ok\":true,\"host\":\"%s\",\"streaming\":%s,\"frames\":%lu,\"status\":\"%s\"}",
+                 browser_host(), browser_streaming() ? "true" : "false",
+                 (unsigned long)browser_frame_rev(), browser_status());
+        req->send(200, "application/json", b);
+    });
+    server.on("/browser", HTTP_POST,
+              [](AsyncWebServerRequest *) {}, nullptr,
+              [](AsyncWebServerRequest *req, uint8_t *data, size_t len,
+                 size_t index, size_t total) {
+        static String buf;
+        if (index == 0) buf = "";
+        buf.concat((const char *)data, len);
+        if (index + len != total) return;
+        char val[64];
+        const char *p;
+        if ((p = strstr(buf.c_str(), "\"host\""))) {
+            p = strchr(p + 6, '"');
+            if (p && sscanf(p + 1, "%63[^\"]", val) == 1) browser_set_host(val);
+        }
+        if ((p = strstr(buf.c_str(), "\"url\""))) {
+            p = strchr(p + 5, '"');
+            if (p && sscanf(p + 1, "%63[^\"]", val) == 1) browser_nav(val);
+        }
+        req->send(200, "application/json", "{\"ok\":true}");
     });
 
     server.on("/games", HTTP_POST,

@@ -17,6 +17,7 @@
 #include "gauge.h"
 #include "msg.h"
 #include "yt.h"
+#include "browser.h"
 #include "app_api.h"
 #include "ui_settings.h"
 #include "app.h"
@@ -263,6 +264,7 @@ void setup()
     gauge_begin(amoled.getBattVoltage());
     msg_begin();
     yt_begin();
+    browser_begin();          /* after yt_begin: seeds the companion IP from it */
 
     ui_init(amoled.width(), amoled.height());
     ui_show_weather_block(s.show_weather);

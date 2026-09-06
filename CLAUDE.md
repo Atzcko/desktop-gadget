@@ -156,7 +156,7 @@ a layer above it. See [[Module map]] for what every file owns.
 
 **Swipe up from the bottom edge** for the app drawer — Timer, Settings, the
 Lab (GPIO / I2C / UART), Messages (gadget-to-gadget, D046), Themes (D049),
-YouTube (real Home + on-clock playback via the Mac, D050/D053/D054), Games (Snake, Breakout — D055), Trackpad and Keyboard (real BLE HID
+YouTube (real Home + on-clock playback via the Mac, D050/D053/D054), Games (Snake, Breakout, Jump, Game Boy — D055/D056), Browser (headless Chrome via the Mac — D057), Trackpad and Keyboard (real BLE HID
 into the Mac, D051/D052) plus any Lua apps. The drawer wraps and scrolls;
 every screen's back button is the same chip bottom-left (D045). The full
 remote surface is docs/reference/HTTP API.md.

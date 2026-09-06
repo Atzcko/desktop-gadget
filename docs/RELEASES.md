@@ -11,6 +11,37 @@ Semantic versioning; the scheme and the release procedure live in [[CLAUDE]].
 The version is reported by the boot log, `GET /health` and Settings ▸ Info,
 each with a compiler build stamp so a stale flash is detectable.
 
+## v1.38.0 — 2026-09-06
+
+**A web browser** ([[D057 - The clock is a browser, through the Mac]]). The
+Mac drives headless Chrome (the system Chrome via Playwright — no Chromium
+download) and streams JPEG frames the clock decodes full-screen; taps,
+scrolls and keys go back up and Chrome replays them. Any site, full JS/CSS,
+the Mac's own logged-in sessions — pixels down, touch up, nothing else
+leaves the machine (D054's privacy line). Toolbar with
+back/forward/reload/URL/keyboard; drag scrolls, tap clicks. `GET /browser`,
+`POST /browser {"host"|"url"}`. Needs `pip install playwright` on the Mac
+once. This image also carried **v1.37.0's Jump** to the device, which had
+never been flashed on its own.
+
+## v1.37.0 — 2026-08-28
+
+**Jump — an original platformer.** The answer to "put a Super Mario on it"
+that ships no one's copyrighted game: run, jump, stomp, collect, reach the
+flag on a scrolling level, built from Snake's canvas engine, Breakout's
+delta physics and the Game Boy pad's visible two-finger zones. Theme-table
+colors, best score in NVS. Fourth card in the arcade.
+([[D055 - Games wear the house style]])
+
+## v1.36.1 — 2026-08-28
+
+**The cartridge picker no longer wipes its own selection.** `game_close()`
+cleared the chosen ROM unconditionally, and the picker's reopen-with-choice
+path hit it before booting — so every pick looped back to the picker
+("can't load anything"). The wipe is now conditional: forget the cart when
+the owner leaves, keep it when the picker is booting it. `DELETE /rom?name=`
+added to clear stale carts. Also adds the missing `POST /reboot`.
+
 ## v1.29.1 — 2026-08-28
 
 **The drawer scrolls again — from anywhere, in both shapes.** It always had

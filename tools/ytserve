@@ -8,10 +8,25 @@ POST /youtube {"host":"<ip>"}).
 
     tools/ytserve            listen on :8999, open videos in the browser
 """
-import json, shutil, socket, subprocess
+import json, os, shutil, socket, subprocess, sys, threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import browser_session as bsmod        # the remote-browser half (D057)
+
 PORT = 8999
+
+# One browser session, shared by the one device. Created on first /browse,
+# rebuilt if its thread has exited (idle timeout or error).
+_bs = None
+_bs_lock = threading.Lock()
+
+def get_browser():
+    global _bs
+    with _bs_lock:
+        if _bs is None or not _bs.thread.is_alive():
+            _bs = bsmod.BrowserSession()
+        return _bs
 # The clock decodes exactly this: baseline MJPEG, 320x180, ~12 fps (D053).
 STREAM_ARGS = ["-an", "-vf", "scale=320:180", "-r", "12",
                "-q:v", "9", "-f", "mjpeg", "pipe:1"]
@@ -25,7 +40,40 @@ def my_ip():
         s.close()
 
 class H(BaseHTTPRequestHandler):
+    def _json_body(self):
+        return json.loads(self.rfile.read(int(self.headers.get("Content-Length", 0))) or b"{}")
+
+    def _reply(self, code, obj):
+        self.send_response(code)
+        self.send_header("Content-Type", "application/json")
+        self.end_headers()
+        self.wfile.write(json.dumps(obj).encode())
+
     def do_POST(self):
+        if self.path == "/browse":                       # navigate / stop (D057)
+            if not bsmod.PLAYWRIGHT_OK:
+                self._reply(503, {"ok": False,
+                    "error": "playwright not installed - pip install playwright"}); return
+            try:
+                body = self._json_body()
+            except Exception:
+                self.send_error(400); return
+            if body.get("stop"):
+                with _bs_lock:
+                    if _bs: _bs.push({"type": "nav", "url": "about:blank"})
+                self._reply(200, {"ok": True, "stopped": True}); return
+            s = get_browser()
+            if "url" in body:  s.push({"type": "nav", "url": str(body["url"])})
+            print(f"[browse] -> {body.get('url','(no url)')}")
+            self._reply(200, {"ok": True}); return
+
+        if self.path == "/browse/input":                 # tap / scroll / key / back...
+            try:
+                s = get_browser(); s.push(self._json_body())
+            except Exception:
+                self.send_error(400); return
+            self._reply(200, {"ok": True}); return
+
         if self.path != "/play":
             self.send_error(404); return
         try:
@@ -43,6 +91,19 @@ class H(BaseHTTPRequestHandler):
         self.wfile.write(b'{"ok":true}')
 
     def do_GET(self):
+        if self.path.startswith("/browse/stream"):       # pixels DOWN (D057)
+            if not bsmod.PLAYWRIGHT_OK:
+                self._reply(503, {"ok": False,
+                    "error": "playwright not installed - pip install playwright"}); return
+            from urllib.parse import urlparse, parse_qs
+            q = parse_qs(urlparse(self.path).query)
+            s = get_browser()
+            try:
+                s.set_size(int(q.get("w", [450])[0]), int(q.get("h", [540])[0]))
+            except Exception:
+                pass
+            bsmod.stream_to(self, s)
+            return
         if self.path == "/home":
             # The owner's REAL Home: yt-dlp reads the logged-in browser
             # session and returns their recommendations. Cookies never leave
