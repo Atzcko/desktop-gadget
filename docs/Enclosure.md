@@ -43,11 +43,13 @@ briefly copied by mistake and removed, worth remembering as prior art.
   an enclosure that blocks it turns the bench-tool app into decoration.
 - USB-C is the only power. No battery logic exists in firmware.
 
-## Print files exist
+## Print files
 
-Seen in ~/Downloads on 2026-08-28: `DG_Case.stl`, `DG_Buttons.stl`,
-`DG_Switch.stl` (exported 08-26) — the case has left CAD and is headed for
-a printer. The BOOT-reachability constraint above is now load-bearing.
+The exported meshes live in the repo at `3D print/` (added 2026-09-05,
+exported from Fusion 08-26): `DG_Case.stl` (17.6k triangles),
+`DG_Buttons.stl` (8.6k), `DG_Switch.stl` (6.4k) — binary STL, 1.6 MB
+together. The case has left CAD and is headed for a printer, which makes
+the BOOT-reachability constraint above load-bearing.
 
 ## Related
 
