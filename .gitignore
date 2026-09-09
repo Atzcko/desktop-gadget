@@ -13,3 +13,6 @@ include/config.h
 
 # macOS
 .DS_Store
+
+# built from tools/eq_capture.swift by ytserve
+tools/eq_capture

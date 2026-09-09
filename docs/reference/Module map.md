@@ -31,6 +31,7 @@ do. The one rule is unchanged and unbroken:
 | `apps/app_themes.cpp` + `theme.cpp` | the color tables (D049) |
 | `apps/app_youtube.cpp` + `yt.cpp` | Data API dashboard + on-clock MJPEG player + companion Home; thumbnails and frames via LVGL's tjpgd (D050, D053, D054) |
 | `apps/app_browser.cpp` + `browser.cpp` | Remote browser: toolbar + touch layer; a worker decodes Chrome's JPEG stream and POSTs taps/keys (D057) |
+| `apps/app_equalizer.cpp` + `eq.cpp` | Spectrum analyzer: 32 theme-colored bars with gravity caps; a worker reads the companion's band stream (D058) |
 | `apps/app_trackpad.cpp` | BLE mouse gestures, raw two-finger count (D051) |
 | `apps/app_keyboard.cpp` | BLE typing, ASCII→usage (D052) |
 | `script.cpp` + `lib/lua` | the Lua runtime, sandboxed bindings (D037, D040, D041) |

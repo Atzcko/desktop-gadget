@@ -1902,3 +1902,27 @@ the same silent-failure genre this project keeps re-learning) — both added
 now, plus v1.38.0. This flash also carried Jump to the device for the first
 time; it had built clean in v1.37.0 but the device was wedged that day and
 never took it.
+
+## 2026-09-09 — The equalizer listens through the Mac (v1.39.0)
+
+Owner: an equalizer for whatever plays on the PC. The clock has no
+microphone, and a microphone would hear the room, not the mix — so the Mac
+captures its OWN output (ScreenCaptureKit, no virtual-audio driver), runs
+the FFT in Accelerate, and streams 32 band levels at 30 fps as hex lines,
+2 KB/s. The clock draws theme-colored bars with gravity peak caps. Fourth
+companion feature; lightest payload; tightest privacy line (bar heights,
+never audio).
+
+Verified in the order the seams allowed: demo relay on the Mac (clean 64-hex
+lines), the Swift helper end to end through the companion (it reported the
+permission it lacked, and that status crossed to the panel), then the bars
+themselves via EQ_FORCE_DEMO — the owner: "I see bars moving." Real audio
+waits on the one thing only the owner can do: grant Screen & System Audio
+Recording to the app that runs ytserve. Granting it self-heals.
+
+Fixed before tagging: the device clobbered the companion's status with
+"listening for sound…" on every 2 s reconnect — a flicker, now kept.
+
+Two companion lessons for the record (both cost twenty minutes): pkill'd
+ytserve needs >1 s to release its port, and nohup'd Python stdout is
+block-buffered — the log looked dead while the server was fine. python3 -u.

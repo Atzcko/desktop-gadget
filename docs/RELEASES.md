@@ -11,6 +11,20 @@ Semantic versioning; the scheme and the release procedure live in [[CLAUDE]].
 The version is reported by the boot log, `GET /health` and Settings ▸ Info,
 each with a compiler build stamp so a stale flash is detectable.
 
+## v1.39.0 — 2026-09-09
+
+**An equalizer for whatever the Mac is playing**
+([[D058 - The equalizer listens through the Mac]]). The clock has no
+microphone, so the Mac captures its OWN output with ScreenCaptureKit (no
+virtual-audio driver, no rerouting), runs a 2048-point FFT in Accelerate,
+and streams 32 log-spaced band levels at 30 fps as one hex line per frame —
+2 KB/s. The app draws them theme-colored with gravity peak caps, in both
+orientations. `GET /eq` reports state; `?demo=1` / `EQ_FORCE_DEMO=1` stream
+a synthetic spectrum, which is how the bars were verified on the panel before
+the audio permission existed. Needs the one-time macOS "Screen & System Audio
+Recording" grant for whichever app runs `tools/ytserve`; until then the clock
+shows exactly that.
+
 ## v1.38.0 — 2026-09-06
 
 **A web browser** ([[D057 - The clock is a browser, through the Mac]]). The

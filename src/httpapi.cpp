@@ -7,6 +7,7 @@
 #include "theme.h"
 #include "yt.h"
 #include "browser.h"
+#include "eq.h"
 #include <LittleFS.h>
 
 extern "C" void games_request_open_c(int);
@@ -688,6 +689,14 @@ void httpapi_begin(void)
     server.on("/reboot", HTTP_POST, [](AsyncWebServerRequest *req) {
         req->onDisconnect([]() { ESP.restart(); });
         req->send(200, "application/json", "{\"ok\":true,\"rebooting\":true}");
+    });
+
+    /* Equalizer (D058): is the spectrum arriving, and if not, why. */
+    server.on("/eq", HTTP_GET, [](AsyncWebServerRequest *req) {
+        char b[160];
+        snprintf(b, sizeof(b), "{\"ok\":true,\"streaming\":%s,\"frames\":%lu,\"status\":\"%s\"}",
+                 eq_streaming() ? "true" : "false", (unsigned long)eq_rev(), eq_status());
+        req->send(200, "application/json", b);
     });
 
     /* Browser (D057): set the companion IP, read status, drive it remotely. */

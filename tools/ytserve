@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""tools/ytserve — the YouTube companion (D050).
+"""tools/ytserve — the Mac companion: YouTube (D050/D053/D054), Browser (D057), Equalizer (D058).
 
 The clock cannot play video (no codec, no audio path), so tapping a video in
 its YouTube app POSTs here and the Mac opens it. Run it, note the IP it
@@ -13,6 +13,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import browser_session as bsmod        # the remote-browser half (D057)
+import eq_session as eqmod             # system-audio spectrum (D058)
 
 PORT = 8999
 
@@ -91,6 +92,9 @@ class H(BaseHTTPRequestHandler):
         self.wfile.write(b'{"ok":true}')
 
     def do_GET(self):
+        if self.path.startswith("/eq/stream"):           # spectrum lines (D058)
+            eqmod.stream_to(self, demo=("demo=1" in self.path))
+            return
         if self.path.startswith("/browse/stream"):       # pixels DOWN (D057)
             if not bsmod.PLAYWRIGHT_OK:
                 self._reply(503, {"ok": False,

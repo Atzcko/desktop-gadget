@@ -29,6 +29,7 @@ authentication — private-LAN posture, accepted in
 | `/send` | POST | `{"ip","text"}` — make THIS device send |
 | `/rom` | POST | raw `.gb` body → the Game Boy's cartridge slot ([[D056 - A real Game Boy lives in the arcade]]) |
 | `/browser` | GET / POST | status / `{"host":"ip"}` `{"url":"..."}` — the remote browser ([[D057 - The clock is a browser, through the Mac]]) |
+| `/eq` | GET | `streaming`, `frames`, `status` — is the spectrum arriving, and if not, why ([[D058 - The equalizer listens through the Mac]]) |
 | `/youtube` | GET / POST | status (incl. `streaming`, `frames`) / `{"key"}` `{"channels"}` `{"host"}` `{"region"}` `{"mode":0-3}` `{"search":"q"}` `{"play_here":"id"}` `{"stop":true}` ([[D050 - YouTube is a dashboard and a remote, not a player]], [[D053 - The clock plays video after all, through the Mac]], [[D054 - Home comes from the owner's own session]]) |
 
 Bad input returns 4xx with a reason; nothing here reboots the device except
@@ -44,3 +45,5 @@ a successful `/update`.
 | `tools/app` | upload / list / remove Lua apps |
 | `tools/ytserve` | :8999 companion — `/play` opens a video in the browser, `/stream/<id>` transcodes to 320×180 MJPEG (D053), `/home` serves real recommendations from the browser session (D054), `/browse*` drives headless Chrome for the Browser app (D057) |
 | `tools/browser_session.py` | the remote-browser half of the companion: one headless Chrome (system Chrome via Playwright), JPEG frames out, tap/scroll/key in — `pip install playwright` once (D057) |
+| `tools/eq_capture.swift` → `tools/eq_capture` | ScreenCaptureKit + Accelerate: the Mac's own audio → 32 band levels, one hex line per frame at 30 fps; auto-built by ytserve with `swiftc` (D058) |
+| `GET /eq/stream` (companion) | those lines, relayed while any client listens; `?demo=1` or `EQ_FORCE_DEMO=1` for a synthetic spectrum; a `!` line is a status for the clock (D058) |
