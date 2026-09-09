@@ -77,4 +77,4 @@ verified on the panel before the permission existed — the owner's
 - [[D053 - The clock plays video after all, through the Mac]] ·
   [[D057 - The clock is a browser, through the Mac]] — the companion pattern
 - [[D049 - The look is a table]] — why the bars reskin with the theme
-- [[D039 - Verify each half on its own]] — the demo seam
+- [[D039 - The device must be drivable without a finger]] — the demo seam
