@@ -1926,3 +1926,15 @@ Fixed before tagging: the device clobbered the companion's status with
 Two companion lessons for the record (both cost twenty minutes): pkill'd
 ytserve needs >1 s to release its port, and nohup'd Python stdout is
 block-buffered — the log looked dead while the server was fine. python3 -u.
+
+## 2026-09-09 — The equalizer hears (companion fix after v1.39.0)
+
+Owner: "It doesn't work" — then, on the demo seam, "I see bars moving."
+Between those two sentences sat the macOS permission (owner granted it) and
+one Swift bug: the SCStream was a local in the startup Task and was
+released when the task ended; a released SCStream stops silently, so the
+helper logged "capturing" and never produced a frame. Retained it; the
+helper now prints its audio format and a level line per ten seconds.
+Verified on the device with sound: real levels through the relay (peak 255),
+frames climbing on the clock. Firmware unchanged - the tag stands; the fix
+is Mac-side and committed after it.

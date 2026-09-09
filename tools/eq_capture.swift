@@ -44,6 +44,10 @@ final class Cap: NSObject, SCStreamOutput, SCStreamDelegate {
     var edges   = [Int]()
     var levels  = [Float](repeating: 0, count: BANDS)
     var peakDb: Float = -30
+    var seenAudio = false
+    var lastMaxAbs: Float = 0
+    var dbg = 0
+    var warned = false
     let dft: OpaquePointer?
     let lock = NSLock()
 
@@ -65,7 +69,7 @@ final class Cap: NSObject, SCStreamOutput, SCStreamDelegate {
         var needed = 0
         CMSampleBufferGetAudioBufferListWithRetainedBlockBuffer(
             sb, bufferListSizeNeededOut: &needed, bufferListOut: nil, bufferListSize: 0,
-            blockBufferAllocator: nil, blockBufferMemoryAllocator: nil, flags: 0,
+            blockBufferAllocator: nil, blockBufferMemoryAllocator: nil, flags: UInt32(kCMSampleBufferFlag_AudioBufferList_Assure16ByteAlignment),
             blockBufferOut: nil)
         guard needed > 0 else { return }
         let raw = UnsafeMutableRawPointer.allocate(byteCount: needed,
@@ -76,9 +80,21 @@ final class Cap: NSObject, SCStreamOutput, SCStreamDelegate {
         let st = CMSampleBufferGetAudioBufferListWithRetainedBlockBuffer(
             sb, bufferListSizeNeededOut: nil, bufferListOut: abl, bufferListSize: needed,
             blockBufferAllocator: kCFAllocatorDefault, blockBufferMemoryAllocator: kCFAllocatorDefault,
-            flags: 0, blockBufferOut: &bb)
-        guard st == noErr else { return }
+            flags: UInt32(kCMSampleBufferFlag_AudioBufferList_Assure16ByteAlignment), blockBufferOut: &bb)
+        guard st == noErr else {
+            if !warned { warned = true; say("eq_capture: audio buffer error \(st)") }
+            return
+        }
         let bufs = UnsafeMutableAudioBufferListPointer(abl)
+        if !seenAudio {
+            seenAudio = true
+            var desc = "no format"
+            if let fd = CMSampleBufferGetFormatDescription(sb),
+               let asbd = CMAudioFormatDescriptionGetStreamBasicDescription(fd)?.pointee {
+                desc = "rate \(asbd.mSampleRate) ch \(asbd.mChannelsPerFrame) bits \(asbd.mBitsPerChannel) flags 0x\(String(asbd.mFormatFlags, radix: 16)) bytes/frame \(asbd.mBytesPerFrame)"
+            }
+            say("eq_capture: audio flowing (\(bufs.count) buffers, \(bufs[0].mDataByteSize) bytes, \(bufs[0].mNumberChannels) ch) \(desc)")
+        }
 
         // downmix whatever layout arrives (non-interleaved per-channel buffers,
         // or one interleaved buffer) to mono
@@ -101,6 +117,9 @@ final class Cap: NSObject, SCStreamOutput, SCStreamDelegate {
             }
         } else { return }
 
+        var m: Float = 0
+        vDSP_maxmgv(mono, 1, &m, vDSP_Length(mono.count))
+        lastMaxAbs = max(lastMaxAbs, m)
         lock.lock(); defer { lock.unlock() }
         pending.append(contentsOf: mono)
         while pending.count >= HOP {
@@ -140,6 +159,8 @@ final class Cap: NSObject, SCStreamOutput, SCStreamDelegate {
             target[k] = db
             frameMax = max(frameMax, db)
         }
+        dbg += 1
+        if dbg % 300 == 1 { say("eq_capture: frameMax \(frameMax) dB  peakDb \(peakDb)  maxAbs \(lastMaxAbs)"); lastMaxAbs = 0 }
         // slow AGC: the running peak defines "full scale", so quiet sources fill too
         if frameMax > peakDb { peakDb += (frameMax - peakDb) * 0.30 }
         else                 { peakDb += (frameMax - peakDb) * 0.005 }
@@ -162,6 +183,7 @@ final class Cap: NSObject, SCStreamOutput, SCStreamDelegate {
 }
 
 let cap = Cap()
+var gStream: SCStream?      // MUST be retained: a released SCStream stops silently
 Task {
     do {
         let content = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: false)
@@ -176,6 +198,7 @@ Task {
         cfg.height = 2
         cfg.minimumFrameInterval = CMTime(value: 1, timescale: 1)   // we add no video output anyway
         let stream = SCStream(filter: filter, configuration: cfg, delegate: cap)
+        gStream = stream
         try stream.addStreamOutput(cap, type: .audio, sampleHandlerQueue: DispatchQueue(label: "eq.audio"))
         try await stream.startCapture()
         say("eq_capture: capturing system audio")

@@ -161,10 +161,10 @@ def stream_to(handler, demo=False):
                 last = rev
             else:
                 time.sleep(0.008)
-            if not _cap.alive() and status:
-                # the helper is gone (permission, build): end the response so
-                # the clock reconnects in a moment and we try again — which is
-                # what makes granting the permission self-healing.
+            if not _cap.alive():
+                # the helper is gone (permission, build, or it just died): end
+                # the response so the clock reconnects and we spawn it again —
+                # self-healing for the permission, and for any crash.
                 time.sleep(0.5)
                 break
     except (BrokenPipeError, ConnectionResetError):

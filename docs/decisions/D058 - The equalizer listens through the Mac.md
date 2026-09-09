@@ -72,6 +72,17 @@ verified on the panel before the permission existed — the owner's
   under `nohup` Python's stdout is block-buffered, so its log was empty
   while it ran perfectly — `python3 -u`, always.
 
+## The bug that shipped first
+
+v1.39.0's first hour "didn't work" for real audio while the demo bars
+danced — the helper logged *capturing system audio* and then emitted
+nothing. The `SCStream` was a local inside the startup `Task`; when the
+task finished, the stream was **released, and a released SCStream stops
+silently**. Retaining it (`gStream`) fixed everything at once. The helper
+now also reports its audio format and a level line every ten seconds, so
+the next silence is diagnosable from the companion log alone. Verified:
+Float32 non-interleaved at 48 kHz, speech peaking ~0.12, bands reaching 255.
+
 ## Related
 
 - [[D053 - The clock plays video after all, through the Mac]] ·
