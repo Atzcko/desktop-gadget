@@ -165,7 +165,9 @@ static bool layout_small;                /* clock parked in the corner
 /* Battery chip: body, nub, and the percentage inside. Hidden when no battery
  * is connected — the normal, USB-powered state of this object — and while the
  * line display owns the top-right corner. */
-static lv_obj_t *bat_body, *bat_nub, *bat_lbl;
+static lv_obj_t *bat_body, *bat_nub;
+static int       bat_pct;
+static lv_color_t bat_col;
 static lv_obj_t *unread_badge;
 static int       unread_n;
 static bool      bat_present;
@@ -197,6 +199,70 @@ static void decor(lv_obj_t *o)
      * forwarded UP the parent chain until something scrollable accepts it —
      * which is how the whole clock became draggable. */
     lv_obj_clear_flag(o, LV_OBJ_FLAG_SCROLL_CHAIN);
+}
+
+/*
+ * The battery, drawn the iPhone way (D059): a solid fill proportional to
+ * the charge, and the percentage CUT OUT of it — the background color where
+ * the fill is behind a glyph, the chip color where it has drained away. A
+ * label can only be one color, so the number is drawn twice with the clip
+ * area set to each side of the fill's edge; a digit straddling the edge
+ * changes color mid-stroke, exactly as on the phone.
+ */
+static void bat_draw_cb(lv_event_t *e)
+{
+    lv_obj_t *o = lv_event_get_target(e);
+    lv_draw_ctx_t *ctx = lv_event_get_draw_ctx(e);
+    lv_area_t co; lv_obj_get_coords(o, &co);
+
+    const int inset = 4;                              /* 2 border + 2 breath */
+    lv_area_t inner = { (lv_coord_t)(co.x1 + inset), (lv_coord_t)(co.y1 + inset),
+                        (lv_coord_t)(co.x2 - inset), (lv_coord_t)(co.y2 - inset) };
+    const int iw = lv_area_get_width(&inner);
+    int fw = (iw * bat_pct + 50) / 100;
+    if (bat_pct > 0 && fw < 2) fw = 2;
+    if (fw > iw) fw = iw;
+
+    lv_area_t fill = inner;
+    fill.x2 = (lv_coord_t)(inner.x1 + fw - 1);
+    if (fw > 0) {
+        lv_draw_rect_dsc_t r;
+        lv_draw_rect_dsc_init(&r);
+        r.bg_color = bat_col;
+        r.bg_opa   = LV_OPA_COVER;
+        r.radius   = 2;
+        lv_draw_rect(ctx, &r, &fill);
+    }
+
+    char t[8];
+    snprintf(t, sizeof(t), "%d", bat_pct);
+    lv_draw_label_dsc_t ld;
+    lv_draw_label_dsc_init(&ld);
+    ld.font  = &lv_font_montserrat_14;
+    ld.align = LV_TEXT_ALIGN_CENTER;
+    lv_point_t sz;
+    lv_txt_get_size(&sz, t, ld.font, 0, 0, LV_COORD_MAX, LV_TEXT_FLAG_NONE);
+    lv_area_t ta;
+    ta.x1 = (lv_coord_t)(co.x1 + (lv_area_get_width(&co)  - sz.x) / 2);
+    ta.y1 = (lv_coord_t)(co.y1 + (lv_area_get_height(&co) - sz.y) / 2);
+    ta.x2 = (lv_coord_t)(ta.x1 + sz.x - 1);
+    ta.y2 = (lv_coord_t)(ta.y1 + sz.y - 1);
+
+    const lv_area_t *clip0 = ctx->clip_area;
+    lv_area_t clip;
+    if (fw > 0 && _lv_area_intersect(&clip, clip0, &fill)) {   /* over the fill: inverted */
+        ctx->clip_area = &clip;
+        ld.color = COL_BG;
+        lv_draw_label(ctx, &ld, &ta, t, nullptr);
+    }
+    lv_area_t rest = co;                                      /* right of the fill: normal */
+    rest.x1 = (lv_coord_t)(inner.x1 + fw);
+    if (_lv_area_intersect(&clip, clip0, &rest)) {
+        ctx->clip_area = &clip;
+        ld.color = bat_col;
+        lv_draw_label(ctx, &ld, &ta, t, nullptr);
+    }
+    ctx->clip_area = clip0;
 }
 
 /* ------------------------------------------------------------ the fold -- */
@@ -855,11 +921,7 @@ void ui_init(uint16_t screen_w, uint16_t screen_h)
     lv_obj_set_style_bg_opa(bat_nub, LV_OPA_COVER, LV_PART_MAIN);
     lv_obj_align_to(bat_nub, bat_body, LV_ALIGN_OUT_RIGHT_MID, 1, 0);
 
-    bat_lbl = lv_label_create(bat_body);
-    lv_obj_set_style_text_font(bat_lbl, &lv_font_montserrat_14, LV_PART_MAIN);
-    lv_obj_set_style_text_color(bat_lbl, COL_SECONDARY, LV_PART_MAIN);
-    lv_label_set_text(bat_lbl, "");
-    lv_obj_center(bat_lbl);
+    lv_obj_add_event_cb(bat_body, bat_draw_cb, LV_EVENT_DRAW_MAIN, nullptr);
 
     lv_obj_add_flag(bat_body, LV_OBJ_FLAG_HIDDEN);
     lv_obj_add_flag(bat_nub,  LV_OBJ_FLAG_HIDDEN);
@@ -918,9 +980,11 @@ void ui_set_battery(bool present, int pct, bool charging)
          * for low, because those two are information, not decoration. */
         lv_color_t c = charging ? COL_BAT_CHG
                      : (pct < 15 ? COL_BAT_LOW : COL_DIGIT);
-        lv_obj_set_style_text_color(bat_lbl, c, LV_PART_MAIN);
+        bat_pct = pct;
+        bat_col = c;
         lv_obj_set_style_bg_color(bat_nub, c, LV_PART_MAIN);
         lv_obj_set_style_border_color(bat_body, c, LV_PART_MAIN);
+        lv_obj_invalidate(bat_body);
     }
     bat_apply_visibility();
 }

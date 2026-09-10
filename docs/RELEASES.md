@@ -11,6 +11,14 @@ Semantic versioning; the scheme and the release procedure live in [[CLAUDE]].
 The version is reported by the boot log, `GET /health` and Settings ▸ Info,
 each with a compiler build stamp so a stale flash is detectable.
 
+## v1.39.1 — 2026-09-10
+
+**The battery chip fills like an iPhone's**
+([[D059 - The battery is drawn, not composed]]). A solid fill proportional
+to the charge, and the percentage cut out of it — dark where the fill is
+behind a glyph, the chip color where it has drained away, changing
+mid-digit at the edge. Green while charging, red under 15 %, as before.
+
 ## v1.39.0 — 2026-09-09
 
 **An equalizer for whatever the Mac is playing**

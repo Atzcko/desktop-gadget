@@ -19,7 +19,7 @@
 
 #define FW_VERSION_MAJOR  1
 #define FW_VERSION_MINOR  39
-#define FW_VERSION_PATCH  0
+#define FW_VERSION_PATCH  1
 
 #define FW_STR_(x)   #x
 #define FW_STR(x)    FW_STR_(x)

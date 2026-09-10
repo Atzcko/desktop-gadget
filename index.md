@@ -101,6 +101,7 @@ bridge is the only way. See [[CLAUDE]].
 | [[D032 - Three gestures, one control]] | Drag coarse, tap exact, hold repeat — one card does all three |
 | [[D033 - Back goes one level, not home]] | app → drawer → clock; one function owns what back means |
 | [[D034 - Updates ship over the air]] | POST /update to the ota_1 slot that was always in the table |
+| [[D059 - The battery is drawn, not composed]] | iPhone fill with the number cut out: two clipped label draws |
 | [[D058 - The equalizer listens through the Mac]] | The Mac hears its own output; the clock gets 32 bar heights, never audio |
 | [[D057 - The clock is a browser, through the Mac]] | Headless Chrome renders, the clock shows pixels and sends touch |
 | [[D056 - A real Game Boy lives in the arcade]] | Peanut-GB at 2x in DMG greens; two-finger zones; carts are files |

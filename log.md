@@ -1938,3 +1938,13 @@ helper now prints its audio format and a level line per ten seconds.
 Verified on the device with sound: real levels through the relay (peak 255),
 frames climbing on the clock. Firmware unchanged - the tag stands; the fix
 is Mac-side and committed after it.
+
+## 2026-09-10 — The battery fills like an iPhone's (v1.39.1)
+
+Owner: solid fill, text inverted over it, draining to normal — like the
+phone. The old chip was an outline plus a label, and a label is one color.
+So the chip now draws itself: fill, then the number twice with the clip
+area narrowed to each side of the fill's edge, which is how a single digit
+can be half black and half white. Small feature, one reusable trick
+(D059). Verified: builds, flashes, /health reports the version and a
+present battery; the look is the owner's to confirm.
