@@ -43,5 +43,5 @@ by the fill as well as the outline.
 
 ## Related
 
-- [[D044 - Count coulombs where you can]] — where the percentage comes from
+- [[D044 - Coulombs where measurable, model where not]] — where the percentage comes from
 - [[D049 - The look is a table]] — why the fill is the digit color

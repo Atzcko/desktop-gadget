@@ -971,10 +971,6 @@ void ui_set_battery(bool present, int pct, bool charging)
     if (present) {
         if (pct < 0) pct = 0;
         if (pct > 100) pct = 100;
-        char t[8];
-        snprintf(t, sizeof(t), "%d", pct);
-        lv_label_set_text(bat_lbl, t);
-
         /* White, like the digits — the owner's call, and it does sit better
          * beside them than the grey did. Green stays for charging and red
          * for low, because those two are information, not decoration. */
