@@ -1,0 +1,1274 @@
+{
+  ".claude/settings.local.json": {
+    "mtime": 1789093063.4518216,
+    "seen": 1789151064.7318301,
+    "ast_hash": "a3d4c3e8858345b849e6e0f6e3f9bcea",
+    "semantic_hash": "a3d4c3e8858345b849e6e0f6e3f9bcea"
+  },
+  "apps/blink.lua": {
+    "mtime": 1787888503.4448934,
+    "seen": 1789151064.731832,
+    "ast_hash": "cdcf88128753d4fe58cc832c7e8ce9a5",
+    "semantic_hash": "cdcf88128753d4fe58cc832c7e8ce9a5"
+  },
+  "boards/T-Display-AMOLED.json": {
+    "mtime": 1786849537.4763682,
+    "seen": 1789151064.731833,
+    "ast_hash": "1f21e51475bcde17e0b00b23dc3cb7dd",
+    "semantic_hash": "1f21e51475bcde17e0b00b23dc3cb7dd"
+  },
+  "include/app.h": {
+    "mtime": 1787924372.1221678,
+    "seen": 1789151064.731833,
+    "ast_hash": "d7e786622ba8d8b0720c5ca354c9f9d4",
+    "semantic_hash": "d7e786622ba8d8b0720c5ca354c9f9d4"
+  },
+  "include/app_api.h": {
+    "mtime": 1787887129.776581,
+    "seen": 1789151064.7318342,
+    "ast_hash": "d526b000f6f318d6259989238e8339ea",
+    "semantic_hash": "d526b000f6f318d6259989238e8339ea"
+  },
+  "include/app_host.h": {
+    "mtime": 1787887146.8137348,
+    "seen": 1789151064.7318342,
+    "ast_hash": "37b87f51b538e6e282dc6a9081bfca89",
+    "semantic_hash": "37b87f51b538e6e282dc6a9081bfca89"
+  },
+  "include/ble.h": {
+    "mtime": 1787897725.2100797,
+    "seen": 1789151064.731835,
+    "ast_hash": "a53ade86b3cef53d7f755a31675d5922",
+    "semantic_hash": "a53ade86b3cef53d7f755a31675d5922"
+  },
+  "include/browser.h": {
+    "mtime": 1788689108.0494018,
+    "seen": 1789151064.73184,
+    "ast_hash": "297fa44a2fc2d9a0b46a1840f915909d",
+    "semantic_hash": "297fa44a2fc2d9a0b46a1840f915909d"
+  },
+  "include/config.example.h": {
+    "mtime": 1786900728.3384287,
+    "seen": 1789151064.731842,
+    "ast_hash": "33c20a45fe17d8770088927fa0098b12",
+    "semantic_hash": "33c20a45fe17d8770088927fa0098b12"
+  },
+  "include/emotion.h": {
+    "mtime": 1786872631.9464169,
+    "seen": 1789151064.731842,
+    "ast_hash": "1d87648ca717569bba61320aa0d94767",
+    "semantic_hash": "1d87648ca717569bba61320aa0d94767"
+  },
+  "include/eq.h": {
+    "mtime": 1788970298.6974373,
+    "seen": 1789151064.731842,
+    "ast_hash": "56f37705a6fa924d1142e48aba449b72",
+    "semantic_hash": "56f37705a6fa924d1142e48aba449b72"
+  },
+  "include/gauge.h": {
+    "mtime": 1787885839.4355261,
+    "seen": 1789151064.731843,
+    "ast_hash": "e4c0e630c77be3df2c99ad21a502a68c",
+    "semantic_hash": "e4c0e630c77be3df2c99ad21a502a68c"
+  },
+  "include/httpapi.h": {
+    "mtime": 1786852399.6036587,
+    "seen": 1789151064.731843,
+    "ast_hash": "539b939e136d3a6ebcd083628201b6b2",
+    "semantic_hash": "539b939e136d3a6ebcd083628201b6b2"
+  },
+  "include/msg.h": {
+    "mtime": 1787890014.3697777,
+    "seen": 1789151064.7318442,
+    "ast_hash": "9ad97987f1a08b5ba31d4eff67e3b02c",
+    "semantic_hash": "9ad97987f1a08b5ba31d4eff67e3b02c"
+  },
+  "include/net.h": {
+    "mtime": 1786933027.8389893,
+    "seen": 1789151064.7318442,
+    "ast_hash": "f1e8f4466f49dca959eb67ea68890c74",
+    "semantic_hash": "f1e8f4466f49dca959eb67ea68890c74"
+  },
+  "include/script.h": {
+    "mtime": 1787415358.4727654,
+    "seen": 1789151064.7318442,
+    "ast_hash": "e2b82ef5d5df84b425664f22b1b35b93",
+    "semantic_hash": "e2b82ef5d5df84b425664f22b1b35b93"
+  },
+  "include/settings.h": {
+    "mtime": 1787893652.260867,
+    "seen": 1789151064.7318451,
+    "ast_hash": "89055b9aaf41194939887e02b0f9b091",
+    "semantic_hash": "89055b9aaf41194939887e02b0f9b091"
+  },
+  "include/theme.h": {
+    "mtime": 1787893652.2265663,
+    "seen": 1789151064.7318451,
+    "ast_hash": "16b4aa9cf62a5b0722d35b1e1e082e76",
+    "semantic_hash": "16b4aa9cf62a5b0722d35b1e1e082e76"
+  },
+  "include/ui.h": {
+    "mtime": 1787889856.2954137,
+    "seen": 1789151064.7318451,
+    "ast_hash": "f98737999fb5a39a79fca9bd0fd4f8d3",
+    "semantic_hash": "f98737999fb5a39a79fca9bd0fd4f8d3"
+  },
+  "include/ui_settings.h": {
+    "mtime": 1786936001.1437256,
+    "seen": 1789151064.7318459,
+    "ast_hash": "f5a8f400218688764fb22303b1e03a0f",
+    "semantic_hash": "f5a8f400218688764fb22303b1e03a0f"
+  },
+  "include/version.h": {
+    "mtime": 1789006575.7125115,
+    "seen": 1789151064.7318459,
+    "ast_hash": "d3e975a2ec8821eafc21f668f79d77c1",
+    "semantic_hash": "d3e975a2ec8821eafc21f668f79d77c1"
+  },
+  "include/yt.h": {
+    "mtime": 1787901659.5742335,
+    "seen": 1789151064.7318468,
+    "ast_hash": "45433ae64b4ad6e3a1f98892820e65cb",
+    "semantic_hash": "45433ae64b4ad6e3a1f98892820e65cb"
+  },
+  "lib/lua/library.json": {
+    "mtime": 1787418453.3262851,
+    "seen": 1789151064.7318468,
+    "ast_hash": "f70352aaab59754f54be19875364b80f",
+    "semantic_hash": "f70352aaab59754f54be19875364b80f"
+  },
+  "lib/lua/src/lapi.c": {
+    "mtime": 1787413016.076614,
+    "seen": 1789151064.731848,
+    "ast_hash": "0892acc2ea339279dd24d40551c9aa06",
+    "semantic_hash": "0892acc2ea339279dd24d40551c9aa06"
+  },
+  "lib/lua/src/lapi.h": {
+    "mtime": 1787413016.1006575,
+    "seen": 1789151064.731848,
+    "ast_hash": "a18793b35b8d08b507528c053e726da3",
+    "semantic_hash": "a18793b35b8d08b507528c053e726da3"
+  },
+  "lib/lua/src/lauxlib.c": {
+    "mtime": 1787413016.0773716,
+    "seen": 1789151064.731848,
+    "ast_hash": "664cddf886470aaaadcb3ac526cf65db",
+    "semantic_hash": "664cddf886470aaaadcb3ac526cf65db"
+  },
+  "lib/lua/src/lauxlib.h": {
+    "mtime": 1787413016.1012113,
+    "seen": 1789151064.731849,
+    "ast_hash": "b087cc8e8fc232f07303fedbce668c17",
+    "semantic_hash": "b087cc8e8fc232f07303fedbce668c17"
+  },
+  "lib/lua/src/lbaselib.c": {
+    "mtime": 1787413016.078117,
+    "seen": 1789151064.731849,
+    "ast_hash": "f66b60e0ccdb64516da2e17392cc610a",
+    "semantic_hash": "f66b60e0ccdb64516da2e17392cc610a"
+  },
+  "lib/lua/src/lcode.c": {
+    "mtime": 1787413016.0788708,
+    "seen": 1789151064.731849,
+    "ast_hash": "dbfb71d67a50fff69b3c98c990b741b4",
+    "semantic_hash": "dbfb71d67a50fff69b3c98c990b741b4"
+  },
+  "lib/lua/src/lcode.h": {
+    "mtime": 1787413016.101795,
+    "seen": 1789151064.73185,
+    "ast_hash": "b40107d9a968d50cfb7427585815ca5f",
+    "semantic_hash": "b40107d9a968d50cfb7427585815ca5f"
+  },
+  "lib/lua/src/lcorolib.c": {
+    "mtime": 1787413016.0798388,
+    "seen": 1789151064.73185,
+    "ast_hash": "4a6000ac6b369c6eaff6d9c2aea9f9aa",
+    "semantic_hash": "4a6000ac6b369c6eaff6d9c2aea9f9aa"
+  },
+  "lib/lua/src/lctype.c": {
+    "mtime": 1787413016.0807223,
+    "seen": 1789151064.73185,
+    "ast_hash": "73e6e7a1d62ea4776bc78033b14598a2",
+    "semantic_hash": "73e6e7a1d62ea4776bc78033b14598a2"
+  },
+  "lib/lua/src/lctype.h": {
+    "mtime": 1787413016.1023822,
+    "seen": 1789151064.731851,
+    "ast_hash": "4f5a7f445c2cb239ab324f8622e8894b",
+    "semantic_hash": "4f5a7f445c2cb239ab324f8622e8894b"
+  },
+  "lib/lua/src/ldblib.c": {
+    "mtime": 1787413016.0815766,
+    "seen": 1789151064.731851,
+    "ast_hash": "3d5dc5533f3bca51f49d5304ef972be2",
+    "semantic_hash": "3d5dc5533f3bca51f49d5304ef972be2"
+  },
+  "lib/lua/src/ldebug.c": {
+    "mtime": 1787413016.0826113,
+    "seen": 1789151064.731851,
+    "ast_hash": "9f5f5f49a0c215daf1826d56f27c6527",
+    "semantic_hash": "9f5f5f49a0c215daf1826d56f27c6527"
+  },
+  "lib/lua/src/ldebug.h": {
+    "mtime": 1787413016.1030018,
+    "seen": 1789151064.731852,
+    "ast_hash": "e354d5afec415152be85e3d4d3dd589e",
+    "semantic_hash": "e354d5afec415152be85e3d4d3dd589e"
+  },
+  "lib/lua/src/ldo.c": {
+    "mtime": 1787413016.0836182,
+    "seen": 1789151064.731852,
+    "ast_hash": "35b06ff630093c7216aa8a2cc145c813",
+    "semantic_hash": "35b06ff630093c7216aa8a2cc145c813"
+  },
+  "lib/lua/src/ldo.h": {
+    "mtime": 1787413016.103607,
+    "seen": 1789151064.731852,
+    "ast_hash": "28138809e652958723ca82a42b18e9f3",
+    "semantic_hash": "28138809e652958723ca82a42b18e9f3"
+  },
+  "lib/lua/src/ldump.c": {
+    "mtime": 1787413016.0844426,
+    "seen": 1789151064.731853,
+    "ast_hash": "256bab330881e43b6aaab506057c6610",
+    "semantic_hash": "256bab330881e43b6aaab506057c6610"
+  },
+  "lib/lua/src/lfunc.c": {
+    "mtime": 1787413016.0850897,
+    "seen": 1789151064.731853,
+    "ast_hash": "f587c52acb9f3f4e298925c1b0e0f59e",
+    "semantic_hash": "f587c52acb9f3f4e298925c1b0e0f59e"
+  },
+  "lib/lua/src/lfunc.h": {
+    "mtime": 1787413016.1041718,
+    "seen": 1789151064.731854,
+    "ast_hash": "74c1a9067666bcdc4b1bc5a3ce4dd84c",
+    "semantic_hash": "74c1a9067666bcdc4b1bc5a3ce4dd84c"
+  },
+  "lib/lua/src/lgc.c": {
+    "mtime": 1787413016.085595,
+    "seen": 1789151064.731854,
+    "ast_hash": "edfd8219d6a14018727a113d5bd3760d",
+    "semantic_hash": "edfd8219d6a14018727a113d5bd3760d"
+  },
+  "lib/lua/src/lgc.h": {
+    "mtime": 1787413016.104814,
+    "seen": 1789151064.731854,
+    "ast_hash": "27471f6a393f1da8078a1cd072699654",
+    "semantic_hash": "27471f6a393f1da8078a1cd072699654"
+  },
+  "lib/lua/src/linit.c": {
+    "mtime": 1787413016.0862505,
+    "seen": 1789151064.7318552,
+    "ast_hash": "db04fcd55233e996bd594b6d41352af7",
+    "semantic_hash": "db04fcd55233e996bd594b6d41352af7"
+  },
+  "lib/lua/src/liolib.c": {
+    "mtime": 1787413016.0870206,
+    "seen": 1789151064.7318552,
+    "ast_hash": "cfd2b94a364a72a81c2912394ab46524",
+    "semantic_hash": "cfd2b94a364a72a81c2912394ab46524"
+  },
+  "lib/lua/src/ljumptab.h": {
+    "mtime": 1787413016.1053329,
+    "seen": 1789151064.7318559,
+    "ast_hash": "559c809d2c65e02b15d2cbe1814f760c",
+    "semantic_hash": "559c809d2c65e02b15d2cbe1814f760c"
+  },
+  "lib/lua/src/llex.c": {
+    "mtime": 1787413016.087703,
+    "seen": 1789151064.7318559,
+    "ast_hash": "710b0666cd00858b7cfe78ed2fb74bd7",
+    "semantic_hash": "710b0666cd00858b7cfe78ed2fb74bd7"
+  },
+  "lib/lua/src/llex.h": {
+    "mtime": 1787413016.1058948,
+    "seen": 1789151064.7318559,
+    "ast_hash": "da06f8f4d5cae5a2a65fa68f35a93cca",
+    "semantic_hash": "da06f8f4d5cae5a2a65fa68f35a93cca"
+  },
+  "lib/lua/src/llimits.h": {
+    "mtime": 1787413016.1064472,
+    "seen": 1789151064.7318568,
+    "ast_hash": "f70379667ce169a2840c3c885517102a",
+    "semantic_hash": "f70379667ce169a2840c3c885517102a"
+  },
+  "lib/lua/src/lmathlib.c": {
+    "mtime": 1787413016.0883667,
+    "seen": 1789151064.7318568,
+    "ast_hash": "444d2b0e6ffc6faf1057c14b4db28f98",
+    "semantic_hash": "444d2b0e6ffc6faf1057c14b4db28f98"
+  },
+  "lib/lua/src/lmem.c": {
+    "mtime": 1787413016.0891051,
+    "seen": 1789151064.7318568,
+    "ast_hash": "e8eb4de677e43ef65fbe9b159422a487",
+    "semantic_hash": "e8eb4de677e43ef65fbe9b159422a487"
+  },
+  "lib/lua/src/lmem.h": {
+    "mtime": 1787413016.106963,
+    "seen": 1789151064.731858,
+    "ast_hash": "313e02a40d047c422219b8cdf3b31411",
+    "semantic_hash": "313e02a40d047c422219b8cdf3b31411"
+  },
+  "lib/lua/src/loadlib.c": {
+    "mtime": 1787413016.089793,
+    "seen": 1789151064.731858,
+    "ast_hash": "6d1561bf841f72e7ef1428123baf3430",
+    "semantic_hash": "6d1561bf841f72e7ef1428123baf3430"
+  },
+  "lib/lua/src/lobject.c": {
+    "mtime": 1787413016.0904908,
+    "seen": 1789151064.731858,
+    "ast_hash": "e9bf7a1e70ba5f03efb8408cda8f933c",
+    "semantic_hash": "e9bf7a1e70ba5f03efb8408cda8f933c"
+  },
+  "lib/lua/src/lobject.h": {
+    "mtime": 1787413016.1075315,
+    "seen": 1789151064.731859,
+    "ast_hash": "aea49a507ea3586a933fcf888e0c1530",
+    "semantic_hash": "aea49a507ea3586a933fcf888e0c1530"
+  },
+  "lib/lua/src/lopcodes.c": {
+    "mtime": 1787413016.091096,
+    "seen": 1789151064.731859,
+    "ast_hash": "2bdb450e467e3d232e25bb84368b1433",
+    "semantic_hash": "2bdb450e467e3d232e25bb84368b1433"
+  },
+  "lib/lua/src/lopcodes.h": {
+    "mtime": 1787413016.108041,
+    "seen": 1789151064.731859,
+    "ast_hash": "9b7c76c444d74fd26cb684f6b76a3637",
+    "semantic_hash": "9b7c76c444d74fd26cb684f6b76a3637"
+  },
+  "lib/lua/src/lopnames.h": {
+    "mtime": 1787413016.1085217,
+    "seen": 1789151064.73186,
+    "ast_hash": "4796bd9cda2cf3b8b90fa429ff3f2d4d",
+    "semantic_hash": "4796bd9cda2cf3b8b90fa429ff3f2d4d"
+  },
+  "lib/lua/src/loslib.c": {
+    "mtime": 1787413016.0915952,
+    "seen": 1789151064.73186,
+    "ast_hash": "254a25c5b45e59bcd8683d9b2f35b479",
+    "semantic_hash": "254a25c5b45e59bcd8683d9b2f35b479"
+  },
+  "lib/lua/src/lparser.c": {
+    "mtime": 1787413016.0922365,
+    "seen": 1789151064.73186,
+    "ast_hash": "017f32999afcbdf4dc722a4abd308d1a",
+    "semantic_hash": "017f32999afcbdf4dc722a4abd308d1a"
+  },
+  "lib/lua/src/lparser.h": {
+    "mtime": 1787413016.109095,
+    "seen": 1789151064.7318609,
+    "ast_hash": "2e004418d1e4df57f128ae0ded08354f",
+    "semantic_hash": "2e004418d1e4df57f128ae0ded08354f"
+  },
+  "lib/lua/src/lprefix.h": {
+    "mtime": 1787413016.1096692,
+    "seen": 1789151064.7318609,
+    "ast_hash": "c9b706105782437eef7616320c468ef1",
+    "semantic_hash": "c9b706105782437eef7616320c468ef1"
+  },
+  "lib/lua/src/lstate.c": {
+    "mtime": 1787413016.0928977,
+    "seen": 1789151064.7318609,
+    "ast_hash": "ea614d374d326fc718cd1341763156da",
+    "semantic_hash": "ea614d374d326fc718cd1341763156da"
+  },
+  "lib/lua/src/lstate.h": {
+    "mtime": 1787413016.1102011,
+    "seen": 1789151064.731862,
+    "ast_hash": "edd1473ca499831d12a0476e1db0587d",
+    "semantic_hash": "edd1473ca499831d12a0476e1db0587d"
+  },
+  "lib/lua/src/lstring.c": {
+    "mtime": 1787413016.0935106,
+    "seen": 1789151064.731862,
+    "ast_hash": "d191a9d2c4dad6bb8090f7da41e8bb1c",
+    "semantic_hash": "d191a9d2c4dad6bb8090f7da41e8bb1c"
+  },
+  "lib/lua/src/lstring.h": {
+    "mtime": 1787413016.11062,
+    "seen": 1789151064.731862,
+    "ast_hash": "5111c938a6aab9498fbd60daf46fbc78",
+    "semantic_hash": "5111c938a6aab9498fbd60daf46fbc78"
+  },
+  "lib/lua/src/lstrlib.c": {
+    "mtime": 1787413016.094422,
+    "seen": 1789151064.731863,
+    "ast_hash": "6acbe932f64d2a2fee45c2bfe334659c",
+    "semantic_hash": "6acbe932f64d2a2fee45c2bfe334659c"
+  },
+  "lib/lua/src/ltable.c": {
+    "mtime": 1787413016.095148,
+    "seen": 1789151064.731863,
+    "ast_hash": "4faf8e50df3be93625c84674b088a5cc",
+    "semantic_hash": "4faf8e50df3be93625c84674b088a5cc"
+  },
+  "lib/lua/src/ltable.h": {
+    "mtime": 1787413016.1109722,
+    "seen": 1789151064.731863,
+    "ast_hash": "4a6e45ffd6bd7e7669e61503bcc436f3",
+    "semantic_hash": "4a6e45ffd6bd7e7669e61503bcc436f3"
+  },
+  "lib/lua/src/ltablib.c": {
+    "mtime": 1787413016.0957723,
+    "seen": 1789151064.731864,
+    "ast_hash": "3cc6e80a81d9ef59f0a44a6dfcea6094",
+    "semantic_hash": "3cc6e80a81d9ef59f0a44a6dfcea6094"
+  },
+  "lib/lua/src/ltm.c": {
+    "mtime": 1787413016.0964878,
+    "seen": 1789151064.731864,
+    "ast_hash": "82e8d6ed8e8b3c189ca41d105135d75a",
+    "semantic_hash": "82e8d6ed8e8b3c189ca41d105135d75a"
+  },
+  "lib/lua/src/ltm.h": {
+    "mtime": 1787413016.1114674,
+    "seen": 1789151064.731864,
+    "ast_hash": "550ecc448a2b932870d8240a6cb7e444",
+    "semantic_hash": "550ecc448a2b932870d8240a6cb7e444"
+  },
+  "lib/lua/src/lua.h": {
+    "mtime": 1787413016.1118307,
+    "seen": 1789151064.7318652,
+    "ast_hash": "ece01bd891804d6468c3a8128cee43b0",
+    "semantic_hash": "ece01bd891804d6468c3a8128cee43b0"
+  },
+  "lib/lua/src/luaconf.h": {
+    "mtime": 1787413016.1121821,
+    "seen": 1789151064.7318652,
+    "ast_hash": "659b6097753b1bd225051e832c8ed505",
+    "semantic_hash": "659b6097753b1bd225051e832c8ed505"
+  },
+  "lib/lua/src/lualib.h": {
+    "mtime": 1787413016.1125946,
+    "seen": 1789151064.7318652,
+    "ast_hash": "7204915f29415ee9152d3bd3958cd233",
+    "semantic_hash": "7204915f29415ee9152d3bd3958cd233"
+  },
+  "lib/lua/src/lundump.c": {
+    "mtime": 1787413016.0983067,
+    "seen": 1789151064.7318661,
+    "ast_hash": "5902cbdf8dee8b12423fcc8d1ae280e2",
+    "semantic_hash": "5902cbdf8dee8b12423fcc8d1ae280e2"
+  },
+  "lib/lua/src/lundump.h": {
+    "mtime": 1787413016.113027,
+    "seen": 1789151064.7318661,
+    "ast_hash": "f659d42c2ac4cf07905c044f117b0e4a",
+    "semantic_hash": "f659d42c2ac4cf07905c044f117b0e4a"
+  },
+  "lib/lua/src/lutf8lib.c": {
+    "mtime": 1787413016.098893,
+    "seen": 1789151064.7318668,
+    "ast_hash": "074e5f0211d5aa196261612f53ac49a3",
+    "semantic_hash": "074e5f0211d5aa196261612f53ac49a3"
+  },
+  "lib/lua/src/lvm.c": {
+    "mtime": 1787413016.099552,
+    "seen": 1789151064.7318668,
+    "ast_hash": "93322d975ab9a6df269fe588d39264f1",
+    "semantic_hash": "93322d975ab9a6df269fe588d39264f1"
+  },
+  "lib/lua/src/lvm.h": {
+    "mtime": 1787413016.1133974,
+    "seen": 1789151064.7318668,
+    "ast_hash": "ffc0c083e9aa94c91dcb495c1d438023",
+    "semantic_hash": "ffc0c083e9aa94c91dcb495c1d438023"
+  },
+  "lib/lua/src/lzio.c": {
+    "mtime": 1787413016.1000473,
+    "seen": 1789151064.7318678,
+    "ast_hash": "480ddbad8144af1118a8d2d376785192",
+    "semantic_hash": "480ddbad8144af1118a8d2d376785192"
+  },
+  "lib/lua/src/lzio.h": {
+    "mtime": 1787413016.1137078,
+    "seen": 1789151064.7318678,
+    "ast_hash": "00622612a9c5cd1c5e7b63f3fab5afd8",
+    "semantic_hash": "00622612a9c5cd1c5e7b63f3fab5afd8"
+  },
+  "lib/peanut-gb/library.json": {
+    "mtime": 1787924142.4654253,
+    "seen": 1789151064.7318678,
+    "ast_hash": "d9ed231db73e447c29d6bf8e1d0dce9a",
+    "semantic_hash": "d9ed231db73e447c29d6bf8e1d0dce9a"
+  },
+  "lib/peanut-gb/peanut_gb.h": {
+    "mtime": 1787924142.4047024,
+    "seen": 1789151064.731869,
+    "ast_hash": "c484dbfe38deb40a76a209ea3c332152",
+    "semantic_hash": "c484dbfe38deb40a76a209ea3c332152"
+  },
+  "scripts/version_stamp.py": {
+    "mtime": 1786873238.3944638,
+    "seen": 1789151064.731869,
+    "ast_hash": "e6704db5e13f53e86167d6018d2c004a",
+    "semantic_hash": "e6704db5e13f53e86167d6018d2c004a"
+  },
+  "src/app_host.cpp": {
+    "mtime": 1787896773.9615192,
+    "seen": 1789151064.731869,
+    "ast_hash": "bb2e689b4b45be7a11b61266fa3e5dcf",
+    "semantic_hash": "bb2e689b4b45be7a11b61266fa3e5dcf"
+  },
+  "src/apps/app_browser.cpp": {
+    "mtime": 1788689401.5624285,
+    "seen": 1789151064.73187,
+    "ast_hash": "d3ece939adb480d27aa605bc8daf3ee2",
+    "semantic_hash": "d3ece939adb480d27aa605bc8daf3ee2"
+  },
+  "src/apps/app_equalizer.cpp": {
+    "mtime": 1788969858.9970255,
+    "seen": 1789151064.73187,
+    "ast_hash": "17a2bd1e00b383d15aca2b9b5fe9b319",
+    "semantic_hash": "17a2bd1e00b383d15aca2b9b5fe9b319"
+  },
+  "src/apps/app_games.cpp": {
+    "mtime": 1787928791.1123333,
+    "seen": 1789151064.731871,
+    "ast_hash": "7d5ff1d6f8967c97984955f4fbe16a44",
+    "semantic_hash": "7d5ff1d6f8967c97984955f4fbe16a44"
+  },
+  "src/apps/app_keyboard.cpp": {
+    "mtime": 1787897301.3156629,
+    "seen": 1789151064.731871,
+    "ast_hash": "9072c1db99c84693aca56889b77e5bec",
+    "semantic_hash": "9072c1db99c84693aca56889b77e5bec"
+  },
+  "src/apps/app_lab.cpp": {
+    "mtime": 1787887370.5602736,
+    "seen": 1789151064.731872,
+    "ast_hash": "8dc9613a46c516181b806ed2e78cf8c7",
+    "semantic_hash": "8dc9613a46c516181b806ed2e78cf8c7"
+  },
+  "src/apps/app_messages.cpp": {
+    "mtime": 1787889998.7089336,
+    "seen": 1789151064.731872,
+    "ast_hash": "8a5bc2e34adffcb2f694859feed98d7d",
+    "semantic_hash": "8a5bc2e34adffcb2f694859feed98d7d"
+  },
+  "src/apps/app_registry.cpp": {
+    "mtime": 1788969747.1126952,
+    "seen": 1789151064.731872,
+    "ast_hash": "0cf337e62a38405ebf31025b9f757644",
+    "semantic_hash": "0cf337e62a38405ebf31025b9f757644"
+  },
+  "src/apps/app_settings.cpp": {
+    "mtime": 1787887398.4079547,
+    "seen": 1789151064.731873,
+    "ast_hash": "16602c09f9f81361331d9c1c6e2d5cbd",
+    "semantic_hash": "16602c09f9f81361331d9c1c6e2d5cbd"
+  },
+  "src/apps/app_themes.cpp": {
+    "mtime": 1787893754.264508,
+    "seen": 1789151064.731873,
+    "ast_hash": "a7fa740f7fc4523fd41847c575cb2f2a",
+    "semantic_hash": "a7fa740f7fc4523fd41847c575cb2f2a"
+  },
+  "src/apps/app_timer.cpp": {
+    "mtime": 1787893679.8249633,
+    "seen": 1789151064.731873,
+    "ast_hash": "bdb7d0f8ec742ddd76333897313efb49",
+    "semantic_hash": "bdb7d0f8ec742ddd76333897313efb49"
+  },
+  "src/apps/app_trackpad.cpp": {
+    "mtime": 1787897006.2905455,
+    "seen": 1789151064.731874,
+    "ast_hash": "fd09a8cceca0cb33db9db6c9f0cef0dc",
+    "semantic_hash": "fd09a8cceca0cb33db9db6c9f0cef0dc"
+  },
+  "src/apps/app_youtube.cpp": {
+    "mtime": 1787902756.097623,
+    "seen": 1789151064.731874,
+    "ast_hash": "819068e60888a3a1815e5fcb92f04ac5",
+    "semantic_hash": "819068e60888a3a1815e5fcb92f04ac5"
+  },
+  "src/ble.cpp": {
+    "mtime": 1787897725.1812356,
+    "seen": 1789151064.731874,
+    "ast_hash": "1bdf934254d11b7951c61105e9373fb9",
+    "semantic_hash": "1bdf934254d11b7951c61105e9373fb9"
+  },
+  "src/browser.cpp": {
+    "mtime": 1788689156.329406,
+    "seen": 1789151064.7318752,
+    "ast_hash": "4a65f65d8e8bdb2a8ebe4c9cacbb5600",
+    "semantic_hash": "4a65f65d8e8bdb2a8ebe4c9cacbb5600"
+  },
+  "src/emotion.cpp": {
+    "mtime": 1786867649.9349563,
+    "seen": 1789151064.7318752,
+    "ast_hash": "3981fdad6bc33f5432775d2d8c5e6768",
+    "semantic_hash": "3981fdad6bc33f5432775d2d8c5e6768"
+  },
+  "src/eq.cpp": {
+    "mtime": 1788970632.3059916,
+    "seen": 1789151064.7318752,
+    "ast_hash": "ad32c839ea1f189f61ea7b1c8692072f",
+    "semantic_hash": "ad32c839ea1f189f61ea7b1c8692072f"
+  },
+  "src/fliqlo_corner.c": {
+    "mtime": 1786869573.9392378,
+    "seen": 1789151064.7318761,
+    "ast_hash": "4a3ae63e53b92df819235f991216ba2c",
+    "semantic_hash": "4a3ae63e53b92df819235f991216ba2c"
+  },
+  "src/fliqlo_digits.c": {
+    "mtime": 1786849567.3259618,
+    "seen": 1789151064.7318761,
+    "ast_hash": "06c7f7a629081b5a75c8907d595e0853",
+    "semantic_hash": "06c7f7a629081b5a75c8907d595e0853"
+  },
+  "src/fliqlo_mid.c": {
+    "mtime": 1786868566.0001395,
+    "seen": 1789151064.7318761,
+    "ast_hash": "43e8ad6f6f087590afaaafa226887a50",
+    "semantic_hash": "43e8ad6f6f087590afaaafa226887a50"
+  },
+  "src/fliqlo_wx_small.c": {
+    "mtime": 1786873287.54712,
+    "seen": 1789151064.731877,
+    "ast_hash": "ff357fdc28c32331af2334feb5055721",
+    "semantic_hash": "ff357fdc28c32331af2334feb5055721"
+  },
+  "src/gauge.cpp": {
+    "mtime": 1787885839.4395583,
+    "seen": 1789151064.731877,
+    "ast_hash": "2c0c24f3b2b34fe145f1b65bbc5f910c",
+    "semantic_hash": "2c0c24f3b2b34fe145f1b65bbc5f910c"
+  },
+  "src/httpapi.cpp": {
+    "mtime": 1788969873.2039313,
+    "seen": 1789151064.731877,
+    "ast_hash": "bf4d7a341f1d6c0b016a03f7ee03fb62",
+    "semantic_hash": "bf4d7a341f1d6c0b016a03f7ee03fb62"
+  },
+  "src/main.cpp": {
+    "mtime": 1788689332.9622023,
+    "seen": 1789151064.7318778,
+    "ast_hash": "38884e528d79b2c6fe648a962d495438",
+    "semantic_hash": "38884e528d79b2c6fe648a962d495438"
+  },
+  "src/msg.cpp": {
+    "mtime": 1787889836.4832146,
+    "seen": 1789151064.7318778,
+    "ast_hash": "be60fa59e36cb6132077390b9e9eb91e",
+    "semantic_hash": "be60fa59e36cb6132077390b9e9eb91e"
+  },
+  "src/net.cpp": {
+    "mtime": 1786933027.8396049,
+    "seen": 1789151064.7318778,
+    "ast_hash": "858b94fe4343250b67bb6254c4bc825a",
+    "semantic_hash": "858b94fe4343250b67bb6254c4bc825a"
+  },
+  "src/script.cpp": {
+    "mtime": 1787887669.9578989,
+    "seen": 1789151064.731879,
+    "ast_hash": "75eb712dc2370b8751212e3dc46c1b1a",
+    "semantic_hash": "75eb712dc2370b8751212e3dc46c1b1a"
+  },
+  "src/settings.cpp": {
+    "mtime": 1787893652.262592,
+    "seen": 1789151064.731879,
+    "ast_hash": "37c1d7505b86eeb8ec534444ae6c32c8",
+    "semantic_hash": "37c1d7505b86eeb8ec534444ae6c32c8"
+  },
+  "src/theme.cpp": {
+    "mtime": 1787893652.2307518,
+    "seen": 1789151064.73188,
+    "ast_hash": "f7867c447130d21e6e673393206e0c29",
+    "semantic_hash": "f7867c447130d21e6e673393206e0c29"
+  },
+  "src/ui.cpp": {
+    "mtime": 1789006640.2293758,
+    "seen": 1789151064.73188,
+    "ast_hash": "86fd9e52a03d95f02bf7e57be21a400f",
+    "semantic_hash": "86fd9e52a03d95f02bf7e57be21a400f"
+  },
+  "src/ui_settings.cpp": {
+    "mtime": 1787894789.3332107,
+    "seen": 1789151064.73188,
+    "ast_hash": "e0613b392cc3fa4125282456433d6080",
+    "semantic_hash": "e0613b392cc3fa4125282456433d6080"
+  },
+  "src/yt.cpp": {
+    "mtime": 1787902756.0681827,
+    "seen": 1789151064.731881,
+    "ast_hash": "6dd35783ecad67763401acfc197eec70",
+    "semantic_hash": "6dd35783ecad67763401acfc197eec70"
+  },
+  "tools/app": {
+    "mtime": 1787413736.1768808,
+    "seen": 1789151064.731881,
+    "ast_hash": "dc367b8227be79648c8d67fb4c2efe10",
+    "semantic_hash": "dc367b8227be79648c8d67fb4c2efe10"
+  },
+  "tools/browser_session.py": {
+    "mtime": 1788688881.3613539,
+    "seen": 1789151064.731881,
+    "ast_hash": "d23e77fb66838ccba60405bc67c91627",
+    "semantic_hash": "d23e77fb66838ccba60405bc67c91627"
+  },
+  "tools/crash": {
+    "mtime": 1787415617.7512543,
+    "seen": 1789151064.731882,
+    "ast_hash": "a9f56534dd06a7c2cb3d1b9983db9001",
+    "semantic_hash": "a9f56534dd06a7c2cb3d1b9983db9001"
+  },
+  "tools/eq_capture.swift": {
+    "mtime": 1788971082.7150662,
+    "seen": 1789151064.731882,
+    "ast_hash": "afd815081f6590ae724613e25c06c380",
+    "semantic_hash": "afd815081f6590ae724613e25c06c380"
+  },
+  "tools/eq_session.py": {
+    "mtime": 1788970924.4148972,
+    "seen": 1789151064.731882,
+    "ast_hash": "efa1fd37532471905399f11fe53443b2",
+    "semantic_hash": "efa1fd37532471905399f11fe53443b2"
+  },
+  "tools/flipclock.py": {
+    "mtime": 1786872631.947562,
+    "seen": 1789151064.731883,
+    "ast_hash": "562223d77428302860fb8b9cf14d7576",
+    "semantic_hash": "562223d77428302860fb8b9cf14d7576"
+  },
+  "tools/hush": {
+    "mtime": 1786875871.4715085,
+    "seen": 1789151064.731883,
+    "ast_hash": "1a9738ed933730b69861911ea0c70cb0",
+    "semantic_hash": "1a9738ed933730b69861911ea0c70cb0"
+  },
+  "tools/ota": {
+    "mtime": 1787889093.4575474,
+    "seen": 1789151064.731883,
+    "ast_hash": "99f17a3de2ccebd60857f2901907665c",
+    "semantic_hash": "99f17a3de2ccebd60857f2901907665c"
+  },
+  "tools/rom": {
+    "mtime": 1787925259.9683647,
+    "seen": 1789151064.731884,
+    "ast_hash": "f16b45bc79cd936f124fcf19b9032380",
+    "semantic_hash": "f16b45bc79cd936f124fcf19b9032380"
+  },
+  "tools/say": {
+    "mtime": 1786875871.4690354,
+    "seen": 1789151064.731884,
+    "ast_hash": "f589e552a9b9082574a9792429db8615",
+    "semantic_hash": "f589e552a9b9082574a9792429db8615"
+  },
+  "tools/ytserve": {
+    "mtime": 1788970632.3064485,
+    "seen": 1789151064.731884,
+    "ast_hash": "bd21728d7430ae22cdd4da47f7183079",
+    "semantic_hash": "bd21728d7430ae22cdd4da47f7183079"
+  },
+  "AGENTS.md": {
+    "mtime": 1789148133.8881748,
+    "seen": 1789151064.731885,
+    "ast_hash": "da477de01492163a3acacc0f5bf59ee4",
+    "semantic_hash": "da477de01492163a3acacc0f5bf59ee4"
+  },
+  "CLAUDE.md": {
+    "mtime": 1788970632.3105433,
+    "seen": 1789151064.731885,
+    "ast_hash": "1577e5186239e3b2be18086758582c93",
+    "semantic_hash": "1577e5186239e3b2be18086758582c93"
+  },
+  "docs/Enclosure.md": {
+    "mtime": 1788688398.0440338,
+    "seen": 1789151064.731885,
+    "ast_hash": "618c05fde55654bbba600a9e5a526fd0",
+    "semantic_hash": "618c05fde55654bbba600a9e5a526fd0"
+  },
+  "docs/RELEASES.md": {
+    "mtime": 1789006575.7129776,
+    "seen": 1789151064.7318861,
+    "ast_hash": "2b51773c26821e1b7fa450a2c534e749",
+    "semantic_hash": "2b51773c26821e1b7fa450a2c534e749"
+  },
+  "docs/The OS direction.md": {
+    "mtime": 1787900393.9200099,
+    "seen": 1789151064.7318861,
+    "ast_hash": "b555999b9cd9aee118d037a42951cf61",
+    "semantic_hash": "b555999b9cd9aee118d037a42951cf61"
+  },
+  "docs/decisions/D001 - Use the LilyGO AMOLED library, not TFT_eSPI.md": {
+    "mtime": 1786848845.8443103,
+    "seen": 1789151064.7318861,
+    "ast_hash": "b8641f7caac921525afcff6f9fc7ea75",
+    "semantic_hash": "b8641f7caac921525afcff6f9fc7ea75"
+  },
+  "docs/decisions/D002 - Pin LVGL to 8.4.0.md": {
+    "mtime": 1786848845.8478045,
+    "seen": 1789151064.731887,
+    "ast_hash": "240813a27a162809f08f11f7c38103dc",
+    "semantic_hash": "240813a27a162809f08f11f7c38103dc"
+  },
+  "docs/decisions/D003 - Copy the library platformio env verbatim.md": {
+    "mtime": 1786848845.8515723,
+    "seen": 1789151064.731887,
+    "ast_hash": "2e9d838aa0fb434b98d1afddc3f12c94",
+    "semantic_hash": "2e9d838aa0fb434b98d1afddc3f12c94"
+  },
+  "docs/decisions/D004 - Rotation 0 is already landscape.md": {
+    "mtime": 1786900932.2896612,
+    "seen": 1789151064.731887,
+    "ast_hash": "76c0e3c8890eba2e2995a721222b72e1",
+    "semantic_hash": "76c0e3c8890eba2e2995a721222b72e1"
+  },
+  "docs/decisions/D005 - PlatformIO runs on Python 3.12.md": {
+    "mtime": 1786848845.857821,
+    "seen": 1789151064.731888,
+    "ast_hash": "2b2e93aad1dc3ae3ac1570eeff7f8a59",
+    "semantic_hash": "2b2e93aad1dc3ae3ac1570eeff7f8a59"
+  },
+  "docs/decisions/D006 - Keep build artifacts out of iCloud.md": {
+    "mtime": 1786848845.8608475,
+    "seen": 1789151064.731888,
+    "ast_hash": "507155c1536760ee5881ff75e1758222",
+    "semantic_hash": "507155c1536760ee5881ff75e1758222"
+  },
+  "docs/decisions/D007 - Skip SD, keep charge LED default.md": {
+    "mtime": 1786899721.3525074,
+    "seen": 1789151064.731888,
+    "ast_hash": "1af885c21b144f05bd46851781152256",
+    "semantic_hash": "1af885c21b144f05bd46851781152256"
+  },
+  "docs/decisions/D008 - Brightness scale.md": {
+    "mtime": 1786848886.7144363,
+    "seen": 1789151064.731889,
+    "ast_hash": "607b575d510ff60082bb33cea7b6752c",
+    "semantic_hash": "607b575d510ff60082bb33cea7b6752c"
+  },
+  "docs/decisions/D009 - LVGL buffer strategy.md": {
+    "mtime": 1786848886.7183108,
+    "seen": 1789151064.731889,
+    "ast_hash": "4bfc15bffc6a8d2b013f48597d19b4e4",
+    "semantic_hash": "4bfc15bffc6a8d2b013f48597d19b4e4"
+  },
+  "docs/decisions/D010 - Night dimming is a schedule, not a sensor.md": {
+    "mtime": 1786848886.7212734,
+    "seen": 1789151064.731889,
+    "ast_hash": "4c80bff98bdd73ac8580b87aa54169fd",
+    "semantic_hash": "4c80bff98bdd73ac8580b87aa54169fd"
+  },
+  "docs/decisions/D011 - Generate the digit font, do not scale Montserrat.md": {
+    "mtime": 1786849846.0001893,
+    "seen": 1789151064.73189,
+    "ast_hash": "704fd6b7bc95aef1eb5997b108e5199e",
+    "semantic_hash": "704fd6b7bc95aef1eb5997b108e5199e"
+  },
+  "docs/decisions/D012 - Card geometry.md": {
+    "mtime": 1786870648.8174667,
+    "seen": 1789151064.73189,
+    "ast_hash": "1a5e391937a386eda41a5aaeceef740c",
+    "semantic_hash": "1a5e391937a386eda41a5aaeceef740c"
+  },
+  "docs/decisions/D013 - Settings live in NVS, config.h is only defaults.md": {
+    "mtime": 1786850844.218002,
+    "seen": 1789151064.731891,
+    "ast_hash": "877829300bd8000e41e4571007232b7d",
+    "semantic_hash": "877829300bd8000e41e4571007232b7d"
+  },
+  "docs/decisions/D014 - Touch hit-testing.md": {
+    "mtime": 1786853399.3392723,
+    "seen": 1789151064.731891,
+    "ast_hash": "b294b6cc952669725a8ac61de919b201",
+    "semantic_hash": "b294b6cc952669725a8ac61de919b201"
+  },
+  "docs/decisions/D015 - Abu Dhabi locale.md": {
+    "mtime": 1786850844.2236907,
+    "seen": 1789151064.731891,
+    "ast_hash": "a064860ee0881cc44fb08270f029eb9e",
+    "semantic_hash": "a064860ee0881cc44fb08270f029eb9e"
+  },
+  "docs/decisions/D016 - Wi-Fi is provisioned on-device.md": {
+    "mtime": 1786855214.292164,
+    "seen": 1789151064.7318919,
+    "ast_hash": "ca808497aef2250b39fdf1effff83370",
+    "semantic_hash": "ca808497aef2250b39fdf1effff83370"
+  },
+  "docs/decisions/D017 - BLE and Wi-Fi coexistence.md": {
+    "mtime": 1786853145.3847208,
+    "seen": 1789151064.7318919,
+    "ast_hash": "9045cfa0cba5c31a23b4dd80afebf7f8",
+    "semantic_hash": "9045cfa0cba5c31a23b4dd80afebf7f8"
+  },
+  "docs/decisions/D018 - Emotion API - one engine, two transports.md": {
+    "mtime": 1786853145.3880618,
+    "seen": 1789151064.7318919,
+    "ast_hash": "68bb8042a4de629deddefda399a65633",
+    "semantic_hash": "68bb8042a4de629deddefda399a65633"
+  },
+  "docs/decisions/D019 - Text entry gets its own screen.md": {
+    "mtime": 1786855214.291866,
+    "seen": 1789151064.731893,
+    "ast_hash": "cc07c181227b1b3a3777df5c1ba54419",
+    "semantic_hash": "cc07c181227b1b3a3777df5c1ba54419"
+  },
+  "docs/decisions/D020 - Humidity recedes by contrast, not size.md": {
+    "mtime": 1786854766.3097572,
+    "seen": 1789151064.731893,
+    "ast_hash": "e09d005ea54fa12b01983ac2549d5476",
+    "semantic_hash": "e09d005ea54fa12b01983ac2549d5476"
+  },
+  "docs/decisions/D021 - BLE HID, for discoverability not typing.md": {
+    "mtime": 1786854958.1820033,
+    "seen": 1789151064.731893,
+    "ast_hash": "711cadcbcc148110267f2db541d3116a",
+    "semantic_hash": "711cadcbcc148110267f2db541d3116a"
+  },
+  "docs/decisions/D022 - Custom HID identity, not a keyboard.md": {
+    "mtime": 1787897379.3899698,
+    "seen": 1789151064.731894,
+    "ast_hash": "dfcd2ec0354d5eee0b34fdfb352d0d9b",
+    "semantic_hash": "dfcd2ec0354d5eee0b34fdfb352d0d9b"
+  },
+  "docs/decisions/D023 - Emotions must change the mode, not decorate it.md": {
+    "mtime": 1786856680.1532276,
+    "seen": 1789151064.731894,
+    "ast_hash": "b209b4c7f7730e7f20dd69f6ad5b6766",
+    "semantic_hash": "b209b4c7f7730e7f20dd69f6ad5b6766"
+  },
+  "docs/decisions/D024 - Emotions as a circumplex, rendered as one line.md": {
+    "mtime": 1786857578.7769964,
+    "seen": 1789151064.731894,
+    "ast_hash": "f3d8882f1e59e73fcda8a45515543dac",
+    "semantic_hash": "f3d8882f1e59e73fcda8a45515543dac"
+  },
+  "docs/decisions/D025 - Scaling text LVGL cannot scale.md": {
+    "mtime": 1786869816.3943195,
+    "seen": 1789151064.731895,
+    "ast_hash": "c67a85d1bf7bfc3176143fe55b51d80a",
+    "semantic_hash": "c67a85d1bf7bfc3176143fe55b51d80a"
+  },
+  "docs/decisions/D026 - Apps are a platform, not a special case.md": {
+    "mtime": 1786934413.2113655,
+    "seen": 1789151064.731895,
+    "ast_hash": "c8bbf9d212254662e7f5c6966527f850",
+    "semantic_hash": "c8bbf9d212254662e7f5c6966527f850"
+  },
+  "docs/decisions/D027 - The gesture budget.md": {
+    "mtime": 1787017211.8580673,
+    "seen": 1789151064.731895,
+    "ast_hash": "b5e22a55c406c8f9bcef986d272fff9e",
+    "semantic_hash": "b5e22a55c406c8f9bcef986d272fff9e"
+  },
+  "docs/decisions/D028 - Set a number by dragging the number.md": {
+    "mtime": 1786935548.248401,
+    "seen": 1789151064.7318962,
+    "ast_hash": "3d8f8000a4491b1169af1c7aede3e367",
+    "semantic_hash": "3d8f8000a4491b1169af1c7aede3e367"
+  },
+  "docs/decisions/D029 - Back is a system gesture, not a widget event.md": {
+    "mtime": 1787278615.2831748,
+    "seen": 1789151064.7318962,
+    "ast_hash": "df519d12e0c35c42cad1c435d9a46b85",
+    "semantic_hash": "df519d12e0c35c42cad1c435d9a46b85"
+  },
+  "docs/decisions/D030 - Retire the 3-second hold.md": {
+    "mtime": 1787017184.1940877,
+    "seen": 1789151064.7318962,
+    "ast_hash": "25d48f9276619e943160a5b70c82d4bd",
+    "semantic_hash": "25d48f9276619e943160a5b70c82d4bd"
+  },
+  "docs/decisions/D031 - The layout is the model.md": {
+    "mtime": 1787017184.1963725,
+    "seen": 1789151064.731897,
+    "ast_hash": "ad99507e7ddc16555ffd7cf2f830834e",
+    "semantic_hash": "ad99507e7ddc16555ffd7cf2f830834e"
+  },
+  "docs/decisions/D032 - Three gestures, one control.md": {
+    "mtime": 1787017184.1991088,
+    "seen": 1789151064.731897,
+    "ast_hash": "936a9caf4c2d1b085fea92af225ab14b",
+    "semantic_hash": "936a9caf4c2d1b085fea92af225ab14b"
+  },
+  "docs/decisions/D033 - Back goes one level, not home.md": {
+    "mtime": 1787278590.8994179,
+    "seen": 1789151064.731898,
+    "ast_hash": "96aca169a0a1ef3ddfdb1cfe3743cbe0",
+    "semantic_hash": "96aca169a0a1ef3ddfdb1cfe3743cbe0"
+  },
+  "docs/decisions/D034 - Updates ship over the air.md": {
+    "mtime": 1787400406.7425003,
+    "seen": 1789151064.731898,
+    "ast_hash": "5f7f5a34132deda1057cc4fc6d9c1c1a",
+    "semantic_hash": "5f7f5a34132deda1057cc4fc6d9c1c1a"
+  },
+  "docs/decisions/D035 - The Lab may only touch pins the firmware does not own.md": {
+    "mtime": 1787401067.7220664,
+    "seen": 1789151064.731898,
+    "ast_hash": "2eb48330fb3aac051c3a642f1028a934",
+    "semantic_hash": "2eb48330fb3aac051c3a642f1028a934"
+  },
+  "docs/decisions/D036 - GPIO0 is readable, never drivable.md": {
+    "mtime": 1787405129.9990346,
+    "seen": 1789151064.7318988,
+    "ast_hash": "92eb3b3f59eb3f10a0146c9bc3d1a487",
+    "semantic_hash": "92eb3b3f59eb3f10a0146c9bc3d1a487"
+  },
+  "docs/decisions/D037 - Apps become Lua scripts.md": {
+    "mtime": 1787413803.087742,
+    "seen": 1789151064.7318988,
+    "ast_hash": "26248fa71cad923b2af389a54e242240",
+    "semantic_hash": "26248fa71cad923b2af389a54e242240"
+  },
+  "docs/decisions/D038 - Crashes must be readable without a cable.md": {
+    "mtime": 1787415667.7861674,
+    "seen": 1789151064.7318988,
+    "ast_hash": "145d147a5b36eef02fa6efad51bb31f3",
+    "semantic_hash": "145d147a5b36eef02fa6efad51bb31f3"
+  },
+  "docs/decisions/D039 - The device must be drivable without a finger.md": {
+    "mtime": 1787418659.1171722,
+    "seen": 1789151064.7319,
+    "ast_hash": "9bfc8ce8f0ede5e66b07455a3f167bc0",
+    "semantic_hash": "9bfc8ce8f0ede5e66b07455a3f167bc0"
+  },
+  "docs/decisions/D040 - A script must not be able to reboot the clock.md": {
+    "mtime": 1787418659.1210818,
+    "seen": 1789151064.731901,
+    "ast_hash": "be5b1bf189cc265e536267f064452532",
+    "semantic_hash": "be5b1bf189cc265e536267f064452532"
+  },
+  "docs/decisions/D041 - Nothing may unwind through a live interpreter.md": {
+    "mtime": 1787450445.8848054,
+    "seen": 1789151064.731901,
+    "ast_hash": "e472d831f354c13b2639371e0189170d",
+    "semantic_hash": "e472d831f354c13b2639371e0189170d"
+  },
+  "docs/decisions/D042 - The battery gauge is a voltage estimate.md": {
+    "mtime": 1787677891.2492971,
+    "seen": 1789151064.731901,
+    "ast_hash": "4d32dbd66a980acc0edaa4c1aaec81a2",
+    "semantic_hash": "4d32dbd66a980acc0edaa4c1aaec81a2"
+  },
+  "docs/decisions/D043 - Orientation is the clock's job; apps borrow landscape.md": {
+    "mtime": 1787679139.887657,
+    "seen": 1789151064.731902,
+    "ast_hash": "2a822b35cad989ddc1b33738c8e9d71c",
+    "semantic_hash": "2a822b35cad989ddc1b33738c8e9d71c"
+  },
+  "docs/decisions/D044 - Coulombs where measurable, model where not.md": {
+    "mtime": 1787885993.3635728,
+    "seen": 1789151064.731902,
+    "ast_hash": "ffd6de1465eaf4f23d24775f4bc848b4",
+    "semantic_hash": "ffd6de1465eaf4f23d24775f4bc848b4"
+  },
+  "docs/decisions/D045 - One chrome, every shape.md": {
+    "mtime": 1787887799.7667859,
+    "seen": 1789151064.731902,
+    "ast_hash": "5e95adecafc695dfd90d3156e3d16719",
+    "semantic_hash": "5e95adecafc695dfd90d3156e3d16719"
+  },
+  "docs/decisions/D046 - Gadgets message over HTTP and mDNS.md": {
+    "mtime": 1787887799.7715745,
+    "seen": 1789151064.731903,
+    "ast_hash": "ea340ae7746f41a1106f85eafdf73749",
+    "semantic_hash": "ea340ae7746f41a1106f85eafdf73749"
+  },
+  "docs/decisions/D047 - Messages are conversations, and the clock wears the badge.md": {
+    "mtime": 1787890082.96483,
+    "seen": 1789151064.731903,
+    "ast_hash": "4a4970bca640e25d4b808d9edc5ca56e",
+    "semantic_hash": "4a4970bca640e25d4b808d9edc5ca56e"
+  },
+  "docs/decisions/D048 - Settings navigates like Apple's.md": {
+    "mtime": 1787894848.2089252,
+    "seen": 1789151064.731903,
+    "ast_hash": "7cd8f153149c541d44c48c24c2719229",
+    "semantic_hash": "7cd8f153149c541d44c48c24c2719229"
+  },
+  "docs/decisions/D049 - The look is a table.md": {
+    "mtime": 1787893864.6213803,
+    "seen": 1789151064.731904,
+    "ast_hash": "e160b3ef851ed55ecc2b73e439da6cd5",
+    "semantic_hash": "e160b3ef851ed55ecc2b73e439da6cd5"
+  },
+  "docs/decisions/D050 - YouTube is a dashboard and a remote, not a player.md": {
+    "mtime": 1787920269.8484802,
+    "seen": 1789151064.731904,
+    "ast_hash": "b72bb603749bb5b26babc17a35d485bc",
+    "semantic_hash": "b72bb603749bb5b26babc17a35d485bc"
+  },
+  "docs/decisions/D051 - The clock is a trackpad; the mouse is real HID.md": {
+    "mtime": 1787896401.6117363,
+    "seen": 1789151064.731904,
+    "ast_hash": "349f8049b73218052a50e607669519b2",
+    "semantic_hash": "349f8049b73218052a50e607669519b2"
+  },
+  "docs/decisions/D052 - The gadget types, on request.md": {
+    "mtime": 1787897379.3574388,
+    "seen": 1789151064.731905,
+    "ast_hash": "a4e6249f8261cfd6bb46bf7246bbddb3",
+    "semantic_hash": "a4e6249f8261cfd6bb46bf7246bbddb3"
+  },
+  "docs/decisions/D053 - The clock plays video after all, through the Mac.md": {
+    "mtime": 1787901793.4153461,
+    "seen": 1789151064.731905,
+    "ast_hash": "cbddeadf5261673101b1a2d0756dc805",
+    "semantic_hash": "cbddeadf5261673101b1a2d0756dc805"
+  },
+  "docs/decisions/D054 - Home comes from the owner's own session.md": {
+    "mtime": 1787902828.041671,
+    "seen": 1789151064.731905,
+    "ast_hash": "01702c25e4538f7f57ab49afadb5c934",
+    "semantic_hash": "01702c25e4538f7f57ab49afadb5c934"
+  },
+  "docs/decisions/D055 - Games wear the house style.md": {
+    "mtime": 1787923679.6229458,
+    "seen": 1789151064.731906,
+    "ast_hash": "bde15ada8755c81a9a8fd761d019c38b",
+    "semantic_hash": "bde15ada8755c81a9a8fd761d019c38b"
+  },
+  "docs/decisions/D056 - A real Game Boy lives in the arcade.md": {
+    "mtime": 1787925339.5011117,
+    "seen": 1789151064.731906,
+    "ast_hash": "2ec3a97bffbf7caf1ba6fbdb3f6cdf44",
+    "semantic_hash": "2ec3a97bffbf7caf1ba6fbdb3f6cdf44"
+  },
+  "docs/decisions/D057 - The clock is a browser, through the Mac.md": {
+    "mtime": 1788689705.8735716,
+    "seen": 1789151064.731906,
+    "ast_hash": "ac74c07dba2821fdd9f9252ad1eef0df",
+    "semantic_hash": "ac74c07dba2821fdd9f9252ad1eef0df"
+  },
+  "docs/decisions/D058 - The equalizer listens through the Mac.md": {
+    "mtime": 1788971098.5600188,
+    "seen": 1789151064.7319071,
+    "ast_hash": "5f24eb9287c8e32435dbab955b9ec3d2",
+    "semantic_hash": "5f24eb9287c8e32435dbab955b9ec3d2"
+  },
+  "docs/decisions/D059 - The battery is drawn, not composed.md": {
+    "mtime": 1789006640.2298138,
+    "seen": 1789151064.7319071,
+    "ast_hash": "713475a25dd4524c6685abfa4d38467d",
+    "semantic_hash": "713475a25dd4524c6685abfa4d38467d"
+  },
+  "docs/hardware/T4-S3.md": {
+    "mtime": 1786848765.109732,
+    "seen": 1789151064.7319071,
+    "ast_hash": "343d5a29e535fc107e7a5b900911f19b",
+    "semantic_hash": "343d5a29e535fc107e7a5b900911f19b"
+  },
+  "docs/reference/HTTP API.md": {
+    "mtime": 1788970632.3090663,
+    "seen": 1789151064.731908,
+    "ast_hash": "ef19a4c9278d5984f97a1d812278dc91",
+    "semantic_hash": "ef19a4c9278d5984f97a1d812278dc91"
+  },
+  "docs/reference/LilyGo AMOLED library.md": {
+    "mtime": 1786848792.6820204,
+    "seen": 1789151064.731908,
+    "ast_hash": "96912ead7f85af0041aca6ba81a118f7",
+    "semantic_hash": "96912ead7f85af0041aca6ba81a118f7"
+  },
+  "docs/reference/Module map.md": {
+    "mtime": 1788970632.3098211,
+    "seen": 1789151064.731909,
+    "ast_hash": "e94fc7b47441dd34cecde3e85b44f2d6",
+    "semantic_hash": "e94fc7b47441dd34cecde3e85b44f2d6"
+  },
+  "docs/reference/T4-S3.md": {
+    "mtime": 1787900393.9541566,
+    "seen": 1789151064.731909,
+    "ast_hash": "90ae74d472359ecdd3b53b319e27ef67",
+    "semantic_hash": "90ae74d472359ecdd3b53b319e27ef67"
+  },
+  "docs/stages/Acceptance results.md": {
+    "mtime": 1786855888.88881,
+    "seen": 1789151064.731909,
+    "ast_hash": "31f8594b1ecb8b60ab5d56ecf439efe2",
+    "semantic_hash": "31f8594b1ecb8b60ab5d56ecf439efe2"
+  },
+  "docs/stages/App platform.md": {
+    "mtime": 1787401322.0819151,
+    "seen": 1789151064.73191,
+    "ast_hash": "1496e0aff2ca3b3ba319ab7bbe08b7a3",
+    "semantic_hash": "1496e0aff2ca3b3ba319ab7bbe08b7a3"
+  },
+  "docs/stages/Lab.md": {
+    "mtime": 1787405742.3220904,
+    "seen": 1789151064.73191,
+    "ast_hash": "065384af803b95436f20bdf2ab877b2e",
+    "semantic_hash": "065384af803b95436f20bdf2ab877b2e"
+  },
+  "docs/stages/OTA.md": {
+    "mtime": 1787401322.0387223,
+    "seen": 1789151064.73191,
+    "ast_hash": "f6dbf19fddafc4b2578863e9892ef5c8",
+    "semantic_hash": "f6dbf19fddafc4b2578863e9892ef5c8"
+  },
+  "docs/stages/Scripting.md": {
+    "mtime": 1787413832.9354517,
+    "seen": 1789151064.731911,
+    "ast_hash": "c7e7fa42ae029f62e76d998db4c93115",
+    "semantic_hash": "c7e7fa42ae029f62e76d998db4c93115"
+  },
+  "docs/stages/Settings screen.md": {
+    "mtime": 1786854444.8146908,
+    "seen": 1789151064.731911,
+    "ast_hash": "d3da9009fe6e8a8b730eb61b9890c523",
+    "semantic_hash": "d3da9009fe6e8a8b730eb61b9890c523"
+  },
+  "docs/stages/Stage 0 - Stock example.md": {
+    "mtime": 1786849094.4945507,
+    "seen": 1789151064.731911,
+    "ast_hash": "796370d4c600ae11fe2b890a1b58562f",
+    "semantic_hash": "796370d4c600ae11fe2b890a1b58562f"
+  },
+  "docs/stages/Stage 1 - Static digits.md": {
+    "mtime": 1786870648.8176572,
+    "seen": 1789151064.731912,
+    "ast_hash": "e121cd69d05a06657b833dca7045080b",
+    "semantic_hash": "e121cd69d05a06657b833dca7045080b"
+  },
+  "docs/stages/Stage 2 - NTP and flip animation.md": {
+    "mtime": 1786850890.191473,
+    "seen": 1789151064.731912,
+    "ast_hash": "a4cee7d37ab3a9c3f368147583785f31",
+    "semantic_hash": "a4cee7d37ab3a9c3f368147583785f31"
+  },
+  "docs/stages/Stage 3 - Weather.md": {
+    "mtime": 1786850890.1920476,
+    "seen": 1789151064.7319129,
+    "ast_hash": "1b623f0f27209c7bd792564677947473",
+    "semantic_hash": "1b623f0f27209c7bd792564677947473"
+  },
+  "docs/stages/Stage 4 - Emotion API.md": {
+    "mtime": 1786853183.2967308,
+    "seen": 1789151064.7319129,
+    "ast_hash": "9037539e35eaa5dc3613b0d678d8e9ef",
+    "semantic_hash": "9037539e35eaa5dc3613b0d678d8e9ef"
+  },
+  "docs/stages/Stage 5 - Touch and burn-in guard.md": {
+    "mtime": 1786853399.3389056,
+    "seen": 1789151064.7319129,
+    "ast_hash": "a3f02b1370a150923a25709b44ca2c6f",
+    "semantic_hash": "a3f02b1370a150923a25709b44ca2c6f"
+  },
+  "index.md": {
+    "mtime": 1789006575.7132616,
+    "seen": 1789151064.731914,
+    "ast_hash": "0cc9abb21d15c3c8aeab319b1716e527",
+    "semantic_hash": "0cc9abb21d15c3c8aeab319b1716e527"
+  },
+  "lib/lua/README.md": {
+    "mtime": 1787413031.3750494,
+    "seen": 1789151064.731914,
+    "ast_hash": "a34dbcbe7b438f347e4be9fff98507b5",
+    "semantic_hash": "a34dbcbe7b438f347e4be9fff98507b5"
+  },
+  "log.md": {
+    "mtime": 1789006575.7210283,
+    "seen": 1789151064.731914,
+    "ast_hash": "d73927ff42f509560a999509ff353b2b",
+    "semantic_hash": "d73927ff42f509560a999509ff353b2b"
+  }
+}

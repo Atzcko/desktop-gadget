@@ -1948,3 +1948,16 @@ area narrowed to each side of the fill's edge, which is how a single digit
 can be half black and half white. Small feature, one reusable trick
 (D059). Verified: builds, flashes, /health reports the version and a
 present battery; the look is the owner's to confirm.
+
+## 2026-09-11 — The project as a graph (graphify)
+
+Ran /graphify over the whole directory: 128 code files by AST, the 84 vault
+notes by four extraction agents (~937k subagent tokens). Result:
+graphify-out/graph.html - 2,779 nodes, 9,791 edges, 92 named communities.
+The vault's decisions cluster by theme (gestures, companion pattern, BLE
+HID, Lab pin safety) and each links to the code that implements it; the
+vendored Lua source forms its own archipelago of ~30 clusters. Two honest
+flags in the report: 466 semantic edges pointed at ids that do not exist
+(agents guessing symbol names) and were dropped by the builder; four vault
+files carry a duplicate document node because two agents chose different
+id suffixes. The graph is queryable: graphify query "<question>".
