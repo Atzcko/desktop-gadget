@@ -390,3 +390,9 @@ on the device, and *Forget This Device* on the Mac.
 
 `duration_s` defaults to 5 and is clamped to 300. Bad input returns 400 with
 a reason; it never reboots the device.
+
+<!-- harness:pointer -->
+## Agent harness
+
+This project has an agent harness in `harness/`, managed by the `harness` skill. Run `/harness` (or read `harness/Harness.md`) at the start of a session; it continues where the last session stopped. Compiled agents are generated from `harness/agents/` by `harness compile`; edit the notes, then recompile.
+<!-- /harness:pointer -->

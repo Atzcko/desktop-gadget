@@ -1961,3 +1961,21 @@ flags in the report: 466 semantic edges pointed at ids that do not exist
 (agents guessing symbol names) and were dropped by the builder; four vault
 files carry a duplicate document node because two agents chose different
 id suffixes. The graph is queryable: graphify query "<question>".
+
+## 2026-09-13 — The harness rehearsal (understand phase)
+
+Dry run of the `harness` skill (Atzcko/custom-harness v0.3.0) on this
+project: the Understand and Architect phases only, no operating. `harness
+init` wrote `harness/` (entry note, brief, architecture, ledger, evolution,
+an llm-wiki with its schema) and appended a pointer block to CLAUDE.md and
+AGENTS.md so both Claude Code and Codex find it. The brief was pre-filled
+from the vault and the 2026-09-11 graph rather than asked: seven domains
+(clock UI, app platform, Lua runtime, connectivity, Mac companion, vault
+and process, board library), the release definition of done, the hard
+constraints, and a candidate list of actions that must never happen
+automatically. The interview's first batch (done for a typical task, the
+never-automatically list, delegation, budget and what is next) is open;
+the brief stays `draft` until it is answered. A librarian agent is updating
+the graph (two days and one commit stale) and seeding the wiki with source
+and domain pages. Three lessons for the skill went into
+`harness/evolution.md`. Firmware unchanged; no version bump, no tag.
