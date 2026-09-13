@@ -29,5 +29,6 @@ graphify-out/.graphify_cached.json
 graphify-out/.graphify_uncached.txt
 graphify-out/.graphify_analysis.json
 graphify-out/.graphify_chunk_*.json
+graphify-out/.graphify_incremental.json
 graphify-out/.needs_update
 graphify-out/cache/
